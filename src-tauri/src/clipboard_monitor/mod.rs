@@ -198,6 +198,19 @@ impl ClipboardMonitor {
         }
     }
 
+    /// 当前是否处于抑制窗内（FR-5.7 时序断言专用）。
+    /// `#[cfg(test)] pub(crate)`：仅供 T6 取词时序测试观测置位/清位时机，不进入生产 API。
+    #[cfg(test)]
+    pub(crate) fn is_suppressing(&self) -> bool {
+        match self.lock_state() {
+            Ok(inner) => matches!(&inner.state, MonitorState::On(on) if on.suppressing),
+            Err(err) => {
+                log::error!("clipboard_monitor: is_suppressing 查询失败（视同 false）: {err}");
+                false
+            }
+        }
+    }
+
     /// 当前监听循环代次（disable/新 enable 均会使旧循环退出）。
     pub fn generation(&self) -> u64 {
         self.loop_generation.load(Ordering::SeqCst)

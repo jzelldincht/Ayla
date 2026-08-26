@@ -21,7 +21,8 @@ tauri-plugin-autostart = "2.5"
 tauri-plugin-notification = "2.3"
 tauri-plugin-log = "2.9"
 # 系统能力
-selection = "1.2" # 跨软件取词（模拟复制），ADR-0001 点名机制
+# 注：selection crate 已移除——其底层依赖 enigo，主 Agent 要求"enigo 不引入"，
+# T6 改用 windows SendInput + arboard（见 implementation-report T6 节偏离说明）。
 screenshots = "0.8" # 多显示器截屏（物理分辨率 RGBA 帧）
 arboard = "3.6" # 剪贴板读写（备份/恢复/监听）
 image = { version = "0.25", default-features = false, features = ["png"] } # 内存裁剪与 PNG 编码
@@ -30,7 +31,11 @@ winreg = "0.56" # 便携版 WebView2 存在性探测（T17）
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 eventsource-stream = "0.2"
 futures-util = "0.3"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "test-util"] }
+# spec 5.3 清单未列但必需：tokio 1.52+ 已将 sync::CancellationToken 迁出至 tokio-util（本仓锁定的
+# tokio 1.53.1 中 tokio::sync 已无该项——T8 编译实证）；spec 5.7.7 会话模型的取消令牌改由
+# tokio 官方配套 util crate 提供（MIT，同 tokio 许可家族）。
+tokio-util = "0.7"
 # 序列化与错误建模
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -40,6 +45,8 @@ log = "0.4" # 日志 facade（tauri-plugin-log 注册于 T1；spec 5.7.8 解密�
 # Windows 系统绑定（OCR/DPAPI/剪贴板序号/前台控制），features 见 spec 5.3。
 # 注：LocalFree（释放 CryptProtectData 返回的 BLOB）位于 Win32_Foundation，已在清单内，无需追加 feature。
 # T5 追加 Win32_System_DataExchange：GetClipboardSequenceNumber（spec 5.6.3 剪贴板序号轮询）。
+# T6 追加 Win32_UI_Input_KeyboardAndMouse：SendInput 注入 Ctrl+C（取词；主 Agent 指定 feature 名
+# 为 KeyboardAndGroup，windows 0.62.2 实际仅存在 KeyboardAndMouse，已按实际更名——见 T6 偏离说明）。
 windows = { version = "0.62", features = [
     "Media_Ocr",
     "Globalization",
@@ -50,7 +57,12 @@ windows = { version = "0.62", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_Foundation",
     "Win32_System_DataExchange",
+    "Win32_UI_Input_KeyboardAndMouse",
 ] }
+
+# 集成测试用 mock HTTP 服务（spec 验收标准 2：wiremock 模拟 OpenAI 兼容服务）
+[dev-dependencies]
+wiremock = "0.6"
 
 # INV-6 门禁：发布路径禁止裸 unwrap / expect 吞错（G2 门禁，cargo clippy --all-targets -- -D warnings 全量生效）
 [lints.clippy]

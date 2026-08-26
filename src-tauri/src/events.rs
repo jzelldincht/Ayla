@@ -28,12 +28,18 @@ pub const EVENT_OCR_RESULT: &str = "ocr://result";
 pub const EVENT_SETTINGS_CHANGED: &str = "settings://changed";
 pub const EVENT_SELECTION_CLOSED: &str = "selection://closed";
 
+/// 翻译面板窗口 label（spec 5.5：`translate`；T11 预创建该窗）。
+/// 翻译流式事件（begin/chunk/done/error）emit 目标即此 label，前后端共用唯一来源。
+pub const WINDOW_TRANSLATE_LABEL: &str = "translate";
+
 // ---------------------------------------------------------------------------
 // 共享枚举（截面/面板/命令通用）
 // ---------------------------------------------------------------------------
 
 /// 翻译源入口（6.1 `translate.source`；与 5.6 各链路 trigger source 对齐）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// `Hash`：T7 的会话表 `HashMap<Source, TranslationRound>` 键需要（spec 5.7.7 会话模型；
+/// 与 HotkeyFunction 的 Hash 同先例——仅能力 derive 补充，序列化契约不变）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TranslateSource {
     Selection,

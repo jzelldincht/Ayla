@@ -113,7 +113,7 @@
   - 要点: 备份剪贴板（内容+序号）→ 置抑制标志 → 向前台窗口注入 Ctrl+C → 轮询序号变化上限 220ms → 读文本 → 恢复前校验（当前内容仍是取词所得才恢复，否则放弃以防覆盖用户数据）→ 恢复 → 刷新监听基线 → 清抑制（spec 5.6.1②b）；全程不显示/聚焦任何 Alya 窗口（INV-5）；空文本/超时分路系统通知，文案区分“未获取到选中文本”（EX-9）与“未能获取文本”（EX-10，design-spec 4.4）；打点 selection_done（7.2，全链路 260ms 硬顶）
   - Verification: `cargo test selection`——注入式剪贴板/击键抽象下覆盖：成功/220ms 超时/空白/恢复竞态/抑制窗时序（置位先于备份、清位于基线刷新后）；冒烟：记事本选中文本触发，日志给出链路耗时
   - 追溯: FR-3.1~3.3、FR-5.7、EX-9、EX-10、INV-5、spec 5.6.1/7.2
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-26 实施工程师交付：selection/mod.rs＝备份(内容+序号)→begin_suppression（备份前，T5 接口）→SendInput Ctrl+C（windows Win32_UI_Input_KeyboardAndMouse，主 Agent 指定 feature 名实际不存在已按实际更名——见报告）→轮询序号变化 220ms→读文本→恢复前校验（当前≠取词所得则放弃防覆盖）→end_suppression（先刷新基线后清位）；全程不显示/聚焦 Alya 窗口（INV-5）；EX-9「未获取到选中文本」/EX-10「未能获取文本」分路系统通知（需求 v0.4 EX-10 行文与 design-spec 4.4 不一致，按 design-spec 执行——详见报告偏离）；ClipboardOps/CopyInjector trait 注入；selection_done 打点（仅字符数不记原文 INV-7）；`cargo test selection` 10 通过（成功/超时/空白/非文本/恢复竞态/抑制时序/注入失败/恢复写失败/非文本备份清残留/备份读失败，全部在监听 On 态下验证真实抑制位序：置位先于备份、清位晚于恢复、失败路径必清位、竞态放弃恢复后基线以用户内容为准）；全量 84 单测 + 11 集成 = 95/95，fmt/clippy -D warnings PASS；记事本真机冒烟依赖 action_router 接线（T16）与真机前提，留 T16 集成阶段执行；偏离见 implementation-report T6 节）
 
 - [ ] T7：翻译会话与提示词构造
   - Owner: 实施工程师
@@ -122,7 +122,7 @@
   - 要点: prompt.rs 场景→模板构造：互译＝FR-2.5、定向＝FR-2.6，`{{target}}`/`{{text}}` 占位符字面替换；`{{target}}` 取面板临时目标语言否则设置默认值（FR-2.7）；快照测试逐字对照 requirements.md v0.4 原文（任何文本差异触发重新评审）；service.rs 会话表 `HashMap<Source, Round>` + 全局 generation：同源新请求 bump → cancel 旧行（CancellationToken + 流 drop 断连）→ join 旧任务（上限 100ms）后才发新请求（EX-13，任意时刻每来源至多一条活跃连接）；分档判定纯函数（999/1000/1001 边界、计数含空白换行 Q10；renderMode 传递方式待 C1 裁决后落地）
   - Verification: `cargo test translate::prompt`（两模板快照、占位符替换、含特殊字符与超长文本）；`cargo test translate::service`（同源顶替、跨源隔离、取消后 join、并发不变量、阈值边界三分例）
   - 追溯: FR-2.1~2.7、FR-9.6、FR-10.1/10.2、EX-13、Q5/Q10、spec §4 权威源声明、5.7.7 会话模型
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-26 实施工程师交付：prompt.rs＝FR-2.5/FR-2.6 模板从 requirements.md v0.4 逐字收录为常量（含防乱码规则行），`{{target}}`/`{{text}}` 字面替换（replacen 恰一次，不做转义）；定向 target＝面板临时目标语言（易失槽位 set_panel_temp_target/panel_temp_target，Q5 九语言校验）否则设置默认值（service 层读 config）；快照测试把两段模板同时硬编码于测试逐字比对（注释记录源文件路径与 v0.4）；service.rs＝sessions Mutex<HashMap<Source,Round>> + 全局 generation AtomicU64 + 每来源串行门；EX-13 顶替＝bump→cancel(CancellationToken)→join(≤100ms)→才 spawn 新值；跨源隔离；decide_render_mode/count_chars/decide_presentation 纯函数（999/1000/1001 边界、Q10 含空白换行、与 C1 renderMode 全貌）；`cargo test translate::prompt` 7 通过、`service` 8 通过（同源顶替事件序/跨源隔离/取消/join 上限/并发峰值恒 1/分档边界三分例/中文 emoji 计数/stream_all 恒流式）；偏离见 implementation-report T7 节）
 
 - [ ] T8：SSE 流式客户端、连接验证与错误分类
   - Owner: 实施工程师
@@ -131,7 +131,7 @@
   - 要点: `POST {base}/chat/completions`，Bearer 头，体仅 `{model, stream:true, messages:[{role:"user",...}]}`——不加 system 消息与温度等参数（spec 5.7.7）；eventsource-stream 解析 `choices[0].delta.content` / `[DONE]` / 流内 error；HTTP 401/403→EX-2、402→EX-3、5xx/非 JSON→EX-14、连接类→EX-1；D1 两级 tokio timeout：响应头前 30s→EX-4，流中相邻 chunk 间隔 30s→EX-5（保留 partial）；速率超约 60 事件/秒合并 16ms 微批再推；取消链路＝token 触发 + reqwest 流 drop 关闭 TCP（A7 幽灵连接防护）；`verify_connection` 按 D6（先 GET {base}/models，404/405 回退 max_tokens=1 最小 chat）；INV-2：全仓网络 IO 仅 sse.rs 与本验证函数
   - Verification: `cargo test --test sse_integration`（wiremock mock OpenAI 兼容服务）：EX-1/2/3/4/5/14 全分支、分包粘包/[DONE]/流内 error、EX-5 保留 partial、取消后服务端活跃连接数归零、重试不叠加请求、verify 两形态；`cargo test sse`（解析器纯逻辑单测）
   - 追溯: spec 5.7.7、D1、D6、EX-1~EX-5、EX-14、FR-9.6、FR-11.1(c)、INV-2、风险 9/A7
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-26 实施工程师交付：sse.rs＝POST {base}/chat/completions（体仅 {model,stream:true,messages:[user]}——集成测试以 body_json 全量断言）+Bearer 头；eventsource-stream 解析 delta.content/[DONE]/流内 error/非 JSON 帧；HTTP 401/403→EX-2、402→EX-3、5xx/其他→EX-14、连接类→EX-1；D1 两级 tokio timeout（响应头前 30s→EX-4、相邻 chunk 30s→EX-5 保留 partial）；RateBatcher 1s 窗口 >60 事件/秒合并 16ms 微批；取消＝CancellationToken+流 drop 断连（A7，集成测试断言服务端活跃连接归零）；verify.rs 按 D6（GET /models，404/405 回退 max_tokens=1 最小 chat，集成测试断言回退体契约）；事件经 events.rs payload emit 到 translate（SseTranslateExecutor，begin 带 C1 renderMode）；`cargo test sse` 12 通过（解析/分类/分包粘包/DONE/空 delta/流内 error/EX-5 partial/EOF 无 DONE 即中断/取消/微批三态/定时冲刷）+ verify 2 通过；`cargo test --test sse_integration` 11 通过（EX-1~EX-5/EX-14 全分支、请求形态全量契约、取消收敛、重试恰一条、verify 两形态——wiremock 0.6.5 无 set_body_stream，EX-5 停顿与取消计量用原始 TCP 夹具补足）；全量 95/95，fmt/clippy -D warnings PASS；偏离与残余风险见 implementation-report T8 节）
 
 ### P3 窗口与 UI
 

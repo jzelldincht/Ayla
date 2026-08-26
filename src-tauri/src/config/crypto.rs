@@ -34,6 +34,8 @@ pub enum CryptoError {
     TooLong,
     #[error("DPAPI 返回空数据")]
     EmptyBlob,
+    #[error("解密结果不是合法 UTF-8 文本（凭据损坏）")]
+    NotUtf8,
 }
 
 impl CryptoError {
@@ -45,6 +47,7 @@ impl CryptoError {
             CryptoError::Unprotect(_) => "unprotect",
             CryptoError::TooLong => "too_long",
             CryptoError::EmptyBlob => "empty_blob",
+            CryptoError::NotUtf8 => "not_utf8",
         }
     }
 }
@@ -134,6 +137,13 @@ pub fn unprotect(cipher: &str) -> Result<Vec<u8>, CryptoError> {
     unsafe { free_blob(&mut out_blob) };
     // 注：明文 Vec 不引入 zeroize——v1 威胁模型无内存取证需求；值随作用域结束释放（模块头）。
     Ok(plain)
+}
+
+/// 解密 base64 密文为 UTF-8 文本（API Key 等文本凭据进出；T8 的 sse/verify 消费形态）。
+/// 失败同 `unprotect`（`NotUtf8`＝凭据字节非文本，判为损坏，上层一律降级"未配置"）。
+pub fn unprotect_str(cipher: &str) -> Result<String, CryptoError> {
+    let bytes = unprotect(cipher)?;
+    String::from_utf8(bytes).map_err(|_| CryptoError::NotUtf8)
 }
 
 /// 释放 DPAPI 返回的 BLOB（CryptProtectData/CryptUnprotectData 约定以 LocalFree 释放）。
