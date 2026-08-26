@@ -57,6 +57,15 @@ pub enum AppError {
     Config(String),
 }
 
+/// IPC 序列化（tauri 命令返回契约，T4/T5 起注册以 `Result<_, AppError>` 返回的命令要求
+/// `AppError: Serialize`）：序列化为展示消息字符串（INV-6——前端对错误仅有展示义务，EX 编码
+/// 与 retriable 等结构化语义经 `translation://error` 事件载荷传递，见 events.rs）。
+impl serde::Serialize for AppError {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 impl AppError {
     /// EX 编码（对 spec 5.8 表逐条归类；QA 与前端按此定位呈现分支）。
     /// 单独变体 `Config` 返回内部编码 `"config"`（无 EX 条目）。
@@ -182,5 +191,17 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("鉴权失败"), "EX-2 文案应含用户可见定位词");
         assert!(msg.contains("回显原因"));
+    }
+
+    /// IPC 命令错误序列化契约：序列化为展示消息字符串（前端仅有展示义务；EX 结构化语义走事件）。
+    #[test]
+    fn serialize_as_message_string() {
+        let err = AppError::HotkeyConflict("快捷键「Alt+Q」绑定失败".into());
+        let json = serde_json::to_string(&err).unwrap_or_else(|e| panic!("{e}"));
+        let expected = serde_json::to_string(&err.to_string()).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(json, expected, "命令错误应序列化为字符串（＝Display 消息）");
+        let msg = err.to_string();
+        assert!(msg.contains("快捷键「Alt+Q」绑定失败"));
+        assert_eq!(err.ex_code(), "EX-7");
     }
 }

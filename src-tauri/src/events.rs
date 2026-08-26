@@ -63,7 +63,8 @@ pub enum RenderMode {
 }
 
 /// 可改热键功能（FR-14.2：五功能；剪贴板监听不设热键）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// `Hash`：T4 的 `registered: HashMap<Function, Combo>` 需要（spec 5.7.1；仅能力补充，无契约变化）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum HotkeyFunction {
     Selection,

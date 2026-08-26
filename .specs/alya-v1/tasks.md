@@ -95,7 +95,7 @@
   - 要点: 启动逐一注册五项并收集 `{function, combo, ok|err}`；有失败聚合为**一则**系统通知列出功能名（EX-7）；失败项进入降级态（划词不可用直至改键；其余四项托盘兜底，FR-14.3）；`rebind_hotkey`：内部五项查重拒绝 → unregister 旧 → register 新 → 成功才写 config，失败回退注册旧键且不改配置（spec 5.7.1）；registered 表维护；打点 hotkey_received（7.2）
   - Verification: `cargo test hotkey`（内部查重、回退决策、结果聚合纯逻辑）；冒烟 `pnpm tauri dev` 日志显示五项注册结果
   - 追溯: FR-14.1~14.3、EX-7、spec 5.7.1/7.2、FR-12.1（降级口径）
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-26 实施工程师交付：hotkey/mod.rs 启动五项逐一注册＋{function,combo,ok|err} 聚合＋EX-7 一则系统通知列功能名＋失败入降级态（degraded 清单/registered_snapshot 供 T15）；rebind_hotkey 命令（已注册进 invoke_handler）＝内部查重→解旧→注新→成功才写 config，失败回退旧键不改配置，返回 AppError（EX-7）；HotkeyAction 五动作枚举＋HotkeyCallback trait 注入接口（T16 接线，未接线仅 Debug 打点）；hotkey_received 打点；`cargo test hotkey` 6 通过（查重/回退决策三态/聚合/名称映射/配置读写/EX-7），全量 45/45，fmt/clippy -D warnings PASS；冒烟 pnpm tauri dev 实跑日志：五项注册成功 5/5（Alt+Q/E/S/D/W），进程与端口已清理；偏离见 implementation-report §5）
 
 - [ ] T5：剪贴板监听状态机
   - Owner: 实施工程师
@@ -104,7 +104,7 @@
   - 要点: 每 500ms 轮询 `GetClipboardSequenceNumber()`，仅序号变化才读内容（spec 5.6.3）；enable 读当前 (seq,text) 为 baseline（存量不触发）/disable 立即失效（FR-5.6）；内容比较去重（D2）；非文本 read_text None 静默（EX-8/FR-5.4）；超 50,000 字符跳过并系统通知（D3）；同一把 Mutex 内 `suppressing` 标志及“备份前置位 / 刷新基线后清位”接口（供 T6，FR-5.7 时序保证）；`set_clipboard_monitor` 命令 + `settings://changed` 三方同步（INV-8）
   - Verification: `cargo test clipboard_monitor`——全转移表：新文本/重复文本/非文本/抑制窗吞掉写入与恢复/恢复竞态放弃恢复/超限跳过/关闭后不触发（seq 与文本读取经 trait 注入以便测试）
   - 追溯: FR-5.1~5.7、EX-8、D2、D3、spec 5.6.3、INV-8
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-26 实施工程师交付：clipboard_monitor/mod.rs 状态机＝500ms tick 仅查 GetClipboardSequenceNumber（Cargo.toml 追加 Win32_System_DataExchange feature），序号变才 arboard 读文本；enable 基线不触发存量/disable 立即失效；D2 内容去重；EX-8 非文本静默；D3 超 50,000 字符跳过＋系统通知（MAX_AUTO_CHARS 常量可调）；同一把 Mutex 的 begin_suppression（备份前置位）/end_suppression（刷新基线后清位）供 T6；set_clipboard_monitor 命令（已注册）＝写 config＋settings://changed 广播三方同步（INV-8，开启失败回滚 config），循环 tauri async_runtime spawn，代次管理关闭即退出；触发出口经 ClipboardTranslateTrigger trait 注入（T16 接线）；`cargo test clipboard_monitor` 10 通过（全转移表：新文本/重复/非文本/抑制窗吞写与恢复/恢复竞态放弃恢复/超限跳过/关闭后不触发/开启读失败/读失败跳 tick），全量 45/45，fmt/clippy -D warnings PASS；偏离与残余竞态说明见 implementation-report §4-6）
 
 - [ ] T6：取词编排（模拟复制链路）
   - Owner: 实施工程师

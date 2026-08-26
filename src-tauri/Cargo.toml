@@ -39,6 +39,7 @@ base64 = "0.22" # DPAPI 密文 base64 编码（T3，spec 5.7.8）
 log = "0.4" # 日志 facade（tauri-plugin-log 注册于 T1；spec 5.7.8 解密降级需记无值日志）
 # Windows 系统绑定（OCR/DPAPI/剪贴板序号/前台控制），features 见 spec 5.3。
 # 注：LocalFree（释放 CryptProtectData 返回的 BLOB）位于 Win32_Foundation，已在清单内，无需追加 feature。
+# T5 追加 Win32_System_DataExchange：GetClipboardSequenceNumber（spec 5.6.3 剪贴板序号轮询）。
 windows = { version = "0.62", features = [
     "Media_Ocr",
     "Globalization",
@@ -48,6 +49,7 @@ windows = { version = "0.62", features = [
     "Win32_Security_Cryptography",
     "Win32_UI_WindowsAndMessaging",
     "Win32_Foundation",
+    "Win32_System_DataExchange",
 ] }
 
 # INV-6 门禁：发布路径禁止裸 unwrap / expect 吞错（G2 门禁，cargo clippy --all-targets -- -D warnings 全量生效）

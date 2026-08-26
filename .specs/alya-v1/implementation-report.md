@@ -249,3 +249,114 @@ T2 与 T3 一并交付（关键路径相邻且契约强耦合）：
 - `has_key` 每次真实调用 DPAPI 解密（符合 spec 5.7.8；量级微小，不做缓存——T16 性能打点可复核）。
 - crypto 测试跑在 Windows 真机真实 DPAPI 上（任务书允许）；密文不落盘（仅内存）。
 - 风险：无。
+
+---
+
+# 实施报告：T4 热键管理服务 + T5 剪贴板监听状态机
+
+> Task ID: alya-v1
+> 版本: v0.1
+> 所有者: 实施工程师
+> 基于: tasks.md（APPROVED，T4/T5 条目）+ spec.md v0.3（5.6.3/5.7.1/5.8 EX-7·EX-8/6.1/6.2/7.2）+ requirements.md v0.4（FR-5/FR-14、D2/D3）
+> 状态: DRAFT，交主 Agent 验收
+> 最后更新: 2026-08-26
+
+## 1. 概述
+
+- **T4**：`hotkey/mod.rs` 全量实现——启动经 config.hotkeys 读五项逐一注册（tauri-plugin-global-shortcut
+  2.3.2），每项收集 `{function, combo, ok|err}`；失败项聚合为**一则**系统通知列出功能名（EX-7）并进入
+  降级态（FR-14.3）；`rebind_hotkey` 命令（6.1）实现"内部查重 → 解旧 → 注新 → 成功才写 config，失败回退
+  旧键不改配置"；`registered: HashMap<Function, Combo>` 维护；`hotkey_received` 性能打点（7.2）；
+  定义 `HotkeyAction` 五动作枚举与回调注入接口（trait，T16 经 `set_callback` 接 action_router）。
+- **T5**：`clipboard_monitor/mod.rs` 全量实现——严格按 spec 5.6.3 状态机（500ms tick 仅查
+  `GetClipboardSequenceNumber()`，序号变化才经 arboard 读内容）；enable 基线不触发存量 / disable 立即
+  失效（FR-5.6）；内容去重（D2）；非文本静默（EX-8）；超 50,000 字符跳过 + 系统通知（D3，
+  `MAX_AUTO_CHARS` 常量可调）；同一把 Mutex 的 `begin_suppression`（备份前置位）/`end_suppression`
+  （刷新基线后清位）供 T6；`set_clipboard_monitor` 命令 = 写 config + `settings://changed` 广播三方同步
+  （INV-8），监听循环 tauri async_runtime spawn；翻译出口经 `ClipboardTranslateTrigger` 回调注入
+  （T16 接线）。
+
+## 2. 修改文件清单
+
+| 文件 | 状态 | 说明 |
+|---|---|---|
+| `src-tauri/src/hotkey/mod.rs` | 占位→实现 | 启动注册聚合/降级态/rebind_hotkey/registered 表/HotkeyAction+回调注入/打点 + 6 单测 |
+| `src-tauri/src/clipboard_monitor/mod.rs` | 占位→实现 | 状态机/ClipboardBackend trait/抑制接口/命令/广播/tick 全转移表 + 10 单测 |
+| `src-tauri/Cargo.toml` | 修改 | windows features 追加 `Win32_System_DataExchange`（GetClipboardSequenceNumber，spec 5.6.3） |
+| `src-tauri/src/error.rs` | 修改 | 追加 `Serialize for AppError`（命令返回契约，见第 5 节偏离 2）+ 1 单测 |
+| `src-tauri/src/events.rs` | 修改 | `HotkeyFunction` 补 `Hash` derive（registered 表键需要；无契约变化，见偏离 3） |
+| `src-tauri/src/lib.rs` | 修改 | setup 接线（配置加载→热键注册→监听启动恢复）+ 两命令注册 + TODO(T16) 注释（见偏离 4） |
+| `.specs/alya-v1/implementation-report.md` | 追加 | 本小节 |
+| `.specs/alya-v1/tasks.md` | 修改 | T4/T5 Status → DONE（附证据行） |
+| `dev-logs/2026-08-26.log` | 追加 | 任务事件 |
+
+未改动：tauri.conf.json、selection/capture/ocr/translate/tray/windows/action_router（其余任务范围）、
+前端文件（types.ts/ipc.ts 已由 T3 就绪，无契约变化）。
+
+## 3. 门禁结果（全部实际运行）
+
+| # | 门禁 | 结果 | 关键输出 |
+|---|---|---|---|
+| G1 | `cargo fmt --check`（src-tauri/） | **PASS** | 先 `cargo fmt` 全量格式化后 `--check` 无输出，返回码 0 |
+| G2 | `cargo clippy --all-targets -- -D warnings` | **PASS** | Finished（0 warning；unwrap_used/expect_used=deny 全程生效，测试亦无裸 unwrap/expect） |
+| G6 | `cargo test`（全量） | **PASS** | **45 passed; 0 failed**（原 28 + 新增 17：hotkey 6 / clipboard_monitor 10 / error 1） |
+| — | `cargo test hotkey` | **PASS** | 6 通过（查重/回退决策/聚合/名称动作映射/配置读写/EX-7 错误） |
+| — | `cargo test clipboard_monitor` | **PASS** | 10 通过（全转移表见下） |
+| — | 冒烟 `pnpm tauri dev` | **PASS** | 实跑：启动日志显示五项注册结果——`注册成功 Selection = Alt+Q / Input = Alt+E / OcrRecognize = Alt+S / OcrTranslate = Alt+D / ToggleScene = Alt+W`，`启动注册完成 成功 5/5，失败 0`；验证后进程已清理（alya.exe 终止、端口 1420 释放） |
+| G4 | GPL 门禁自查 | **PASS** | 仅经公开 Win32 API（GetClipboardSequenceNumber）与插件/arboard 公开接口实现，无 pot-desktop 同构代码（借鉴清单 8.2 的"序号轮询"属公开机制表述） |
+| G5 | 凭据与日志纪律 | **PASS** | 无任何凭据；日志不含原文/译文（触发日志仅记字符数，INV-7） |
+
+关键测试覆盖点（对应任务 Verification）：
+
+- hotkey：内部五项查重（与他项冲突拒绝/自身重复不拒绝/空闲组合放行）；回退决策三分支（Noop=同键幂等、
+  Commit=成功提交、Revert=失败回退）；结果聚合（失败项收集、全成功空集）；五功能显示名与动作映射；
+  config.hotkeys 读写仅改目标功能；EX-7 错误带功能名与组合。
+- clipboard_monitor（全转移表，trait 注入假剪贴板/时钟——tick 由测试直接驱动，无真实等待）：
+  新文本触发/存量基线不触发、重复文本去重（D2）、非文本静默且监听恢复（EX-8）、抑制窗吞掉取词写入
+  与恢复、恢复竞态放弃恢复（基线以用户内容为准、状态一致后续正常触发）、超限跳过 + 基线更新不重复通知
+  （D3）、Off 态恒不触发、disable 立即停止、enable 读失败显式报错、tick 读失败跳 tick 不断监听。
+
+## 4. T4/T5 关键行为说明
+
+- **启动聚合与降级态**：`hotkey::init` 读 config 五次注册；失败函数记入 `degraded`（已提供
+  `degraded_functions()` / `registered_snapshot()` 供 T15 托盘镜像）；通知文案列出功能名，划词失败时
+  附加 FR-14.3 提示（其余四项可经托盘使用）。rebind 成功后自动移出降级态。
+- **rebind 时序**（命令内实际执行顺序即 spec 5.7.1）：空组合拒绝 → 内部查重（EX-7 通知+拒绝）→
+  解注旧键 → 注新键 → `rebind_decision` 分支：Revert（重注旧键；重注也失败则入降级态，仍返回原
+  EX-7 错误+通知）/ Commit（写 config 落盘 → registered 表更新 → 移出降级态）。
+- **抑制时序（T5）**：`begin_suppression` 置位先于 T6 任何剪贴板写入；suppressing 期间 tick 把每次
+  序号变化吞入基线；`end_suppression` 先读当前 (seq,text) 刷新基线再清位。恢复竞态（T6 放弃恢复）
+  时基线同样以用户新内容刷新——与 spec"监听基线以用户新内容为准"一致，用户内容已被抑制窗消费
+  （D2 口径不重复触发），取词链路读到的用户新内容即唯一触发路径；T6 实现时按此语义对接。
+- **命令失败回滚**：`set_clipboard_monitor` 开启失败（读剪贴板异常）回滚 config（内存+落盘）；
+  落盘失败回滚状态机——保证 INV-8 事实源与监听状态一致。
+- **快捷键字符串**：沿用 tauri 2 插件词法（`"Alt+Q"`，插件内 global_hotkey 解析）；回调仅在
+  `ShortcutState::Pressed` 分发（RegisterHotKey 按下/释放各触一次，防双触发）。
+
+## 5. 偏离与契约填充说明（需主 Agent 知悉）
+
+1. **lib.rs 接线**：T4/T5 的启动注册与监听恢复必须接入 setup 才能跑通冒烟（任务书上"冒烟：日志显示
+   五项注册结果"），故最小化接入——`setup` 内补齐启动序列 1~3（配置加载复用 T2 API、热键注册、
+   监听按持久化开关恢复）并注册两个命令；`action_router` 回调接线与托盘/暖窗/pid 保持 TODO(T16/T11/T15)
+   注释未动。若主 Agent 认为配置加载应另立装配任务，可移入 T16 统一化。
+2. **AppError 补 `Serialize`**：tauri 命令 `Result<_, AppError>` 要求错误可序列化（T3 未含此契约，
+   T2/T3 报告已预告"命令注册属后续任务"）。实现为序列化成 Display 消息字符串（前端仅展示；EX 编码/
+   retriable 等结构化语义经 `translation://error` 事件传递，见 events.rs），并加单测固化。
+3. **`HotkeyFunction` 补 `Hash`**：spec 5.7.1 要求 `registered: HashMap<Function, Combo>`；仅能力
+   derive 补充，序列化契约（camelCase）不变。
+4. **`settings://changed` 广播失败策略**：emit 失败仅记错误（三处 UI 镜像滞后至下次 get_settings，
+   命令本身已完成）——若失败也整个命令失败会造成"状态已生效但 UI 报错"的误导；已按 INV-8 收敛口径处理。
+5. **bind 的"开始即非文本"**：enable 时当前内容为图片等 → baseline_text=None（基线照常建立，
+   随后首个文本即触发）；等价 spec"开启瞬间不触发存量内容"。
+6. **残余竞态（如实记录）**：tick 决策（含触发/Touch）与监听循环实际分发之间属微秒级窗口，disable
+   到达时循环以 `is_on()+代次` 双重校验退出；决定"关闭后不触发"在单测层面为确定性（tick 串行），
+   实机最坏情形为关闭瞬间一次已决策触发的分发——不影响"立即失效"语义，T16 联调复核。
+
+## 6. 遗留与后续对接
+
+- T16：`hotkey::set_callback` + `clipboard_monitor::set_translate_trigger`（action_router 实现两个
+  trait 后注入）；`settings://changed` 广播已由 T5 命令完成（其余 set_settings 变更的广播归 T13/T16）。
+- T6：按本节 4-3 语义调用 `begin_suppression`（备份前）与 `end_suppression`（恢复/放弃后）。
+- T15：托盘可用 `degraded_functions()` 渲染"划词翻译热键失效"提示（可选增强）。
+- 冒烟后应用已退出（热键释放）；真实占用冲突（EX-7 通知）属真机矩阵 A1 场景，未在本机刻意制造。
+- 风险：无。
