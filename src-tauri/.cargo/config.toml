@@ -1,0 +1,5 @@
+# 项目级 cargo 配置：本机默认 shell 为 Git Bash（MSYS），其 /usr/bin/link.exe（GNU coreutils）
+# 会遮蔽 MSVC 的链接器，导致 cargo 链接失败（"link: extra operand"）。
+# 显式指向 Visual Studio 2022 Community 的 MSVC link.exe；更新 VS 后需同步此路径。
+[target.x86_64-pc-windows-msvc]
+linker = "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\link.exe"

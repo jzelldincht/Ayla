@@ -1,0 +1,53 @@
+[package]
+name = "alya"
+version = "0.1.0-dev"
+description = "Alya：Windows 桌面 AI 翻译工具（DeepSeek 驱动）"
+authors = ["Alya Team"]
+edition = "2021"
+
+# 依赖版本策略（spec 5.3）：初始化时锁定当时最新稳定版（写 major.minor，不写死 patch，
+# 由 Cargo.lock 冻结）。明确不引入：tiny_http / updater / sql / store / fs-watch（spec 5.3 排除项）。
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }
+
+[dependencies]
+# 应用框架（features 按需最小化，T15 托盘时追加 tray-icon）
+tauri = { version = "2.11", features = [] }
+# 插件：注册顺序见 src/lib.rs 顶部说明
+tauri-plugin-global-shortcut = "2.3"
+tauri-plugin-single-instance = "2.4"
+tauri-plugin-autostart = "2.5"
+tauri-plugin-notification = "2.3"
+tauri-plugin-log = "2.9"
+# 系统能力
+selection = "1.2" # 跨软件取词（模拟复制），ADR-0001 点名机制
+screenshots = "0.8" # 多显示器截屏（物理分辨率 RGBA 帧）
+arboard = "3.6" # 剪贴板读写（备份/恢复/监听）
+image = { version = "0.25", default-features = false, features = ["png"] } # 内存裁剪与 PNG 编码
+winreg = "0.56" # 便携版 WebView2 存在性探测（T17）
+# 网络（仅 sse.rs 与连接验证两处出站，INV-2）
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+eventsource-stream = "0.2"
+futures-util = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
+# 序列化与错误建模
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+# Windows 系统绑定（OCR/DPAPI/剪贴板序号/前台控制），features 见 spec 5.3
+windows = { version = "0.62", features = [
+    "Media_Ocr",
+    "Globalization",
+    "Foundation",
+    "Storage_Streams",
+    "Graphics_Imaging",
+    "Win32_Security_Cryptography",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Foundation",
+] }
+
+# INV-6 门禁：发布路径禁止裸 unwrap / expect 吞错（G2 门禁，cargo clippy --all-targets -- -D warnings 全量生效）
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

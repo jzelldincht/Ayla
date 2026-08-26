@@ -1,0 +1,34 @@
+{
+  "name": "alya",
+  "private": true,
+  "version": "0.1.0-dev",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . && svelte-check --tsconfig ./tsconfig.json",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "@tauri-apps/cli": "^2.11.4",
+    "eslint": "^10.9.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-svelte": "^3.23.0",
+    "globals": "^17.11.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-svelte": "^4.1.1",
+    "svelte": "^5.56.10",
+    "svelte-check": "^4.7.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.68.0",
+    "vite": "^8.2.2"
+  }
+}

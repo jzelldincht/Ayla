@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "默认能力：core 权限对所有窗口生效（含后续动态创建的 translate/mask-{i}/settings/onboarding 窗口）；各插件权限由对应任务按需增补",
+  "windows": ["*"],
+  "permissions": ["core:default"]
+}

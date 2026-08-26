@@ -1,0 +1,2 @@
+# 默认 rustfmt 配置：除 edition 跟随 Cargo.toml 外不启用任何非默认选项。
+edition = "2021"

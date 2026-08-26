@@ -1,0 +1,7 @@
+/* Design Tokens 挂载点（占位）：
+   亮/暗两套 CSS 变量由 T12（前端工程师）依 design-spec.md 第 2 章在此定义：
+   - `:root` 承载亮色值，暗色以 `[data-theme='dark']` 覆盖（主题经 settings://changed 与系统偏好联动，FR-1.2）；
+   - 变量名严格对应 design-spec 2.1 Token 表（bg/base、bg/subtle、fg/title、accent/primary、
+     success、warning、error、mask/select 等），±5% 明度微调不得破 4.5:1 对比度底线；
+   - 字体栈、字号阶梯、间距/圆角/阴影/动效时长 token 同步在 2.2~2.4 落表。
+   当前骨架不放任何值，避免与后续设计实现产生双源。 */

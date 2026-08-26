@@ -1,0 +1,20 @@
+# Node
+node_modules/
+dist/
+*.local
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs（dev-logs/ 为项目自留日志目录，不整体忽略）
+*.log
+!dev-logs/
+!dev-logs/*.log
