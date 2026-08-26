@@ -64,7 +64,7 @@
   - 要点: identifier=`com.alya.app`（D8，发布 1.0.0 前唯一可改窗口期）；依赖清单按 spec 5.3 锁定当时最新稳定版本记入 Cargo.toml；四窗口 label 与关键属性按 spec 5.5 配置（translate 预创建挂点到 T11）；Svelte 5 runes + TS + Vite（spec 5.2）；界面语言简体中文（FR-1.1）；不引入 tiny_http/updater/sql/store（spec 5.3 明确排除项）
   - Verification: `cargo check`、`cargo clippy --all-targets -- -D warnings`、`cargo fmt --check`、`pnpm lint`、`pnpm build` 全绿；`pnpm tauri dev` 可启动且四窗口占位页可显隐（人工冒烟）；tauri.conf.json 中 identifier=com.alya.app
   - 追溯: D8、spec 5.2/5.3/5.5、FR-1.1、INV-6（门禁配置）
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-26 主 Agent 验收：六门禁全 PASS——cargo check / clippy -D warnings / fmt --check / cargo test / pnpm lint / pnpm build；环境修复：Windows 11 SDK 10.0.26100 安装[经用户授权]、KitsRoot10 注册表指向校正、SDK Lib/Include 目录大小写敏感禁用[26100 已知问题]；tauri.conf.json 修正：移除非法 bundle 目标 "zip"、webviewInstallMode 移至 bundle.windows 本级；lib.rs 文档注释缩进修复）
 
 ### P1 配置与安全基线
 

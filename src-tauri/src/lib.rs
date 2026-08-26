@@ -27,8 +27,8 @@ pub mod windows;
 /// 5. `tauri_plugin_notification` —— 系统通知（EX-7/EX-9/EX-10/D3 呈现层，spec 5.3）。
 ///
 /// 启动序列（T1 占位；在各任务接管后接入 `setup` 回调）：
-/// 1. 配置加载（T2）→ 2. 热键注册（T4）→ 3. 剪贴板监听启动（T5）
-/// → 4. 托盘初始化（T15）→ 5. 单实例 pid 缓存（T15）→ 6. translate 暖窗预创建（T11）。
+/// 1. 配置加载（T2）→ 2. 热键注册（T4）→ 3. 剪贴板监听启动（T5）→ 4. 托盘初始化（T15）
+///    → 5. 单实例 pid 缓存（T15）→ 6. translate 暖窗预创建（T11）。
 pub fn run() {
     let app = match tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())

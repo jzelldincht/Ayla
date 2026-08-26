@@ -130,3 +130,15 @@ Microsoft.VisualStudio.Component.VC.Tools.x86.x64，link.exe 在
 4. `bundle` 配置为占位（targets=nsis/zip、installMode=currentUser、downloadBootstrapper），T17 收窄细化。
 5. `translate` 窗未预创建（按任务书[T11 挂点]）；如主 Agent 希望在 T1 冒烟期看到窗口，需要 T11 提前或
    给 tauri.conf.json 增窗口声明（见第 5 节第 1 条）。
+
+---
+
+## 主 Agent 验收附录（T1，2026-08-26）
+
+- 结论：**APPROVED**。六项门禁在主 Agent 环境下复跑全 PASS（cargo check / clippy --all-targets -D warnings / fmt --check / cargo test / pnpm lint / pnpm build）。
+- 实施者交付时 Rust 门禁 FAIL 的根因为本机缺 Windows SDK，非代码缺陷；主 Agent 获用户授权后完成以下环境修复并复验：
+  1. VS Installer 静默补装 Windows 11 SDK 10.0.26100.0；
+  2. 修正注册表 KitsRoot10（原指向 C:\Program Files\Windows Kits\10\，实际库位于 (x86) 树）；
+  3. fsutil 禁用 SDK Lib/Include 目录的逐目录大小写敏感属性（SDK 26100 已知问题，导致 MSVC link 找不到 DbgHelp.Lib）。
+- 主 Agent 对脚手架的代码修正：tauri.conf.json 移除非法 bundle 目标 "zip"（便携 zip 由 T17 脚本自产）、webviewInstallMode 从 nsis 内部移至 bundle.windows 本级；src/lib.rs 文档注释缩进修复。
+- 遗留：pnpm tauri dev 冒烟留待 T16 集成阶段执行。
