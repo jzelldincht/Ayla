@@ -142,3 +142,110 @@ Microsoft.VisualStudio.Component.VC.Tools.x86.x64，link.exe 在
   3. fsutil 禁用 SDK Lib/Include 目录的逐目录大小写敏感属性（SDK 26100 已知问题，导致 MSVC link 找不到 DbgHelp.Lib）。
 - 主 Agent 对脚手架的代码修正：tauri.conf.json 移除非法 bundle 目标 "zip"（便携 zip 由 T17 脚本自产）、webviewInstallMode 从 nsis 内部移至 bundle.windows 本级；src/lib.rs 文档注释缩进修复。
 - 遗留：pnpm tauri dev 冒烟留待 T16 集成阶段执行。
+
+---
+
+# 实施报告：T2 config 模块 + T3 DPAPI 加密 / AppError·EX 映射 / 事件契约类型
+
+> Task ID: alya-v1
+> 版本: v0.1
+> 所有者: 实施工程师
+> 基于: tasks.md（APPROVED，T2/T3 条目）+ spec.md v0.3（5.4/5.7.8/5.8/6.1/6.2/6.3）+ requirements.md v0.4（FR-13 全表、Q5）
+> 状态: DRAFT，交主 Agent 验收
+> 最后更新: 2026-08-26
+
+## 1. 概述
+
+T2 与 T3 一并交付（关键路径相邻且契约强耦合）：
+- **T2**：`config/mod.rs` 全量实现——Settings 结构体逐字段对齐 spec 6.3 示例 JSON（camelCase 序列化），
+  出厂默认值严格照 FR-13 全表（本文件为默认值唯一权威源）；`tmp + rename` 原子写；未知字段经
+  `#[serde(flatten)] extra` 保留透传；`schemaVersion: 1` 迁移桩（旧版无键视为 v0 → 升 v1 回写；
+  未来版本容忍不重写）；Q5 九种定向语言常量表；全局 `RwLock<Settings>` 访问器与锁序声明
+  （先 config 后 sessions）；路径经 tauri `app_config_dir` 解析（测试注入临时目录，不碰真实 %APPDATA%）。
+- **T3**：`config/crypto.rs`（DPAPI：CryptProtectData/CurrentUser 缺省作用域 + 应用常量熵 +
+  CRYPTPROTECT_UI_FORBIDDEN，base64 密文进出，LocalFree 释放，解密失败 Err 由 `config::has_key`
+  降级为「未配置」并记无值日志）；`error.rs`（AppError 携带 ex_code，EX-1~EX-14 全覆盖，含
+  retriable 口径）；`events.rs`（6.1 命令参数/返回与 6.2 事件 payload 唯一定义处，含 C1 裁决的
+  `renderMode: "stream"|"block"`）；`src/lib/types.ts` 手工镜像 + `src/lib/ipc.ts` 类型化 invoke 包装。
+
+## 2. 修改文件清单
+
+| 文件 | 状态 | 说明 |
+|---|---|---|
+| `src-tauri/Cargo.toml` | 修改 | 新增 `base64 0.22`、`log 0.4`（见第 5 节偏离 1）；windows features 未动（LocalFree 经核实位于 Win32_Foundation，已在清单） |
+| `src-tauri/src/config/mod.rs` | 占位→实现 | Settings/schema/原子写/迁移桩/语言表/全局访问器/has_key/app_config_dir + 13 单测 |
+| `src-tauri/src/config/crypto.rs` | 新建 | DPAPI protect/unprotect + CryptoError + 4 单测 |
+| `src-tauri/src/error.rs` | 占位→实现 | AppError（EX-1~14 + Config 内部变体）+ 4 单测 |
+| `src-tauri/src/events.rs` | 占位→实现 | 8 事件名常量、全部命令 DTO、8 事件 payload、SettingsView/SettingsPatch + 7 单测 |
+| `src/lib/types.ts` | 占位→实现 | TS 镜像（与 events.rs 手工同步） |
+| `src/lib/ipc.ts` | 占位→实现 | 14 命令 + 8 事件订阅的类型化包装 |
+| `.specs/alya-v1/implementation-report.md` | 追加 | 本节 |
+| `.specs/alya-v1/tasks.md` | 修改 | T2/T3 Status → DONE（附证据行） |
+| `dev-logs/2026-08-26.log` | 追加 | 任务事件 |
+
+未改动：`tauri.conf.json`、lib.rs（装配不动，T16 接线）、其他任务范围文件。
+命令注册（`invoke_handler`/`setup`）不在 T2/T3 范围，留给 T13/T16 按 events.rs 类型装配。
+
+## 3. 门禁结果（全部实际运行）
+
+| # | 门禁 | 结果 | 关键输出 |
+|---|---|---|---|
+| G1 | `cargo fmt --check` | **PASS** | 无输出，返回码 0 |
+| G2 | `cargo clippy --all-targets -- -D warnings` | **PASS** | Finished（0 warning；本任务为 `unwrap_used/expect_used=deny` 全程约束，测试亦无裸 unwrap/expect） |
+| G6 | `cargo test`（全量） | **PASS** | **28 passed; 0 failed**（config 13 / crypto 4 / error 4 / events 7） |
+| — | `cargo test config` / `crypto` / `error` | **PASS** | 17 / 4 / 6 通过（error 筛选含其余模块中命名带 "error" 的 2 例：events 1 + config 1，属筛选口径；全量清洁数 28） |
+| G3 | `pnpm lint`（eslint + svelte-check） | **PASS** | `svelte-check found 0 errors and 0 warnings`；eslint 0 error |
+| G3 | `pnpm build`（vite 四入口） | **PASS** | `✓ built in 167ms` |
+| — | `pnpm exec prettier --check`（types.ts/ipc.ts） | **PASS** | 无风格问题 |
+| G4 | GPL 门禁自查 | **PASS** | 纯 serde/DPAPI/契约类型实现，无任何 pot-desktop 同构代码（未引入其任何实现） |
+| G5 | 凭据与日志纪律 | **PASS** | 全部测试使用哑值（sk-fake-*）；无真实凭据；日志无 Key/密文/原文值（has_key 降级日志仅记无值类别） |
+
+关键测试覆盖点（对应任务 Verification）：
+- config：读写往返、出厂默认值全表、原子写（覆盖保存无 tmp 残留）、未知字段容忍+透传回写、
+  v0→v1 迁移桩持久化、未来版本容忍不重写、损坏 JSON 报错不 panic、spec 6.3 示例字段集合对齐、
+  Q5 九语言文案/唯一性、语言查找校验、has_key 三分支、全局访问器（未初始化报错/重复 init 拒绝）。
+- crypto：protect/unprotect 往返（哑数据）、密文篡改失败（base64 非法与内容篡改两形态）、
+  异熵密文不可解（跨应用门槛）、降级分支 has_key=false。
+- error：EX-1~14 ex_code 完备性 14 条、编码唯一性、retriable 口径、Display 用户侧文案。
+- events：payload 线缆形状（camelCase/ex_code 下划线/缺省字段不出现）、renderMode C1 形状、
+  SettingsView 无 Key 明文/密文键（INV-1）、补丁空值省略、apiKey 仅写入通道出现。
+
+## 4. DPAPI 与密钥路径说明（INV-1 证据链）
+
+- 明文 Key 仅在用户输入后的 Rust 内存：`SettingsPatch.ai.api_key`（IPC JSON，序列化键 `apiKey`）
+  → 后端即调 `crypto::protect` → 密文 base64 存入 `ai.apiKeyCipher` → `config.json`（磁盘仅密文）。
+- 前端唯一 Key 状态：`get_settings` 返回 `SettingsView.ai.hasKey`（经 `config::has_key` 实测
+  DPAPI 解出为 true，否则降级 false）。
+- `settings://changed` 载荷类型与 `SettingsPatch` 相同，但**广播构造必须剥离 apiKey**（仅后端发射点执行；
+  events.rs 文档注释固化，T16 装配时按此实现）。
+
+## 5. 偏离与契约填充说明（需主 Agent 知悉，无静默决策）
+
+1. **Cargo.toml 新增两依赖**（spec 5.3 清单未列）：`base64 0.22`（T3 明确要求 base64 密文，
+   清单遗漏）与 `log 0.4`（spec 5.7.8 要求的降级无值日志需要 log facade；tauri-plugin-log 即基于它）。
+   windows features 无需调整（核实 windows-0.62.2 源码：`LocalFree` 在 Win32_Foundation）。
+2. **AppError 额外内部变体 `Config`**（ex_code=`"config"`）：spec 5.8 未定义配置读写失败的用户呈现，
+   为闭合 INV-6「一切错误经 error.rs 分类」而设；不进入 EX 呈现表（前端六类错误卡不含它），
+   T16 装配时决定向上呈现方式。若主 Agent 认为应从 enum 移除改为模块内错误，请裁决。
+3. **`ex_code` 保留下划线**（`#[serde(rename = "ex_code")]`）：spec 6.2 字面为 `ex_code`（与
+   roundId camelCase 混用即契约原样），TS 镜像同步。前端消费时直接按 `ex_code` 访问。
+4. **契约填充（spec 未细化的子键名）**：`set_settings` 补丁内 Key 明文字段序列化键为 `apiKey`
+   （与存储键 `apiKeyCipher` 语义区分）；`presentation` 第二档序列化为 `"staged"`（"分档呈现"；
+   spec 示例只给出 `"stream_all"`）；`translation://error` 的 retriable/partial 属性含义已在
+   events.rs/error.rs 文档固化（EX-1/4/5/14 为 true）。
+5. **迁移桩行为细化**：无 `schemaVersion` 键的旧文件视为 v0 → serde 按字段默认值合并缺省字段 →
+   `migrate` 升 v1 → 立即回写磁盘；`schemaVersion > 1`（未来版本）容忍读取、不降级不重写。
+   （实现之初版本缺省即 1 导致桩永不触发，已修正为缺省 0，见测试 `migration_stub_upgrades_v0_file_and_persists`。）
+6. **`pnpm check` 脚本不存在**（package.json 属 T1 范围，未擅改）：以等价验证替代——`pnpm lint`
+   （内含 svelte-check）与 `pnpm build` 均 PASS；如主 Agent 期望补 `check` 脚本，请批准后由前端任务或主 Agent
+   （T1 范围）统一增添。
+7. **面板尺寸默认值 460×340**：来自 spec v0.2（对齐 design-spec），非 FR-13 表内项，但属 6.3
+   示例 JSON 字段，已按 spec 实现。
+
+## 6. 遗留与后续对接
+
+- 命令注册与 emits（`invoke_handler`、`settings://changed` 广播剥离 apiKey）属 T13/T16 装配职责，
+  events.rs 已提供全部类型；`verify_connection/set_settings` 等 invoke 参数名与 events.rs 约定一致。
+- `has_key` 每次真实调用 DPAPI 解密（符合 spec 5.7.8；量级微小，不做缓存——T16 性能打点可复核）。
+- crypto 测试跑在 Windows 真机真实 DPAPI 上（任务书允许）；密文不落盘（仅内存）。
+- 风险：无。

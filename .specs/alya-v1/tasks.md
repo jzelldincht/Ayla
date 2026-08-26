@@ -75,7 +75,7 @@
   - 要点: Settings 结构体逐字段对齐 spec 6.3，出厂默认值=FR-13 全表；`tmp 文件 + rename` 原子写；`schemaVersion:1` 前向迁移桩；存储 `%APPDATA%\com.alya.app\config.json`（Q7：安装/便携共用）；持久/临时态分离表落实（活动场景持久、面板临时目标语言易失、面板尺寸存逻辑像素）；Q5 九种定向语言常量表置于本模块；config RwLock 与锁序声明（先 config 后 sessions，禁止嵌套反向）
   - Verification: `cargo test config`——读写往返、出厂默认值、原子写、未知字段容忍、schemaVersion 迁移桩、语言清单常量
   - 追溯: FR-13、FR-2.3、FR-2.7、FR-5.3、FR-9.3、FR-10.2、FR-14.1、spec 6.3、Q5/Q7/Q10、INV-8
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-26 实施工程师交付：Settings 逐字段对齐 spec 6.3（camelCase），默认值严格 FR-13 全表（含面板 460×340 对齐 spec v0.2）；tmp+rename 原子写（sync_all+重试兜底）；未知字段 flatten 保留透传；schemaVersion=1 迁移桩（缺失键视 v0→升 v1 回写，未来版本容忍不重写）；Q5 九语言常量表+校验；全局 RwLock 访问器（锁序声明先 config 后 sessions）；app_config_dir 解析+测试注入临时目录；`cargo test config` 17 通过（含 crypto 4），全量 28/28，fmt/clippy -D warnings PASS，未改动 tauri.conf.json，偏离见 implementation-report §5）
 
 - [ ] T3：DPAPI 加密模块 + AppError/EX 映射 + 事件契约类型
   - Owner: 实施工程师
@@ -84,7 +84,7 @@
   - 要点: protect/unprotect＝CryptProtectData（CurrentUser 作用域 + 应用常量熵 + CRYPTPROTECT_UI_FORBIDDEN，spec 5.7.8）；解密失败降级＝视同未配置（hasKey=false，不崩溃不弹系统错误，记无值日志）；base64 密文存 `ai.apiKeyCipher`；AppError 携带 ex_code，覆盖 EX-1~EX-14 分类（spec 5.8）；6.1 命令参数/返回与 6.2 事件 payload 类型唯一定义于 events.rs，前端 TS 手工镜像；前端永不接触 Key 明文（INV-1）
   - Verification: `cargo test crypto`（加解密往返、篡改密文失败、降级分支）；`cargo test error`（ex_code 对 EX-1~14 编码完备性 14 条全覆盖）；`pnpm check` 类型通过
   - 追溯: spec 5.7.8/5.8/6.1/6.2、INV-1、INV-7、requirements 第 7 章凭据纪律
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-26 实施工程师交付：crypto.rs 用 windows 0.62 CryptProtectData/CryptUnprotectData（CurrentUser 缺省作用域+常量熵+CRYPTPROTECT_UI_FORBIDDEN，LocalFree 释放），base64 密文进出，解密失败 Err→config::has_key 降级"未配置"+无值日志；error.rs AppError 覆盖 EX-1~EX-14（ex_code 逐条=表 5.8，retriable=EX-1/4/5/14）+内部 Config 变体；events.rs 集中定义 6.1 全部命令参数/返回与 6.2 全部事件 payload（C1 renderMode stream|block；SettingsView 证无 Key 明文/密文 INV-1；settings://changed 广播剥离 apiKey 纪律）；types.ts/ipc.ts 手工镜像+类型化包装；`cargo test crypto` 4 / `error` 4（EX-1~14 完备性测试）+ events 7，全量 28/28，fmt/clippy -D warnings、svelte-check 0 错 0 警（pnpm check 脚本 T1 未定义，以等价 pnpm lint 验证）、pnpm build PASS；未改 tauri.conf.json，偏离见 implementation-report §5）
 
 ### P2 核心能力
 
