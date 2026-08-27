@@ -13,3 +13,14 @@ pub mod prompt;
 pub mod service;
 pub mod sse;
 pub mod verify;
+
+use crate::error::AppError;
+
+/// `set_panel_target_lang` 命令（T12 注册；FR-2.7 面板临时目标语言，易失槽位在 prompt.rs）：
+/// 面板定向语言下拉变更时调用——仅写内存临时值（prompt::set_panel_temp_target，
+/// Q5 校验），**不回写 config 默认值**，重启后自动回落到设置页默认值。
+/// 不消费 AppHandle（纯内存态）；参数来自 6.1 契约最小扩展（说明见 events.rs）。
+#[tauri::command]
+pub fn set_panel_target_lang(lang: Option<String>) -> Result<(), AppError> {
+    crate::translate::prompt::set_panel_temp_target(lang)
+}

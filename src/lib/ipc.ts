@@ -18,6 +18,7 @@ import type {
   ReocrResult,
   SelectionClosedPayload,
   SendOcrToTranslateCommand,
+  SetPanelTargetLangCommand,
   SettingsChangedPayload,
   SettingsPatch,
   SettingsView,
@@ -53,6 +54,14 @@ export function rebindHotkey(command: RebindHotkeyCommand): Promise<void> {
 /** set_clipboard_monitor：三方开关统一入口（FR-5.1，INV-8）。 */
 export function setClipboardMonitor(enabled: boolean): Promise<void> {
   return invoke('set_clipboard_monitor', { enabled });
+}
+
+/**
+ * set_panel_target_lang（T12 追加命令）：面板定向语言下拉临时切换（FR-2.7）——
+ * 仅写后端易失槽位，不回写设置默认值；lang 缺省＝清除回落设置页默认值。
+ */
+export function setPanelTargetLang(command: SetPanelTargetLangCommand): Promise<void> {
+  return invoke('set_panel_target_lang', { lang: command.lang ?? null });
 }
 
 /** translate：发起翻译（流式结果经 translation://* 事件返回）。 */

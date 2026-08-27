@@ -15,7 +15,7 @@ export default ts.config(
   ...eslintPluginSvelte.configs['flat/recommended'],
   prettierConfig,
   {
-    files: ['**/*.svelte', '**/*.svelte.js'],
+    files: ['**/*.svelte', '**/*.svelte.js', '**/*.svelte.ts'],
     languageOptions: {
       // TS 解析：Svelte 组件经 typescript-eslint 解析器处理 lang="ts" 脚本（eslint-plugin-svelte
       // 官方 TS 配置方式）；T9 遮罩页起组件脚本含类型标注，缺此 parser 会报 Parsing error。

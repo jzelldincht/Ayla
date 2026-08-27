@@ -45,6 +45,7 @@ pub fn run() {
             windows::mask::cancel_selection, // T9：Esc 取消（6.1；无残留 FR-8.3/8.6）
             windows::mask::get_mask_snapshot, // T9 追加（主 Agent 批准）：遮罩页拉取冻结帧（data: URL）
             ocr::list_ocr_languages,          // T10：已装 OCR 语言包清单（6.1；设置下拉数据源）
+            translate::set_panel_target_lang, // T12：面板临时目标语言（FR-2.7 易失槽，最小契约扩展）
         ])
         .setup(|app| {
             // 启动序列 1：配置加载（T2 模块；原子写/迁移桩在 config::load_from 内完成）。
@@ -54,10 +55,13 @@ pub fn run() {
             hotkey::init(app.handle())?;
             // 启动序列 3：剪贴板监听按持久化开关恢复（T5；失败不阻断启动，仅记录）。
             clipboard_monitor::start_if_enabled(app.handle());
+            // 启动序列 6：translate 暖窗预创建并隐藏（D5/J1；常驻复用，隐藏≠销毁——T11）。
+            // 失败阻断启动：无面板窗口应用不可用（spec 5.5 生命周期行）。
+            windows::translate::init(app.handle())?;
 
             // TODO(T16)：action_router 接线——hotkey::set_callback +
             //   clipboard_monitor::set_translate_trigger（依赖方向 action_router→能力模块，spec 5.4）。
-            // TODO(T11/T15)：托盘初始化（tray.rs）、单实例 pid 缓存、translate 暖窗预创建。
+            // TODO(T15)：托盘初始化（tray.rs）、单实例 pid 缓存。
             // [T9 冒烟临时入口] ALYA_MASK_SMOKE=1 时按间隔时段触发三次框选（Esc / 无效单击 / 有效拖拽，
             // 时间与冒烟脚本对齐；本块冒烟后移除，不进生产）。
             if std::env::var_os("ALYA_MASK_SMOKE").is_some() {

@@ -153,7 +153,7 @@
   - 追溯: FR-6.1~6.4、FR-7.1/FR-7.2 前置、EX-6、假设 A6、spec 5.7.5/5.7.6
   - Status: NOT_STARTED
 
-- [ ] T11：翻译面板窗口生命周期与定位
+- [x] T11：翻译面板窗口生命周期与定位（DONE，2026-08-27 主 Agent 验收：132 Rust 测试全绿、clippy/fmt 通过；钳制算法含四角翻转/负坐标副屏/150%DPI/屏小于面板单测；失焦隐藏+D10+C3 topmost 逐条核对）
   - Owner: 实施工程师
   - Depends on: T2、T3
   - 涉及: `src-tauri/src/windows/translate.rs`
@@ -162,7 +162,7 @@
   - 追溯: FR-3.1、FR-9.1~FR-9.3、D5、D10、spec 5.7.2/5.7.3、design-spec 3.4、INV-4、7.2、假设 A4
   - Status: NOT_STARTED
 
-- [ ] T12：翻译面板前端（四形态与状态设计）
+- [x] T12：翻译面板前端（四形态与状态设计）（DONE，2026-08-27 主 Agent 验收：vitest 57/57、svelte-check 0 错 0 警、pnpm build 通过；主 Agent 修复 8 项 svelte-check 错误与 StreamOutput 非响应式告警）
   - Owner: 前端工程师
   - Depends on: T3、T11
   - 涉及: `src/translate/`（面板页）、`src/lib/theme.css`（Design Tokens）、`src/lib/stores/`

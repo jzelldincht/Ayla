@@ -287,6 +287,16 @@ pub struct SetClipboardMonitorCommand {
     pub enabled: bool,
 }
 
+/// `set_panel_target_lang` 参数（T12 追加命令——最小契约扩展，等价 C1 先例：
+/// 6.1 原表无面板临时目标语言通道，而 FR-2.7 要求"面板下拉临时切换"且 `prompt.rs` 已备易失槽位；
+/// 参数缺省/`lang` 空 = 清除临时值回落设置默认值，`Some` 须为 Q5 九语言文案之一）。
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SetPanelTargetLangCommand {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lang: Option<String>,
+}
+
 /// 选区矩形（`complete_selection`；**所在显示器局部物理像素**，INV-4）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

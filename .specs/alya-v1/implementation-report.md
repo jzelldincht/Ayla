@@ -450,3 +450,14 @@ T6/T7/T8 一并交付（会话模型与提示词构造、流式客户端、取�
 - 主 Agent 实测门禁：`cargo test` **108/108 通过**（含 capture 几何/裁剪/会话、ocr 分类）；`cargo clippy --all-targets -- -D warnings` 通过；`cargo fmt --check` 通过；`pnpm lint`（svelte-check 0 错 0 警）通过；`pnpm build` 通过。
 - 审计中发现并已验证：实施者此前遗留的捕获会话测试隔离问题（全局会话状态导致并行测试污染，"session_errors_when_no_active"）在代理修正后消失；期间实施者冒烟启动的 alya.exe 曾锁住 target\debug\alya.exe，已由主 Agent terminate 后复跑通过。
 - 遗留：多显示器/DPI 混布真机验证归 checklist 真机矩阵（F1/F3/I4）；OCR 真机识别精度观察归 X 系列。
+
+---
+
+## 主 Agent 验收附录（T11/T12，2026-08-27）
+
+实施代理会话中途中断，T11/T12 代码已大部分落盘（未提交）；子代理服务曾不可用，主 Agent 直接接手完成修复与验收：
+
+- 修复项（主 Agent 执行）：eslint.config.js 增加 `.svelte.ts` 解析范围；StreamOutput.svelte 的 chunkHost 改为 `$state`（Svelte 5 非响应式告警）；App.svelte 三处 `exCode` → `ex_code`（对齐 events.rs 契约下划线命名）；appendSink.test.ts span 断言加 HTMLElement 断言；scrollAnchor.test.ts 三处 `.toBe(value, msg)` 改为 Vitest 正确写法（期望值唯一参数）。
+- 实测门禁：`cargo test` 132/132（121 单测 + 11 集成；含 windows::translate 钳制与 DPI 用例）、clippy -D warnings 通过、fmt --check 通过；`pnpm lint`（svelte-check 0 错 0 警）、`pnpm vitest run` 57/57、`pnpm build` 通过。
+- 关键机制核对：place_at_cursor 唯一显示路径（物理坐标→显示器归属→尺寸×scale→+16,+16→C2 退化→四角翻转→8px 钳制不跨屏）；Focused(false)+hideOnBlur 隐藏、D10 隐藏不取消翻译、幂等 hide；C3 topmost show 置位/隐藏清除；尺寸逻辑值持久化 + clamp（默认 460×340/最小 360×240/工作区 80% 上限）；四形态与状态设计按 design-spec v0.2（含 A1 所有原文区可编辑+重译）。
+- 未知风险：未在真机验证光标/面板在混合 DPI 下的实际显示（归 checklist I4/F3 真机项）；ui 细节视觉验收归 QA。

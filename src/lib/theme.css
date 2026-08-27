@@ -1,7 +1,217 @@
-/* Design Tokens 挂载点（占位）：
-   亮/暗两套 CSS 变量由 T12（前端工程师）依 design-spec.md 第 2 章在此定义：
-   - `:root` 承载亮色值，暗色以 `[data-theme='dark']` 覆盖（主题经 settings://changed 与系统偏好联动，FR-1.2）；
-   - 变量名严格对应 design-spec 2.1 Token 表（bg/base、bg/subtle、fg/title、accent/primary、
-     success、warning、error、mask/select 等），±5% 明度微调不得破 4.5:1 对比度底线；
-   - 字体栈、字号阶梯、间距/圆角/阴影/动效时长 token 同步在 2.2~2.4 落表。
-   当前骨架不放任何值，避免与后续设计实现产生双源。 */
+/*
+ * Alya Design Tokens（src/lib/theme.css，T12 实现；design-spec.md 第 2 章）。
+ *
+ * - `:root` 承载亮色值；`[data-theme='dark']` 覆盖为暗色（主题三态经 settings://changed 与
+ *   系统偏好联动，FR-1.2；主题切换由 src/lib/stores 在 documentElement 上写 data-theme）。
+ * - 变量名严格对应 design-spec 2.1 Token 表（bg/base 等）；数值为基线值（未做明度微调，
+ *   2.1 基线已按第 9 章 4.5:1 对比度底线校准）。
+ * - 字体栈/字号阶梯/间距/圆角/阴影/动效时长同步落表（2.2~2.5）。
+ * - 减弱动效（第 9 章/2.5）：`prefers-reduced-motion: reduce` 时取消位移类动效，
+ *   仅保留 ≤80ms 透明度过渡（呼吸点退化为静态文字+进度条由组件层判定）。
+ */
+
+/* ---------------------------------------------------------------------------
+ * 2.1 Design Tokens（亮 / 暗）
+ * ------------------------------------------------------------------------- */
+
+:root {
+  /* 中性色（亮） */
+  --bg-base: #ffffff;
+  --bg-subtle: #f5f7fa;
+  --bg-hover: #edf1f6;
+  --bg-active: #e3e9f2;
+  --fg-title: #17202e;
+  --fg-body: #38414f;
+  --fg-muted: #5f6877;
+  --fg-disabled: #a6adb9;
+  --border-subtle: #e6eaf0;
+  --border-strong: #cbd3de;
+
+  /* 品牌与语义色（亮） */
+  --accent-primary: #2e63dc;
+  --accent-primary-hover: #2453c4;
+  --accent-primary-active: #1e46ac;
+  --accent-on-primary: #ffffff;
+  --success: #23864e;
+  --warning: #a96a08;
+  --error: #c43d42;
+  --error-bg: #fbeeef;
+  /* 截图框选遮罩（与主题无关，恒定） */
+  --mask-select: rgba(15, 18, 24, 0.35);
+
+  /* 阴影（亮） */
+  --shadow-panel:
+    0 8px 28px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.14);
+}
+
+[data-theme='dark'] {
+  /* 中性色（暗） */
+  --bg-base: #1f232a;
+  --bg-subtle: #262b34;
+  --bg-hover: #2e343e;
+  --bg-active: #37404c;
+  --fg-title: #eef2f7;
+  --fg-body: #c6cdd8;
+  --fg-muted: #8d97a5;
+  --fg-disabled: #5c6572;
+  --border-subtle: #333a44;
+  --border-strong: #47505d;
+
+  /* 品牌与语义色（暗） */
+  --accent-primary: #6e97f0;
+  --accent-primary-hover: #86a9f4;
+  --accent-primary-active: #9bbbf7;
+  --accent-on-primary: #0e1b33;
+  --success: #4cc38a;
+  --warning: #e5a83b;
+  --error: #ef7076;
+  --error-bg: #33262a;
+  --mask-select: rgba(15, 18, 24, 0.35);
+
+  /* 阴影（暗色主题透明度上调约 1.4 倍，design-spec 2.4） */
+  --shadow-panel:
+    0 8px 28px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.14);
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* ---------------------------------------------------------------------------
+ * 2.2 字体与字号阶梯
+ * ------------------------------------------------------------------------- */
+
+:root {
+  /* 字体栈（中文优先；不引入外部字体文件） */
+  --font-stack:
+    'Microsoft YaHei UI', 'Microsoft YaHei', 'Segoe UI', system-ui, sans-serif;
+  /* 等宽数字兜底：预估剩余时间、选区尺寸标签（tabular figures 由消费处开启） */
+  --font-mono-stack: 'Consolas', monospace;
+
+  /* 字号阶梯（字号 / 行高） */
+  --font-size-display: 20px;
+  --line-height-display: 28px;
+  --font-size-title: 16px;
+  --line-height-title: 24px;
+  --font-size-body: 14px;
+  --line-height-body: 22px;
+  --font-size-secondary: 13px;
+  --line-height-secondary: 20px;
+  --font-size-caption: 12px;
+  --line-height-caption: 18px;
+
+  /* 字重 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 600;
+}
+
+/* ---------------------------------------------------------------------------
+ * 2.3 间距体系（4px 基数）与关键尺寸
+ * ------------------------------------------------------------------------- */
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* 关键尺寸（design-spec 2.3） */
+  --topbar-height: 44px;
+  --hit-size: 28px; /* 图标按钮命中区 28×28 */
+  --control-height-panel: 28px; /* 面板内按钮高 */
+  --setting-row-height: 40px; /* 设置行高 */
+  --panel-padding-x: 16px; /* 面板内容左右内边距 */
+}
+
+/* ---------------------------------------------------------------------------
+ * 2.4 圆角与阴影
+ * ------------------------------------------------------------------------- */
+
+:root {
+  /* 阴影已随主题在上表声明（--shadow-panel / --shadow-popover） */
+  --radius-window: 10px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-pill: 9999px;
+}
+
+/* ---------------------------------------------------------------------------
+ * 2.5 动效（统一缓动 + 场景时长）
+ * ------------------------------------------------------------------------- */
+
+:root {
+  --ease-in: cubic-bezier(0.2, 0, 0, 1); /* 入场 */
+  --ease-out: cubic-bezier(0.4, 0, 1, 1); /* 出场 */
+
+  --duration-pop: 160ms; /* 面板弹出（透明度 + translateY + scale） */
+  --duration-fade-out: 120ms; /* 失焦隐没/关闭 */
+  --duration-segment: 120ms; /* 分段控件选中滑块 */
+  --duration-dropdown: 140ms; /* 下拉展开 */
+  --duration-append: 90ms; /* 流式增量淡入（≤90ms/次） */
+  --duration-caret-fade: 200ms; /* 流式光标条完成后淡出 */
+  --duration-dots: 1.2s; /* 呼吸圆点循环 */
+  --duration-eta-refresh: 1s; /* 预估剩余时间刷新 */
+  --duration-error: 140ms; /* 错误卡片出现 */
+  --duration-whole: 140ms; /* 整段模式完成淡入 */
+
+  /* 整段模式完成淡入与错误卡片共用 140ms 语义 */
+  --duration-block-fade: 140ms;
+}
+
+/* ---------------------------------------------------------------------------
+ * 基础重置与无障碍（第 9 章）
+ * ------------------------------------------------------------------------- */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent; /* 翻译面板窗 transparent(true)：由 CSS 圆角宿主绘制底色 */
+  font-family: var(--font-stack);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--fg-body);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* 焦点可见：所有可交互元素 2px accent 外沿环（offset 1px，圆角随元素）；
+   任何状态下不得移除焦点环（design-spec 第 9 章） */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+  border-radius: var(--radius-control);
+}
+
+/* 对比度底线由 Token 基线值保证（第 9 章；任何元素颜色只允许引用 Token） */
+
+/* ---------------------------------------------------------------------------
+ * 减弱动效（第 9 章 / 2.5）：系统关闭动画效果时取消位移类动效，
+ * 仅保留 ≤80ms 的透明度过渡；呼吸点退化由组件层按 prefers-reduced-motion 判定
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 80ms !important;
+    transition-property: opacity !important;
+  }
+}
+
+/* 语言选择与表单控件基础形态 */
+select,
+textarea,
+input,
+button {
+  font-family: var(--font-stack);
+  color: var(--fg-body);
+}

@@ -209,6 +209,18 @@ fn create_mask_window(app: &AppHandle, monitor: &MonitorInfo) -> Result<WebviewW
         .map_err(|e| AppError::Window(format!("遮罩窗 mask-{} 创建失败: {e}", monitor.index)))
 }
 
+/// 任一遮罩窗当前是否可见（T11 失焦隐藏交汇矩阵/框选期压制判定读取，spec 5.7.3：
+/// 框选进行中面板须保持隐藏，此查询用于隐藏决策防御状态漂移）。
+pub fn any_visible() -> bool {
+    let pool_guard = pool()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    pool_guard
+        .windows
+        .values()
+        .any(|window| window.is_visible().unwrap_or(false))
+}
+
 /// 隐藏全部遮罩窗（确认/取消后回池，不销毁——池化复用）。
 fn hide_all_masks() {
     let pool_guard = pool()

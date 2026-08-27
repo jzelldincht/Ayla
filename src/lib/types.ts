@@ -196,6 +196,32 @@ export interface SetClipboardMonitorCommand {
   enabled: boolean;
 }
 
+/**
+ * set_panel_target_lang 参数（T12 追加命令——最小契约扩展，等价 C1 先例；FR-2.7 面板临时
+ * 目标语言：仅易失内存槽，不回写 config 默认值）。lang 缺省/null＝清除回落设置页默认值。
+ */
+export interface SetPanelTargetLangCommand {
+  lang?: string;
+}
+
+/**
+ * Q5 首批九种定向语言（镜像 Rust config::DIRECTED_TARGET_LANGS；名称文案与后端共用一份，
+ * spec 6.3 契约约定——需要与 src-tauri/src/config/mod.rs 同步修改）。
+ */
+export const DIRECTED_TARGET_LANGS = [
+  { code: 'zh-CN', label: '中文(简体)' },
+  { code: 'zh-TW', label: '中文(繁体)' },
+  { code: 'en', label: '英文' },
+  { code: 'ja', label: '日文' },
+  { code: 'ko', label: '韩文' },
+  { code: 'fr', label: '法文' },
+  { code: 'de', label: '德文' },
+  { code: 'es', label: '西班牙文' },
+  { code: 'ru', label: '俄文' },
+] as const;
+
+export type TargetLangLabel = (typeof DIRECTED_TARGET_LANGS)[number]['label'];
+
 /** 选区矩形（所在显示器局部物理像素，INV-4）。 */
 export interface SelectionRect {
   x: number;
