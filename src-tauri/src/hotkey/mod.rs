@@ -143,6 +143,24 @@ pub fn hotkey_registration_failures() -> Result<Vec<HotkeyFunction>, AppError> {
     degraded_functions()
 }
 
+/// 退出清理（T15 托盘「退出」路径，spec 5.7.9 清理序第 1 步）：注销 `registered` 表内全部热键。
+/// 幂等；失败仅记日志（进程即将退出，无恢复义务；不持有本模块锁调用插件）。
+pub fn shutdown(app: &AppHandle) {
+    let combos: Vec<String> = match state_lock() {
+        Ok(guard) => guard.registered.values().cloned().collect(),
+        Err(err) => {
+            log::warn!("hotkey: 退出清理读取注册表失败（跳过注销）: {err}");
+            return;
+        }
+    };
+    for combo in &combos {
+        if let Err(err) = app.global_shortcut().unregister(combo.as_str()) {
+            log::warn!("hotkey: 退出注销失败 {combo}: {err}");
+        }
+    }
+    log::info!("hotkey: 退出清理完成（已注销 {} 项）", combos.len());
+}
+
 // ---------------------------------------------------------------------------
 // 启动注册（setup 调用；聚合逻辑可独立测试）
 // ---------------------------------------------------------------------------

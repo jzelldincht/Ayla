@@ -11,8 +11,9 @@
 //!   **热键与剪贴板监听不走本通道**（分别归 `rebind_hotkey` / `set_clipboard_monitor`，6.1）——
 //!   收到即拒（防绕过专用命令导致状态机/注册表不同步）。
 //!
-//! 偏离 tasks.md 的说明（记录于 implementation-report T13 节）：
-//! - 开机自启（FR-1.5）在 T13 仅落 config 值；实际 HKCU Run 写入/移除由 T15（tauri-plugin-autostart）接线。
+//! 偏离 tasks.md 的说明（记录于 implementation-report T13 节；T15 已收口第一项）：
+//! - 开机自启（FR-1.5）：T13 仅落 config 值；**T15 已在 set_settings 接线 HKCU Run 写入/移除**
+//!   （autostart.rs：注册表先行、失败即中止、config 仅随成功更新——见本文件 set_settings 注释）。
 //! - 自动保存反馈（「已保存」1.5s 淡出）为前端 UI 语义，本窗壳不感知。
 //!
 //! 锁序：先 config 后 sessions——本模块仅经 config 全局访问器；无自有锁。
@@ -166,8 +167,14 @@ pub fn get_settings() -> Result<SettingsView, AppError> {
 /// `set_settings`（6.1）：通用设置即时保存生效（FR-13）——
 /// 应用补丁 → 原子落盘 → `settings://changed` 广播（剥离 apiKey，INV-1）。
 /// 广播失败仅记录（三处 UI 镜像滞后至下次 get_settings，INV-8 收敛口径，先例见 T5）。
+/// 开机自启（FR-1.5）例外接线：**先**执行 HKCU Run 真实写入/移除（`autostart::apply`），
+/// 失败即中止（config 值不动、命令返回错误由设置页行内呈现）——「启用才写、关闭即移除」
+/// 语义由 autostart.rs 保证（含已禁用态的幂等判定）。
 #[tauri::command]
 pub fn set_settings(app: AppHandle, patch: SettingsPatch) -> Result<(), AppError> {
+    if let Some(target_on) = patch.general.as_ref().and_then(|general| general.autostart) {
+        crate::autostart::apply(&app, target_on)?;
+    }
     let dir = config::app_config_dir(&app)?;
     {
         let mut guard = config::write_global()?;
@@ -204,7 +211,7 @@ pub fn ensure_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
     WebviewWindowBuilder::new(
         app,
         WINDOW_SETTINGS_LABEL,
-        WebviewUrl::App(PathBuf::from("settings/index.html")),
+        WebviewUrl::App(PathBuf::from("src/settings/index.html")),
     )
     .title("设置")
     .inner_size(

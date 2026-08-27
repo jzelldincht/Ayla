@@ -12,8 +12,9 @@ edition = "2021"
 tauri-build = { version = "2.6", features = [] }
 
 [dependencies]
-# 应用框架（features 按需最小化，T15 托盘时追加 tray-icon）
-tauri = { version = "2.11", features = [] }
+# 应用框架（features 按需最小化；T15 追加 tray-icon——spec 5.3「托盘菜单构建与状态同步」，
+# 原生菜单/托盘图标/左键事件均由此 feature 提供（muda/tray-icon），无其他依赖可替代）
+tauri = { version = "2.11", features = ["tray-icon"] }
 # 插件：注册顺序见 src/lib.rs 顶部说明
 tauri-plugin-global-shortcut = "2.3"
 tauri-plugin-single-instance = "2.4"
@@ -50,6 +51,8 @@ windows-future = "0.3"
 # T5 追加 Win32_System_DataExchange：GetClipboardSequenceNumber（spec 5.6.3 剪贴板序号轮询）。
 # T6 追加 Win32_UI_Input_KeyboardAndMouse：SendInput 注入 Ctrl+C（取词；主 Agent 指定 feature 名
 # 为 KeyboardAndGroup，windows 0.62.2 实际仅存在 KeyboardAndMouse，已按实际更名——见 T6 偏离说明）。
+# T15 追加 Win32_System_Threading：OpenProcess + GetExitCodeProcess（D7 主实例 pid 存活校验，
+# spec 5.7.9；STILL_ACTIVE 常量位于 Win32_Foundation，已随既有 feature 启用）。
 windows = { version = "0.62", features = [
     "Media_Ocr",
     "Globalization",
@@ -61,6 +64,7 @@ windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_System_DataExchange",
     "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_System_Threading",
 ] }
 
 # 集成测试用 mock HTTP 服务（spec 验收标准 2：wiremock 模拟 OpenAI 兼容服务）

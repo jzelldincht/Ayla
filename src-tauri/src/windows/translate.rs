@@ -28,6 +28,7 @@ use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder, WindowEvent,
 };
+use tauri_plugin_notification::NotificationExt;
 
 use crate::config;
 use crate::error::AppError;
@@ -220,7 +221,7 @@ fn create_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
     WebviewWindowBuilder::new(
         app,
         WINDOW_TRANSLATE_LABEL,
-        WebviewUrl::App(PathBuf::from("translate/index.html")),
+        WebviewUrl::App(PathBuf::from("src/translate/index.html")),
     )
     .title("翻译面板")
     .inner_size(DEFAULT_INNER_SIZE_LOGICAL.0, DEFAULT_INNER_SIZE_LOGICAL.1)
@@ -276,7 +277,21 @@ pub fn show_panel(app: &AppHandle, payload: PanelShowPayload) -> Result<(), AppE
     window
         .show()
         .map_err(|e| AppError::Window(format!("translate 显示失败: {e}")))?;
-    let _ = window.set_focus(); // 焦点失败不阻断显示（D7 握手兜底在 T15）
+    // D7 前台握手拒绝时的降级路径（spec 5.7.9【A8】：面板置前但无焦点 + 通知 + 日志）。
+    // AllowSetForegroundWindow 握手成功后此调用应成功（second instance 授权）；失败时
+    // 面板仍已置前（topmost 置位 + show），仅无法获得输入焦点——通知引导用户点击面板。
+    if let Err(err) = window.set_focus() {
+        log::warn!("translate: 面板显示成功但未获得焦点（D7 握手持手失败/被系统拒绝）: {err}");
+        if let Err(notify_err) = app
+            .notification()
+            .builder()
+            .title("Alya")
+            .body("翻译面板已显示，但未能获得焦点；请点击任务栏图标或按 Alt+E 重新呼出。")
+            .show()
+        {
+            log::error!("translate: 无焦点降级通知发送失败: {notify_err}");
+        }
+    }
 
     // 统一发射（6.2：{mode, text?, sessionId?}）；发射失败＝面板已不可用，收回并报错。
     if let Err(err) = app.emit_to(WINDOW_TRANSLATE_LABEL, EVENT_PANEL_SHOW, payload) {

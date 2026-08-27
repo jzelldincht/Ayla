@@ -192,7 +192,7 @@ fn reconcile_pool(app: &AppHandle, monitors: &[MonitorInfo]) -> Result<(), AppEr
 fn create_mask_window(app: &AppHandle, monitor: &MonitorInfo) -> Result<WebviewWindow, AppError> {
     // monitorIndex 走窗口 URL 查询参数（创建时写入，非 IPC；遮罩页 location.search 读取）
     let url = WebviewUrl::App(PathBuf::from(format!(
-        "mask/index.html?monitorIndex={}",
+        "src/mask/index.html?monitorIndex={}",
         monitor.index
     )));
     WebviewWindowBuilder::new(app, mask_label(monitor.index), url)

@@ -24,10 +24,13 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        translate: 'src/translate/index.html',
-        mask: 'src/mask/index.html',
-        settings: 'src/settings/index.html',
-        onboarding: 'src/onboarding/index.html',
+        // 入口键保留 `src/` 前缀 → 构建产物路径与窗口 WebviewUrl 完全一致
+        // （dev: /src/.../index.html 按文件系统路径服务；prod: dist/src/.../index.html），
+        // 消除 dev/build 双路径漂移（2026-08-27 修复：onboarding 窗口 dev 404）。
+        'src/translate/index.html': 'src/translate/index.html',
+        'src/mask/index.html': 'src/mask/index.html',
+        'src/settings/index.html': 'src/settings/index.html',
+        'src/onboarding/index.html': 'src/onboarding/index.html',
       },
     },
   },

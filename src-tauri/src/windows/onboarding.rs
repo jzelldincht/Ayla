@@ -162,7 +162,7 @@ pub fn ensure_window(app: &AppHandle, mode: OnboardingMode) -> Result<WebviewWin
         app,
         WINDOW_ONBOARDING_LABEL,
         WebviewUrl::App(PathBuf::from(format!(
-            "onboarding/index.html{}",
+            "src/onboarding/index.html{}",
             query_of(mode)
         ))),
     )
