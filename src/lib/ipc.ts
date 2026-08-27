@@ -9,8 +9,10 @@ import type {
   CancelTranslationCommand,
   CompleteSelectionCommand,
   GetMaskSnapshotCommand,
+  HotkeyFunction,
   MaskBeginPayload,
   MaskSnapshotResult,
+  OnboardingBeginPayload,
   OcrLanguage,
   PanelShowPayload,
   RebindHotkeyCommand,
@@ -116,6 +118,27 @@ export function listOcrLanguages(): Promise<OcrLanguage[]> {
   return invoke('list_ocr_languages');
 }
 
+/**
+ * hotkey_registration_failures（T13 新增契约）：启动注册失败（=降级态）功能清单——
+ * 设置页快捷键行尾常驻 warning 图标数据源（design-spec 7.2）；空数组＝全部注册成功。
+ */
+export function hotkeyRegistrationFailures(): Promise<HotkeyFunction[]> {
+  return invoke('hotkey_registration_failures');
+}
+
+/**
+ * open_config_guide（T14 新增契约）：FR-11.4 配置引导——guide 模式复用引导窗体，
+ * 直达隐私要点 + Key 步骤；补配完成后由后端回调通知（T16 action_router 接线）。
+ */
+export function openConfigGuide(): Promise<void> {
+  return invoke('open_config_guide');
+}
+
+/** finish_onboarding（T14）：完成/跳过——写 meta.onboardingCompleted 并隐藏窗体（FR-11.3/11.5）。 */
+export function finishOnboarding(): Promise<void> {
+  return invoke('finish_onboarding');
+}
+
 /** verify_connection：连接验证（D6：先 GET {base}/models，404/405 回退最小 chat）。 */
 export function verifyConnection(command: VerifyConnectionCommand): Promise<void> {
   return invoke('verify_connection', {
@@ -192,4 +215,11 @@ export function onSelectionClosed(
 /** mask://begin（T9 追加）：新框选会话开始——遮罩页据此重新拉取冻结帧。 */
 export function onMaskBegin(handler: (payload: MaskBeginPayload) => void): Promise<UnlistenFn> {
   return subscribeEvent<MaskBeginPayload>(EVENTS.maskBegin, handler);
+}
+
+/** onboarding://begin（T14 追加）：引导窗复位指令（复用窗残留状态规避；模式驱动步骤定位）。 */
+export function onOnboardingBegin(
+  handler: (payload: OnboardingBeginPayload) => void,
+): Promise<UnlistenFn> {
+  return subscribeEvent<OnboardingBeginPayload>(EVENTS.onboardingBegin, handler);
 }

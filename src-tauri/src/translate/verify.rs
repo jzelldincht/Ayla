@@ -18,6 +18,19 @@ use crate::events::VerifyConnectionCommand;
 /// 验证超时（响应头前；与 sse.rs 第一级超时同口径 30s）。
 pub const VERIFY_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// `verify_connection` 命令（6.1；T14 注册——引导/设置页行内验证入口）。
+/// 参数缺省＝用已存配置值（D6 请求形态见模块头；`key` 为用户输入，日志纪律 INV-7）。
+/// 命令经 `rename` 保持与 6.1 字面一致（与既有 `verify_connection` 函数名区分，后者为
+/// 内部语义函数 + 集成测试入口）。
+#[tauri::command(rename = "verify_connection")]
+pub async fn verify_connection_cmd(
+    base: Option<String>,
+    model: Option<String>,
+    key: Option<String>,
+) -> Result<(), AppError> {
+    verify_connection(&VerifyConnectionCommand { base, model, key }).await
+}
+
 /// 连接验证入口（6.1 `verify_connection`）。
 pub async fn verify_connection(command: &VerifyConnectionCommand) -> Result<(), AppError> {
     let (base, model, key) = resolve_inputs(command)?;

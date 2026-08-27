@@ -36,6 +36,11 @@ pub const EVENT_MASK_BEGIN: &str = "mask://begin";
 /// 翻译流式事件（begin/chunk/done/error）emit 目标即此 label，前后端共用唯一来源。
 pub const WINDOW_TRANSLATE_LABEL: &str = "translate";
 
+/// `onboarding://begin`（T14 追加事件，等价 panel://show 复用窗的状态复位通道）：
+/// 引导窗每次显示时由 windows/onboarding 广播 `OnboardingBeginPayload { mode }`——
+/// 常驻隐藏复用的引导页据此复位（首启四步 / guide 两步直达），消除复用窗残留旧状态。
+pub const EVENT_ONBOARDING_BEGIN: &str = "onboarding://begin";
+
 /// 遮罩窗 label 前缀（spec 5.5：`mask-{i}`，i 为按显示器 (x,y) 排序后的编号 0..n，T9）。
 pub const WINDOW_MASK_LABEL_PREFIX: &str = "mask-";
 
@@ -85,6 +90,15 @@ pub enum HotkeyFunction {
     OcrRecognize,
     OcrTranslate,
     ToggleScene,
+}
+
+/// 引导窗模式（T14 追加，`onboarding://begin.mode` + 窗口 URL 查询参数 `?mode=guide`）：
+/// 首启四步向导（FR-11.1）与 FR-11.4 补配引导（guide 直达隐私要点 + Key 步骤）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OnboardingMode {
+    First,
+    Guide,
 }
 
 // ---------------------------------------------------------------------------
@@ -477,6 +491,14 @@ pub struct MaskBeginPayload {
     pub monitor_index: u32,
 }
 
+/// `onboarding://begin`（T14 追加）：引导窗复位指令——每次显示时广播当前模式
+/// （首启四步 / guide 两步直达），复用窗页面据此复位并避免残留旧步骤状态。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OnboardingBeginPayload {
+    pub mode: OnboardingMode,
+}
+
 // ---------------------------------------------------------------------------
 // 单元测试：契约序列化形状（camelCase/ex_code/renderMode/无 Key 泄漏）
 // ---------------------------------------------------------------------------
@@ -663,5 +685,25 @@ mod tests {
         // 事件名常量与 TS 镜像保持一致（EVENTS.maskBegin = "mask://begin"；label 前缀）
         assert_eq!(EVENT_MASK_BEGIN, "mask://begin");
         assert_eq!(WINDOW_MASK_LABEL_PREFIX, "mask-");
+    }
+
+    #[test]
+    fn onboarding_begin_payload_serde_shape() {
+        // T14：onboarding://begin 载荷（camelCase {mode}；"first"|"guide"）与事件名
+        let first = OnboardingBeginPayload {
+            mode: OnboardingMode::First,
+        };
+        assert_eq!(
+            serde_json::to_string(&first).unwrap_or_else(|e| panic!("{e}")),
+            r#"{"mode":"first"}"#
+        );
+        let guide = OnboardingBeginPayload {
+            mode: OnboardingMode::Guide,
+        };
+        assert_eq!(
+            serde_json::to_string(&guide).unwrap_or_else(|e| panic!("{e}")),
+            r#"{"mode":"guide"}"#
+        );
+        assert_eq!(EVENT_ONBOARDING_BEGIN, "onboarding://begin");
     }
 }

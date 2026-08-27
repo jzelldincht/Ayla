@@ -171,23 +171,23 @@
   - 追溯: FR-1.2、FR-2.4/FR-2.7（面板侧）、FR-4.1~4.3、FR-5.1、FR-9.4~9.6、FR-10.1~10.4、design-spec 2/3/4/9、D9、4.4 六类错误
   - Status: NOT_STARTED
 
-- [ ] T13：设置页
+- [x] T13：设置页（DONE，2026-08-27 实施工程师交付：见 implementation-report T13/T14 节）
   - Owner: 前端工程师（`windows/settings.rs` 窗壳：实施工程师协作）
   - Depends on: T2、T3、T4、T10
   - 涉及: `src/settings/`、`src-tauri/src/windows/settings.rs`
   - 要点: 左侧分组导航 + 右侧内容，六分组严格对齐 FR-13 十六项与出厂默认（design-spec 7.1，不另立默认值）；全页无保存按钮，任一变更即刻 `set_settings` 生效，行尾 success「已保存」1.5s 淡出（7.4）；快捷键录制控件状态机（7.2）：展示→录制（Esc/点外取消不改值）→ 解旧注新 → 成功更新键帽 / 冲突自动回退 + 行内 error + 系统通知指明功能名（EX-7）；启动即存在的冲突行尾 warning 图标常驻；API Key 固定 8 位掩码、任何视图不明文回显，「修改」流清空录入 + 录入期可见性切换 + 允许保存空值（7.3、INV-1）；OCR 语种下拉＝`list_ocr_languages` 已装清单（auto 默认）；AI 服务分区常驻“原文发送至第三方云端”隐私提示块（J3/第 7 章）；主题变更即时全窗预览；窗体默认 760×540、最小 680×480
   - Verification: `pnpm vitest run src/settings`——表单联动、即时保存 patch、录制状态机（成功/冲突回退/取消三分支）、掩码修改流、隐私块存在；冒烟：切主题、改键冲突回退、存哑值 Key 全流程
   - 追溯: FR-13 全表、FR-14.2、FR-1.2、FR-1.5、FR-6.4（枚举源头防 EX-6）、requirements 第 7 章、design-spec 7、EX-7、INV-1
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-27 实施工程师交付：settings.rs 窗壳（760×540/最小 680×480/单例隐藏复用/关闭=隐藏）+ get_settings/set_settings/open_settings 命令（set_settings＝应用补丁→原子落盘→settings://changed 广播剥离 apiKey INV-1；热键/剪贴板监听补丁拒绝走专通道；apiKey 空值=清密文）；src/settings/ 六分组十六项全量渲染自 get_settings 镜像（九语种/呈现两档/阈值/失焦即隐/剪贴板监听/五项键帽/OCR 语种/自启/主题），即时保存「已保存」1.5s 淡出+失败行内 error，HotkeyRecorder 录制控件（Esc/点外取消、修饰键+主键 e.code 组合、失败回退+design-spec 固定文案）与启动冲突 warning 图标（hotkey_registration_failures 新命令），API Key 8 位掩码修改流（清空录入/可见性切换/空值=未配置），OCR 下拉（list_ocr_languages+已存未装附注），主题三段即时预览，J3 隐私提示块；vitest 17 用例全过；偏离（autostart 仅落 config 归 T15/rebind 无广播以权威刷新补偿/文本输入 change 提交）见报告 §5；门禁全部 PASS）
 
-- [ ] T14：首次运行引导与配置引导复用
+- [x] T14：首次运行引导与配置引导复用（DONE，2026-08-27 实施工程师交付：见 implementation-report T13/T14 节）
   - Owner: 前端工程师（`windows/onboarding.rs` 窗壳与 meta 写入：实施工程师协作）
   - Depends on: T2、T3、T8
   - 涉及: `src/onboarding/`、`src-tauri/src/windows/onboarding.rs`
   - 要点: 四步向导 560×430（design-spec 6）：欢迎（快捷键速览）→ 隐私告知（完整句子 + 强调底色块平铺、无折叠无内部滚动、“我已了解，继续”唯一前进入口、向导不支持 Esc，FR-11.2）→ 配置 API Key（`verify_connection` 行内成功/失败反馈、可重试可跳过、录入期可见性切换）→ 完成（进入托盘常驻）；「暂不使用」＝跳过整个引导（FR-11.3 路径，截图识别完全可用）；guide 模式复用窗体承接 FR-11.4 补配（直达隐私要点 + Key 输入，补配后挂起翻译自动继续，与 T16 对接）；完成/跳过写 `meta.onboardingCompleted`；已存在有效配置永不自动弹出（FR-11.5）
   - Verification: `pnpm vitest run src/onboarding`——步骤流转、隐私步阻断、跳过路径、验证成功/失败行内反馈、guide 模式直达；冒烟：清空配置目录后首启完整走向导，二次启动不再弹出
   - 追溯: FR-11.1~11.5、D6（消费 T8 命令）、J3、design-spec 6
-  - Status: NOT_STARTED
+  - Status: DONE（2026-08-27 实施工程师交付：onboarding.rs 窗壳（固定 560×430/有边框/居中/完成跳过隐藏保留/模式切换销毁重建/CloseRequested=隐藏）+ should_show_first_run（!onboardingCompleted && !hasKey，含 DPAPI 降级口径）+ show_first_run/open_config_guide/finish_onboarding（写 meta + 广播 + 隐藏 + guide 回调 GuideFinishedHandler(hasKey) 供 T16 接线）+ onboarding://begin 复位事件（复用窗残留规避）；verify_connection 经 rename 注册为命令（T8 内部函数保留）；src/onboarding/ 四步向导（欢迎/隐私告知完整句子+强调块唯一前进/Key 配置验证连接行内反馈可重试可跳过/完成「进入 Alya」）+ guide 模式两步直达 + 不支持 Esc；vitest 11 用例全过；门禁全部 PASS（Rust 141/141、前端 85/85））
 
 - [ ] T15：托盘、单实例与开机自启
   - Owner: 实施工程师

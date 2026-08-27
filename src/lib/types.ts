@@ -22,6 +22,8 @@ export const EVENTS = {
   selectionClosed: 'selection://closed',
   /** T9 追加：框选会话开始（载荷无位图——冻结帧经 get_mask_snapshot 拉取）。 */
   maskBegin: 'mask://begin',
+  /** T14 追加：引导窗复位指令（每次显示广播 {mode}；复用窗页面据此复位）。 */
+  onboardingBegin: 'onboarding://begin',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -49,6 +51,9 @@ export type PresentationMode = 'stream_all' | 'staged';
 
 /** 主题（6.3 general.theme）。 */
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+/** 引导窗模式（T14：`onboarding://begin.mode` + 窗口 URL `?mode=guide`）。 */
+export type OnboardingMode = 'first' | 'guide';
 
 // ---------------------------------------------------------------------------
 // 6.1 命令参数 / 返回
@@ -327,4 +332,9 @@ export interface SelectionClosedPayload {
 export interface MaskBeginPayload {
   sessionId: string;
   monitorIndex: number;
+}
+
+/** onboarding://begin（T14 追加）：引导窗复位指令（复用窗残留状态规避）。 */
+export interface OnboardingBeginPayload {
+  mode: OnboardingMode;
 }

@@ -26,9 +26,10 @@ pub mod windows;
 /// 4. `tauri_plugin_autostart` —— 开机自启（T15，spec 5.7.9）；
 /// 5. `tauri_plugin_notification` —— 系统通知（EX-7/EX-9/EX-10/D3 呈现层，spec 5.3）。
 ///
-/// 启动序列（T4/T5 已接入 1~3 步；其余留待对应任务）：
+/// 启动序列（T4/T5/T11/T14 已接入；其余留待对应任务）：
 /// 1. 配置加载（T2 模块接入）→ 2. 热键注册（T4）→ 3. 剪贴板监听启动（T5，FR-5.3 恢复上次状态）
-///    → 4. 托盘初始化（T15）→ 5. 单实例 pid 缓存（T15）→ 6. translate 暖窗预创建（T11）。
+///    → 4. 托盘初始化（T15）→ 5. 单实例 pid 缓存（T15）→ 6. translate 暖窗预创建（T11，D5）
+///    → 7. 首启引导检测并显示（T14，FR-11.1/11.5）。
 pub fn run() {
     let app = match tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new().build())
@@ -39,13 +40,20 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
-            hotkey::rebind_hotkey, // T4：改键专用（回退语义，spec 5.7.1）
+            hotkey::rebind_hotkey,                // T4：改键专用（回退语义，spec 5.7.1）
+            hotkey::hotkey_registration_failures, // T13 新增：设置页快捷键行尾 warning 图标数据源
             clipboard_monitor::set_clipboard_monitor, // T5：三方开关统一入口（FR-5.1，INV-8）
-            windows::mask::complete_selection, // T9：框选确认（6.1；无效选区按 Q11 视同取消）
-            windows::mask::cancel_selection, // T9：Esc 取消（6.1；无残留 FR-8.3/8.6）
+            windows::mask::complete_selection,    // T9：框选确认（6.1；无效选区按 Q11 视同取消）
+            windows::mask::cancel_selection,      // T9：Esc 取消（6.1；无残留 FR-8.3/8.6）
             windows::mask::get_mask_snapshot, // T9 追加（主 Agent 批准）：遮罩页拉取冻结帧（data: URL）
             ocr::list_ocr_languages,          // T10：已装 OCR 语言包清单（6.1；设置下拉数据源）
             translate::set_panel_target_lang, // T12：面板临时目标语言（FR-2.7 易失槽，最小契约扩展）
+            translate::verify::verify_connection_cmd, // T14：连接验证（6.1；rename="verify_connection"，D6）
+            windows::settings::get_settings,          // T13：设置读取（6.1；INV-1 仅 hasKey）
+            windows::settings::set_settings, // T13：通用设置即时保存（6.1；热键/监听走专通道）
+            windows::settings::open_settings, // T13：设置窗单例前置（6.1；EX-2 入口）
+            windows::onboarding::open_config_guide, // T14 新增：FR-11.4 配置引导（guide 模式复用窗体）
+            windows::onboarding::finish_onboarding, // T14：完成/跳过写 meta.onboardingCompleted
         ])
         .setup(|app| {
             // 启动序列 1：配置加载（T2 模块；原子写/迁移桩在 config::load_from 内完成）。
@@ -58,6 +66,15 @@ pub fn run() {
             // 启动序列 6：translate 暖窗预创建并隐藏（D5/J1；常驻复用，隐藏≠销毁——T11）。
             // 失败阻断启动：无面板窗口应用不可用（spec 5.5 生命周期行）。
             windows::translate::init(app.handle())?;
+            // 启动序列 7：首启引导检测（FR-11.1/11.5——onboardingCompleted 与 hasKey 均无效
+            // 才显示四步向导；已配置有效配置或已告知跳过后永不自动弹出）。
+            // 失败不阻断启动（应用照常常驻；用户可经设置/托盘入口补配，截图识别不受影响）。
+            let startup_settings = config::read_global()?;
+            if windows::onboarding::should_show_first_run(&startup_settings) {
+                if let Err(err) = windows::onboarding::show_first_run(app.handle()) {
+                    log::error!("onboarding: 首启引导显示失败（不阻断启动）: {err}");
+                }
+            }
 
             // TODO(T16)：action_router 接线——hotkey::set_callback +
             //   clipboard_monitor::set_translate_trigger（依赖方向 action_router→能力模块，spec 5.4）。

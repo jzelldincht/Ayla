@@ -461,3 +461,128 @@ T6/T7/T8 一并交付（会话模型与提示词构造、流式客户端、取�
 - 实测门禁：`cargo test` 132/132（121 单测 + 11 集成；含 windows::translate 钳制与 DPI 用例）、clippy -D warnings 通过、fmt --check 通过；`pnpm lint`（svelte-check 0 错 0 警）、`pnpm vitest run` 57/57、`pnpm build` 通过。
 - 关键机制核对：place_at_cursor 唯一显示路径（物理坐标→显示器归属→尺寸×scale→+16,+16→C2 退化→四角翻转→8px 钳制不跨屏）；Focused(false)+hideOnBlur 隐藏、D10 隐藏不取消翻译、幂等 hide；C3 topmost show 置位/隐藏清除；尺寸逻辑值持久化 + clamp（默认 460×340/最小 360×240/工作区 80% 上限）；四形态与状态设计按 design-spec v0.2（含 A1 所有原文区可编辑+重译）。
 - 未知风险：未在真机验证光标/面板在混合 DPI 下的实际显示（归 checklist I4/F3 真机项）；ui 细节视觉验收归 QA。
+
+---
+
+# 实施报告：T13 设置页 + T14 首次运行引导与配置引导复用
+
+> Task ID: alya-v1
+> 版本: v0.1
+> 所有者: 实施工程师
+> 基于: tasks.md（APPROVED，T13/T14 条目）+ spec.md v0.3（5.5/6.1/6.2/6.3/5.8 EX-7）+ design-spec.md v0.2（6/7 章）+ requirements.md v0.4（FR-11/FR-13/FR-14.2、第 7 章）
+> 状态: DRAFT，交主 Agent 验收
+> 最后更新: 2026-08-27
+
+## 1. 概述
+
+- **T13**：`src-tauri/src/windows/settings.rs` 设置窗壳（有边框、可调、默认 760×540/最小 680×480 逻辑、
+  单例隐藏复用、关闭=隐藏）+ `get_settings`/`set_settings`/`open_settings` 命令；`src/settings/` 前端
+  六分组（AI 服务/翻译/面板/快捷键/截图/通用）逐项对齐 FR-13 十六项（值渲染自 get_settings 镜像，
+  不另立默认值），即时保存（行尾「已保存」1.5s 淡出/失败行内 error 常驻），快捷键录制控件状态机
+  （成功/冲突回退/取消，design-spec 7.2），API Key 固定 8 位掩码修改流（7.3/INV-1），OCR 语种下拉
+  （list_ocr_languages 自动+已装清单），主题三段控件即时生效，AI 服务分区常驻隐私提示块（J3）。
+- **T14**：`src-tauri/src/windows/onboarding.rs` 引导窗壳（固定 560×430、有边框、居中、完成/跳过后
+  隐藏保留、模式切换销毁重建）+ `open_config_guide`/`finish_onboarding` 命令 + `GuideFinishedHandler`
+  回调接口（T16 接线，FR-11.4 挂起翻译恢复）+ `onboarding://begin` 复位事件；`src/onboarding/` 前端
+  四步向导（欢迎→隐私告知→API Key→完成）与 guide 模式两步直达（隐私要点+Key），隐私步完整句子+
+  强调块平铺且「我已了解，继续」为唯一前进入口，Key 步验证连接行内反馈（可重试可跳过），
+  完成/跳过写 `meta.onboardingCompleted`；lib.rs 启动序列第 7 步首启检测
+  （`!onboardingCompleted && !hasKey` 才显示；FR-11.5 已配置行为永不自动弹出）。
+
+## 2. 修改文件清单
+
+| 文件 | 状态 | 说明 |
+|---|---|---|
+| `src-tauri/src/windows/settings.rs` | 占位→实现 | 窗壳（ensure_window/open_settings/CloseRequested=隐藏）+ get_settings/set_settings + 纯函数 apply_settings_patch/broadcast_patch + 6 单测 |
+| `src-tauri/src/windows/onboarding.rs` | 占位→实现 | 窗壳（first/guide 双模式）+ should_show_first_run + show_first_run/open_config_guide/finish_onboarding + GuideFinishedHandler 回调接口 + 2 单测 |
+| `src-tauri/src/events.rs` | 修改 | 追加 EVENT_ONBOARDING_BEGIN（"onboarding://begin"）、OnboardingMode（first/guide）、OnboardingBeginPayload + 1 单测 |
+| `src-tauri/src/hotkey/mod.rs` | 修改 | 追加 `hotkey_registration_failures` 命令（设置页行尾 warning 图标数据源；T13 新增契约） |
+| `src-tauri/src/translate/verify.rs` | 修改 | 追加 `verify_connection_cmd`（`#[tauri::command(rename = "verify_connection")]`，T14 前端行内验证入口；内部语义函数保持原样） |
+| `src-tauri/src/lib.rs` | 修改 | invoke_handler 追加 7 命令；setup 启动序列第 7 步首启检测并显示引导（失败不阻断启动） |
+| `src/lib/types.ts` | 修改 | EVENTS.onboardingBegin、OnboardingMode 类型、OnboardingBeginPayload（镜像 events.rs） |
+| `src/lib/ipc.ts` | 修改 | hotkeyRegistrationFailures/openConfigGuide/finishOnboarding/onOnboardingBegin 四个类型化包装 |
+| `src/settings/App.svelte` | 占位→实现 | 六分组设置页全部 UI 与保存逻辑 |
+| `src/settings/HotkeyRecorder.svelte` | 新建 | 录制控件状态机（Esc/点外取消、修饰键+主键组合构造、失败回展示态） |
+| `src/settings/App.test.ts` | 新建 | 17 用例（六分组默认值/即时保存淡出+error/录制三分支+warning 图标/掩码修改流/隐私块/主题/监听专通道/OCR 下拉） |
+| `src/onboarding/App.svelte` | 占位→实现 | 四步向导 + guide 两步直达 + 验证连接行内反馈 + 不支持 Esc |
+| `src/onboarding/App.test.ts` | 新建 | 11 用例（步骤流转/隐私步阻断与跳过路径/验证成功失败重试/guide 直达/guide 跳过/Esc 拦截） |
+| `.specs/alya-v1/implementation-report.md` | 追加 | 本节 |
+| `.specs/alya-v1/tasks.md` | 修改 | T13/T14 Status → DONE（附证据行） |
+| `dev-logs/2026-08-26.log` | 追加 | 任务事件 |
+
+未改动：tauri.conf.json、T4 hotkey 既有命令与回调/注册逻辑（仅同模块追加新命令）、T5/T6/T9/T10/T11/T12 既有实现、其他任务范围文件。
+
+## 3. 门禁结果（全部实际运行）
+
+| # | 门禁 | 结果 | 关键输出 |
+|---|---|---|---|
+| G1 | `cargo fmt --check` | **PASS** | `cargo fmt` 后 `--check` 无输出（3 文件格式化） |
+| G2 | `cargo clippy --all-targets -- -D warnings` | **PASS** | Finished（0 warning；unwrap_used/expect_used=deny 全程生效，新测试无裸 unwrap/expect） |
+| G6 | `cargo test`（全量） | **PASS** | lib 130 通过 + 2 忽略（OCR 真机冒烟）+ 集成 11 通过 = **141/141，0 失败**（原 121 单测 + 新增 9：settings 6 / onboarding 2 / events 1） |
+| G3 | `pnpm lint`（eslint + svelte-check） | **PASS** | `svelte-check found 0 errors and 0 warnings`；eslint 0 error |
+| G6 | `pnpm vitest run` | **PASS** | **85/85 通过**（原 57 + 新增 28：settings 17 / onboarding 11） |
+| G3 | `pnpm build`（vite 六入口） | **PASS** | `✓ built in 771ms`（settings/onboarding 产物含四窗 CSS/JS） |
+| G4 | GPL 门禁自查 | **PASS** | 全部为 tauri/serde/公开前端模式原创实现；无 pot-desktop 同构代码（借鉴清单外新增逻辑均为本项目 spec/design-spec 直接规定） |
+| G5 | 凭据与日志纪律 | **PASS** | 全部测试哑值（sk-fake-*）；无真实凭据；日志无 Key 值（settings 加密失败日志仅记类别，INV-7）；API Key 经 set_settings 入参即 DPAPI 加密（INV-1） |
+
+## 4. 关键行为说明（与设计规范逐条核对）
+
+- **T13 保存链**：控件变更 → IPC 命令（set_settings/rebind_hotkey/set_clipboard_monitor）→ 写 config 落盘 →
+  `settings://changed` 广播（**剥离 apiKey**，INV-1；热键/监听广播不携带——专通道语义）→ 前端镜像更新。
+  rebind_hotkey（T4）成功后无广播，设置页以权威 `get_settings` 刷新键帽与降级图标（INV-8：前端不自改值）。
+- **录制状态机**：展示（键帽+修改；降级项行尾 warning 图标，title「注册失败，点击修改」）→ 录制
+  （「请按下新的快捷键…」；Esc/点外取消不改值；组合须 ≥1 修饰键 + 主键，主键取 e.code 物理键规避
+  Shift 大小写漂移，修饰键序 Ctrl+Alt+Shift+Super）→ rebind_hotkey（后端查重/解旧注新/回退语义）→
+  成功键帽更新+「已保存」；失败行内 error（外部占用=design-spec 固定文案「该快捷键已被其他程序占用，
+  已恢复原快捷键」；内部共键=后端点名占用方消息）+ 后端系统通知（EX-7，T4 既有）。
+- **API Key（INV-1）**：展示恒为 8 位 `••••••••`（hasKey=true）或「未配置」；「修改」清空录入 +
+  type=password + 显示/隐藏切换（仅录入内容）；「保存」空值=清密文（未配置）；取消放弃；保存后权威
+  刷新（hasKey 不随广播更新——广播无 Key 字段）。任何路径无明文/密文回显。
+- **T14 首启判定**：`should_show_first_run = !meta.onboardingCompleted && !hasKey`（FR-11.5：已配置
+  有效 Key 或已告知跳过后永不自动弹出；判定含 DPAPI 解密失败降级为假=未配置，密码重置后重新引导，
+  与 spec 5.7.8 降级口径一致）；完成/跳过统一 `finish_onboarding` 写 meta=true + 广播 + 隐藏保留 +
+  guide 模式触发回调（参数 hasKey）。
+- **guide 模式（FR-11.4）**：`open_config_guide` 复用同一窗体（URL `?mode=guide`），页面直达隐私要点+
+  Key 两步；完成/跳过 → `finish_onboarding` → Rust `GuideFinishedHandler::guide_finished(hasKey)`
+  （T16 接线：hasKey=true 恢复挂起翻译 / false 丢弃）；每次显示经 `onboarding://begin {mode}` 复位页面
+  （复用窗残留状态规避，与 panel://show 同先例）。
+- **引导窗不支持 Esc**：前端 window keydown 拦截（preventDefault+stopPropagation）；原生关闭按钮
+  CloseRequested → prevent_close + hide（未完成时下次启动重新弹出）。
+- **主题即时预览**：主题变更 patch → 广播回流 → store mergeSettingsPatch → applyThemeAppearance →
+  全窗（含设置窗）data-theme 切换（FR-1.2/I5）；设置窗与面板共用 store 逻辑。
+
+## 5. 偏离与契约扩展说明（需主 Agent 知悉，无静默决策）
+
+1. **新增命令（spec 6.1 原表外，最小契约扩展——沿用 C1/T9/T12 先例，均经事件/命令注释记录）**：
+   `hotkey_registration_failures`（设置页启动冲突 warning 图标数据源，design-spec 7.2 要求"从启动
+   注册结果探测"而 6.1 无此通道）；`open_config_guide`/`finish_onboarding`（FR-11.4 引导入口与
+   完成落盘，6.1 原表缺失）；`verify_connection` 现以 `#[tauri::command(rename)]` 注册为命令
+   （6.1 已有该行但 T8 仅实现为内部 async fn，未注册）。对应 TS 镜像同步追加。
+2. **开机自启（FR-1.5）T13 仅落 config 值**：实际 HKCU Run 写入/移除归 T15（tauri-plugin-autostart
+   装配任务），本任务不越权接线；设置页开关语义完整（及时保存+镜像），T15 接插件后生效路径闭环。
+3. **「暂不使用」跳转到完成步（而非直接隐藏）**：design-spec 6「暂不使用＝跳过整个引导（FR-11.3
+   路径，应用照常驻留）」——实现取"跳过剩余步骤、经完成步单一出口"，与「暂时跳过」同路径；
+   完成步「进入 Alya」或 guide 模式均直接收尾，行为等价且统一。
+4. **rebind_hotkey 无 settings://changed 广播**（T4 范围既有行为）：设置页以 rebind 成功后权威
+   get_settings 刷新（含降级图标）；若主 Agent 认为 rebind 应广播，可归 T16 统一补（改动 T4）。
+5. **settings 窗 CloseRequested 拦截为 hide**：design-spec 7.1 未明言设置窗关闭语义；按 spec 5.5
+   「关闭=隐藏」（窗口清单一行），与 FR-1.3 常驻口径一致；与「隐藏复用」共同满足单例。
+6. **onboarding 窗模式切换 = 销毁重建**：URL 查询参数（?mode=guide）不可变，模式变化时 destroy 后
+   重建（日志记录）；同模式复用仅 show+focus+onboarding://begin 复位。
+7. **「已保存」淡出实现**：1.5s 后 300ms 透明度过渡再移除（总 1.8s）；测试以 fake timers 验证
+   出现→fading→移除三态。
+8. **指标口径**：设置页文本输入（接口地址/模型名/阈值）采用 change 事件（blur/Enter 提交）保存，
+   非每键写盘（避免 IME 组合期/每 keystroke 全量广播的噪音）；设计规范"任一控件变更即刻生效"按
+   控件语义解释（选择/开关/分段/阈值即时；文本输入提交即保存），如需每键保存请裁决。
+
+## 6. 遗留与后续对接
+
+- T16：`onboarding::set_guide_finished_handler` 注入（action_router 恢复 FR-11.4 挂起队列）；
+  `open_config_guide` 由 action_router 前置检查链调用（hasKey==false 时弹引导+挂起）；引导可见期压制
+  面板已由 T11（is_hide_suppressed 查 onboarding 可见性）就绪。
+- T15：托盘/autostart 插件接线（本任务 autostart 仅落 config）；托盘「设置」菜单项调
+  open_settings 命令。
+- 真机冒烟（首次启动走向导→二次启动不再弹出；设置页切主题/改键冲突/OCR 下拉）与环境级验收归
+  checklist 真机矩阵与 T16 集成阶段（本任务以单元/组件级闭环：Rust 补丁/广播/首启判定 + 前端
+  28 组件用例）。
+- 风险：无。

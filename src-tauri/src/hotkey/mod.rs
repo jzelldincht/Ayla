@@ -135,6 +135,14 @@ pub fn degraded_functions() -> Result<Vec<HotkeyFunction>, AppError> {
     Ok(state_lock()?.degraded.clone())
 }
 
+/// `hotkey_registration_failures` 命令（T13 新增契约；design-spec 7.2 数据源）——
+/// 设置页快捷键行尾常驻 warning 图标：返回启动注册失败（=降级态）功能清单，
+/// 为空表示五项全部注册成功。服务未初始化（异常装配路径）如实返回错误，前端保守渲染。
+#[tauri::command]
+pub fn hotkey_registration_failures() -> Result<Vec<HotkeyFunction>, AppError> {
+    degraded_functions()
+}
+
 // ---------------------------------------------------------------------------
 // 启动注册（setup 调用；聚合逻辑可独立测试）
 // ---------------------------------------------------------------------------
