@@ -20,6 +20,8 @@ export const EVENTS = {
   ocrResult: 'ocr://result',
   settingsChanged: 'settings://changed',
   selectionClosed: 'selection://closed',
+  /** T9 追加：框选会话开始（载荷无位图——冻结帧经 get_mask_snapshot 拉取）。 */
+  maskBegin: 'mask://begin',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -212,6 +214,21 @@ export interface CancelSelectionCommand {
   sessionId: string;
 }
 
+/** get_mask_snapshot 参数（T9 追加命令；monitorIndex 由窗口 URL 查询参数提供，前端本文件不传）。 */
+export interface GetMaskSnapshotCommand {
+  monitorIndex: number;
+}
+
+/**
+ * get_mask_snapshot 返回（T9 追加）：dataUrl 为 data:image/png;base64,... 内存字符串——
+ * 遮罩页解析绘制后即弃，不持久化；位图本体仅存于 Rust 会话（INV-3 例外说明见 events.rs 注释）。
+ */
+export interface MaskSnapshotResult {
+  sessionId: string;
+  monitorIndex: number;
+  dataUrl: string;
+}
+
 export interface ReocrCommand {
   sessionId: string;
   lang: string;
@@ -278,4 +295,10 @@ export interface OcrResultPayload {
 
 export interface SelectionClosedPayload {
   sessionId: string;
+}
+
+/** mask://begin（T9 追加）：新框选会话开始（载荷无位图——冻结帧经 get_mask_snapshot 拉取）。 */
+export interface MaskBeginPayload {
+  sessionId: string;
+  monitorIndex: number;
 }

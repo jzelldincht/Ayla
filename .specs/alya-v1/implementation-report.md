@@ -437,3 +437,16 @@ T6/T7/T8 一并交付（会话模型与提示词构造、流式客户端、取�
 - renderMode 消费（C1）：`translation://begin` 已携带；前端 T12 按 stream/block 呈现。
 - 残余风险：取词对终端类应用（cmd/pwsh 复制行为）的副作用与 UIPI/安全桌面（EX-11）属系统限制，按真机矩阵 A1/A2 承接；EX-5 的 30s 固定阈值 Q9 不开放设置（双方实现一致）。
 - 风险：无。
+
+---
+
+## 主 Agent 验收附录（T9/T10，2026-08-27）
+
+实施者会话在文档收尾阶段失效（工作代码全部完成、测试与门禁全绿），由主 Agent 完成验收文档与任务状态更新。以下结论均为主 Agent 实测证据：
+
+- capture/mod.rs：MonitorInfo（tauri Monitor 镜像）、局部↔全局坐标换算（含负坐标副屏往返恒等）、SelectionRect 界定、is_valid_selection（Q11 双条件：位移<4px 或面积<64px² 视同取消）、裁剪钳制（越界钳到帧边缘、完全越界显式错误）、会话级 MEMORY 管理，全程零落盘（grep 无任何 fs::write/File::create）。
+- windows/mask.rs + src/mask/App.svelte：每显示器一窗池化（拓扑校验重建）、mask 窗属性（无边框/topmost/skip_taskbar）、冻结快照经 `get_mask_snapshot` 以 data: URL 内存字符串传入遮罩页（方案二，无磁盘无 HTTP，INV-3）；canvas 挖空选区、尺寸标签、Esc 取消、松开确认、无效单击等宽均实现。
+- ocr/mod.rs：Windows.Media.Ocr 封装（InMemoryRandomAccessStream→BitmapDecoder→SoftwareBitmap、spawn_blocking、Auto=TryCreateFromUserProfileLanguages / Tag=TryCreateFromLanguage、AvailableRecognizerLanguages 枚举、EX-6 两形态错误分类 + 微软官方链接、空文本透传 FR-7.2）。
+- 主 Agent 实测门禁：`cargo test` **108/108 通过**（含 capture 几何/裁剪/会话、ocr 分类）；`cargo clippy --all-targets -- -D warnings` 通过；`cargo fmt --check` 通过；`pnpm lint`（svelte-check 0 错 0 警）通过；`pnpm build` 通过。
+- 审计中发现并已验证：实施者此前遗留的捕获会话测试隔离问题（全局会话状态导致并行测试污染，"session_errors_when_no_active"）在代理修正后消失；期间实施者冒烟启动的 alya.exe 曾锁住 target\debug\alya.exe，已由主 Agent terminate 后复跑通过。
+- 遗留：多显示器/DPI 混布真机验证归 checklist 真机矩阵（F1/F3/I4）；OCR 真机识别精度观察归 X 系列。

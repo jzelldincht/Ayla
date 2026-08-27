@@ -55,6 +55,17 @@ pub enum AppError {
     /// 内部错误：本地配置读写/序列化失败等（非 EX 场景；不前端呈现，见模块头）。
     #[error("本地配置错误: {0}")]
     Config(String),
+    /// 内部错误：抓屏/截图会话失败（捕获、裁剪、PNG 编码、会话缺失等）。spec 5.8 无对应 EX 条目
+    /// （EX-11 专指"安全桌面属预期"，与真实截屏失败不得混同）——非 EX 场景，T16 决定呈现。
+    #[error("截图失败: {0}")]
+    Capture(String),
+    /// 内部错误：OCR 运行期失败（PNG 解码、识别执行、读取结果）。EX-6 **仅**指引擎创建失败即
+    /// 语言包缺失；解码失败提示装语言包是误导，故二者分类不得混淆——非 EX 场景。
+    #[error("OCR 失败: {0}")]
+    Ocr(String),
+    /// 内部错误：遮罩窗池/窗口生命周期失败（创建、显示、定位、销毁）——非 EX 场景。
+    #[error("窗口操作失败: {0}")]
+    Window(String),
 }
 
 /// IPC 序列化（tauri 命令返回契约，T4/T5 起注册以 `Result<_, AppError>` 返回的命令要求
@@ -86,6 +97,9 @@ impl AppError {
             AppError::Superseded(_) => "EX-13",
             AppError::ServerResponse(_) => "EX-14",
             AppError::Config(_) => "config",
+            AppError::Capture(_) => "capture",
+            AppError::Ocr(_) => "ocr",
+            AppError::Window(_) => "window",
         }
     }
 
@@ -182,6 +196,39 @@ mod tests {
         assert!(!AppError::EmptyText("x".into()).retriable());
         assert!(!AppError::SelectionFailed("x".into()).retriable());
         assert!(!AppError::Config("x".into()).retriable());
+        assert!(!AppError::Capture("x".into()).retriable());
+        assert!(!AppError::Ocr("x".into()).retriable());
+        assert!(!AppError::Window("x".into()).retriable());
+    }
+
+    /// 内部编码纪律：capture/ocr/window 属内部错误（非 EX 条目），编码值不与 "EX-*" 冲突且互不相同。
+    #[test]
+    fn internal_variants_have_internal_codes() {
+        let internal = [
+            AppError::Capture("抓屏失败".into()),
+            AppError::Ocr("解码失败".into()),
+            AppError::Window("窗创建失败".into()),
+        ];
+        for err in &internal {
+            let code = err.ex_code();
+            assert!(
+                !code.starts_with("EX-"),
+                "内部变体不得伪装成 EX 条目：{code}"
+            );
+            assert!(!err.retriable(), "内部错误不提供重试动作（无 EX 呈现口径）");
+        }
+        assert_ne!(
+            AppError::Capture("a".into()).ex_code(),
+            AppError::Ocr("a".into()).ex_code()
+        );
+        assert_ne!(
+            AppError::Ocr("a".into()).ex_code(),
+            AppError::Window("a".into()).ex_code()
+        );
+        assert_ne!(
+            AppError::Window("a".into()).ex_code(),
+            AppError::Config("a".into()).ex_code()
+        );
     }
 
     /// 错误信息可直接作为面板错误态 message（无独立格式化层级）。

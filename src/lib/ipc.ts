@@ -8,6 +8,9 @@ import type {
   CancelSelectionCommand,
   CancelTranslationCommand,
   CompleteSelectionCommand,
+  GetMaskSnapshotCommand,
+  MaskBeginPayload,
+  MaskSnapshotResult,
   OcrLanguage,
   PanelShowPayload,
   RebindHotkeyCommand,
@@ -79,6 +82,14 @@ export function completeSelection(command: CompleteSelectionCommand): Promise<vo
 /** cancel_selection：Esc 取消。 */
 export function cancelSelection(command: CancelSelectionCommand): Promise<void> {
   return invoke('cancel_selection', { sessionId: command.sessionId });
+}
+
+/**
+ * get_mask_snapshot（T9 追加命令）：本屏冻结帧 → data: URL 内存字符串（INV-3 例外说明见
+ * events.rs 注释：不落盘、无 HTTP，绘制后即弃）。monitorIndex 由遮罩页 URL 查询参数提供。
+ */
+export function getMaskSnapshot(command: GetMaskSnapshotCommand): Promise<MaskSnapshotResult> {
+  return invoke('get_mask_snapshot', { monitorIndex: command.monitorIndex });
 }
 
 /** reocr：对保留裁剪块换语种重识别（FR-6.2）。 */
@@ -167,4 +178,9 @@ export function onSelectionClosed(
   handler: (payload: SelectionClosedPayload) => void,
 ): Promise<UnlistenFn> {
   return subscribeEvent<SelectionClosedPayload>(EVENTS.selectionClosed, handler);
+}
+
+/** mask://begin（T9 追加）：新框选会话开始——遮罩页据此重新拉取冻结帧。 */
+export function onMaskBegin(handler: (payload: MaskBeginPayload) => void): Promise<UnlistenFn> {
+  return subscribeEvent<MaskBeginPayload>(EVENTS.maskBegin, handler);
 }

@@ -27,10 +27,17 @@ pub const EVENT_TRANSLATION_ERROR: &str = "translation://error";
 pub const EVENT_OCR_RESULT: &str = "ocr://result";
 pub const EVENT_SETTINGS_CHANGED: &str = "settings://changed";
 pub const EVENT_SELECTION_CLOSED: &str = "selection://closed";
+/// `mask://begin`（T9 追加，主 Agent 批准的"data: URL 拉取"方案配套，见 implementation-report T9 节）：
+/// 框选触发后 Rust 向各 `mask-{i}` 窗广播一次"新会话开始"（`MaskBeginPayload`，仅会话标识与屏号——
+/// **不含位图**；冻结快照经 `get_mask_snapshot` 命令拉取）。前端收到后重新拉帧，消除池化窗显示旧帧。
+pub const EVENT_MASK_BEGIN: &str = "mask://begin";
 
 /// 翻译面板窗口 label（spec 5.5：`translate`；T11 预创建该窗）。
 /// 翻译流式事件（begin/chunk/done/error）emit 目标即此 label，前后端共用唯一来源。
 pub const WINDOW_TRANSLATE_LABEL: &str = "translate";
+
+/// 遮罩窗 label 前缀（spec 5.5：`mask-{i}`，i 为按显示器 (x,y) 排序后的编号 0..n，T9）。
+pub const WINDOW_MASK_LABEL_PREFIX: &str = "mask-";
 
 // ---------------------------------------------------------------------------
 // 共享枚举（截面/面板/命令通用）
@@ -306,6 +313,26 @@ pub struct CancelSelectionCommand {
     pub session_id: String,
 }
 
+/// `get_mask_snapshot` 参数（T9 追加命令，主 Agent 批准方案二——遮罩页冻结帧经命令以 data: URL
+/// 内存字符串返回；INV-3 说明见模块头/implementation-report T9 节：不落盘、无 HTTP、位图仅存于
+/// Rust 会话与本次一次性返回，后续 IPC 仅传文本）。monitorIndex 从窗口 URL 查询参数 `?monitorIndex=`
+/// 读得（窗口创建时按 label mask-{i} 写入，非 IPC）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetMaskSnapshotCommand {
+    pub monitor_index: u32,
+}
+
+/// `get_mask_snapshot` 返回：`{sessionId, monitorIndex, dataUrl}`（dataUrl＝`data:image/png;base64,...`
+/// 内存字符串，窗口解析后仅绘制一次即弃，不持久化）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MaskSnapshotResult {
+    pub session_id: String,
+    pub monitor_index: u32,
+    pub data_url: String,
+}
+
 /// `reocr` 参数（对保留裁剪块换语种重识别，FR-6.2）。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -429,6 +456,15 @@ pub struct OcrResultPayload {
 #[serde(rename_all = "camelCase")]
 pub struct SelectionClosedPayload {
     pub session_id: String,
+}
+
+/// `mask://begin`（T9 内部引导事件，见模块头）：新框选会话开始。
+/// 载荷**不含位图**——冻结帧经 `get_mask_snapshot` 命令按屏号拉取。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MaskBeginPayload {
+    pub session_id: String,
+    pub monitor_index: u32,
 }
 
 // ---------------------------------------------------------------------------
@@ -585,5 +621,37 @@ mod tests {
             json,
             r#"{"sessionId":"s1","monitorIndex":1,"rect":{"x":10,"y":20,"width":100,"height":50}}"#
         );
+    }
+
+    #[test]
+    fn mask_contract_types_serde_shape() {
+        // mask://begin 载荷（camelCase；不含任何位图字段）
+        let begin = MaskBeginPayload {
+            session_id: "s7".into(),
+            monitor_index: 0,
+        };
+        let json = serde_json::to_string(&begin).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(json, r#"{"sessionId":"s7","monitorIndex":0}"#);
+
+        // get_mask_snapshot 命令参数（仅 monitorIndex，无需 sessionId——后端取活动会话）
+        let cmd = GetMaskSnapshotCommand { monitor_index: 1 };
+        let json = serde_json::to_string(&cmd).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(json, r#"{"monitorIndex":1}"#);
+
+        // 返回（dataUrl 为内存 data: URL 字符串）
+        let res = MaskSnapshotResult {
+            session_id: "s7".into(),
+            monitor_index: 1,
+            data_url: "data:image/png;base64,QQ==".into(),
+        };
+        let json = serde_json::to_string(&res).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            json,
+            r#"{"sessionId":"s7","monitorIndex":1,"dataUrl":"data:image/png;base64,QQ=="}"#
+        );
+
+        // 事件名常量与 TS 镜像保持一致（EVENTS.maskBegin = "mask://begin"；label 前缀）
+        assert_eq!(EVENT_MASK_BEGIN, "mask://begin");
+        assert_eq!(WINDOW_MASK_LABEL_PREFIX, "mask-");
     }
 }

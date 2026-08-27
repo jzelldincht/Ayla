@@ -41,6 +41,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             hotkey::rebind_hotkey, // T4：改键专用（回退语义，spec 5.7.1）
             clipboard_monitor::set_clipboard_monitor, // T5：三方开关统一入口（FR-5.1，INV-8）
+            windows::mask::complete_selection, // T9：框选确认（6.1；无效选区按 Q11 视同取消）
+            windows::mask::cancel_selection, // T9：Esc 取消（6.1；无残留 FR-8.3/8.6）
+            windows::mask::get_mask_snapshot, // T9 追加（主 Agent 批准）：遮罩页拉取冻结帧（data: URL）
+            ocr::list_ocr_languages,          // T10：已装 OCR 语言包清单（6.1；设置下拉数据源）
         ])
         .setup(|app| {
             // 启动序列 1：配置加载（T2 模块；原子写/迁移桩在 config::load_from 内完成）。
@@ -54,6 +58,27 @@ pub fn run() {
             // TODO(T16)：action_router 接线——hotkey::set_callback +
             //   clipboard_monitor::set_translate_trigger（依赖方向 action_router→能力模块，spec 5.4）。
             // TODO(T11/T15)：托盘初始化（tray.rs）、单实例 pid 缓存、translate 暖窗预创建。
+            // [T9 冒烟临时入口] ALYA_MASK_SMOKE=1 时按间隔时段触发三次框选（Esc / 无效单击 / 有效拖拽，
+            // 时间与冒烟脚本对齐；本块冒烟后移除，不进生产）。
+            if std::env::var_os("ALYA_MASK_SMOKE").is_some() {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    for (delay_ms, tag) in [
+                        (3000u64, "esc"),
+                        (15000, "invalid-click"),
+                        (27000, "valid-drag"),
+                    ] {
+                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                        log::info!("[冒烟] 触发截图框选：{tag}");
+                        match windows::mask::start_capture_session(&handle) {
+                            Ok(session_id) => {
+                                log::info!("[冒烟] 框选已触发 sessionId={session_id} tag={tag}")
+                            }
+                            Err(err) => log::error!("[冒烟] 框选触发失败 tag={tag}: {err}"),
+                        }
+                    }
+                });
+            }
             Ok(())
         })
         .build(tauri::generate_context!())

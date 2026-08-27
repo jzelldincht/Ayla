@@ -40,8 +40,11 @@ tokio-util = "0.7"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-base64 = "0.22" # DPAPI 密文 base64 编码（T3，spec 5.7.8）
+base64 = "0.22" # DPAPI 密文 base64 编码（T3，spec 5.7.8）+ 遮罩快照 data: URL 编码（T9）
 log = "0.4" # 日志 facade（tauri-plugin-log 注册于 T1；spec 5.7.8 解密降级需记无值日志）
+# T10 追加 windows-future：IAsyncOperation 的阻塞等待原语 Async::join（windows 0.62 不再内联
+# 提供 blocking get，官方配套 future crate 与 windows 同依赖树；spec 5.3 清单补充，MIT）。
+windows-future = "0.3"
 # Windows 系统绑定（OCR/DPAPI/剪贴板序号/前台控制），features 见 spec 5.3。
 # 注：LocalFree（释放 CryptProtectData 返回的 BLOB）位于 Win32_Foundation，已在清单内，无需追加 feature。
 # T5 追加 Win32_System_DataExchange：GetClipboardSequenceNumber（spec 5.6.3 剪贴板序号轮询）。

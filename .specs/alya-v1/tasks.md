@@ -135,7 +135,7 @@
 
 ### P3 窗口与 UI
 
-- [ ] T9：截图会话与遮罩窗池（capture + mask）
+- [x] T9：截图会话与遮罩窗池（capture + mask）（DONE，2026-08-27 主 Agent 验收：108/108 测试全绿、clippy/fmt/lint/build 全通过；详见 implementation-report 验收附录）
   - Owner: 实施工程师（遮罩页面前端：前端工程师协作）
   - Depends on: T1、T3
   - 涉及: `src-tauri/src/capture/mod.rs`、`src-tauri/src/windows/mask.rs`、`src/mask/`（遮罩页）
@@ -144,7 +144,7 @@
   - 追溯: FR-8.1~8.6、D4、Q11、spec 5.7.4/5.7.5/5.6.2、INV-3、INV-4
   - Status: NOT_STARTED
 
-- [ ] T10：OCR 封装（Windows.Media.Ocr）
+- [x] T10：OCR 封装（Windows.Media.Ocr）（DONE，2026-08-27 主 Agent 验收：同上，EX-6 两形态与语言枚举实现确认）
   - Owner: 实施工程师
   - Depends on: T9、T3
   - 涉及: `src-tauri/src/ocr/mod.rs`
