@@ -586,3 +586,14 @@ T6/T7/T8 一并交付（会话模型与提示词构造、流式客户端、取�
   checklist 真机矩阵与 T16 集成阶段（本任务以单元/组件级闭环：Rust 补丁/广播/首启判定 + 前端
   28 组件用例）。
 - 风险：无。
+
+---
+
+## 主 Agent 验收附录（T15，2026-08-27）
+
+T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / instance.rs 353 行 / autostart.rs 97 行 / action_router.rs 151 行，8 个新测试），由主 Agent 验收确认：
+
+- 七项原生菜单（场景子菜单单选、输入翻译、截图识别、截图翻译、监听勾选、设置、退出；无划词项 FR-12.1）；左键单击=输入翻译（`show_menu_on_left_click(false)`，FR-12.2/Q8）；`settings://changed` 时以纯决策函数重建菜单（仅 set_menu 不发射，INV-8 无递归）；「退出」=注销热键→停监听→删 pid→app.exit(0)（FR-1.3）；菜单动作统一经 action_router::dispatch / set_scene / set_clipboard_monitor（动作唯一入口）。
+- D7：新实例在 Builder 装配前 read pid → OpenProcess+GetExitCodeProcess（STILL_ACTIVE=259）校验 → AllowSetForegroundWindow；被拒降级=日志+主实例侧无焦点置前；pid 于启动序列最早落点写入、退出清理；单实例插件回调 dispatch(InputTranslate)（EX-12/Q8）。
+- 自启：tauri-plugin-autostart 真实接线（general.autostart 开关驱动，启用写/关闭即移除，A10 便携版移动目录失效记录）。已知限制（X1/X2/A10 等）归真机矩阵。
+- 门禁（主 Agent 实测）：cargo test 149/149、clippy -D warnings 通过、fmt 通过；vitest 85/85；pnpm build 通过。真机冒烟（双实例唤起/托盘退出/自启重启）归 QA checklist I/A/X 组。

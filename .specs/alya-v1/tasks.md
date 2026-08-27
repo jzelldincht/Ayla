@@ -189,7 +189,7 @@
   - 追溯: FR-11.1~11.5、D6（消费 T8 命令）、J3、design-spec 6
   - Status: DONE（2026-08-27 实施工程师交付：onboarding.rs 窗壳（固定 560×430/有边框/居中/完成跳过隐藏保留/模式切换销毁重建/CloseRequested=隐藏）+ should_show_first_run（!onboardingCompleted && !hasKey，含 DPAPI 降级口径）+ show_first_run/open_config_guide/finish_onboarding（写 meta + 广播 + 隐藏 + guide 回调 GuideFinishedHandler(hasKey) 供 T16 接线）+ onboarding://begin 复位事件（复用窗残留规避）；verify_connection 经 rename 注册为命令（T8 内部函数保留）；src/onboarding/ 四步向导（欢迎/隐私告知完整句子+强调块唯一前进/Key 配置验证连接行内反馈可重试可跳过/完成「进入 Alya」）+ guide 模式两步直达 + 不支持 Esc；vitest 11 用例全过；门禁全部 PASS（Rust 141/141、前端 85/85））
 
-- [ ] T15：托盘、单实例与开机自启
+- [x] T15：托盘、单实例与开机自启（DONE，2026-08-27 主 Agent 验收：tray+instance+autostart+action_router 共 982 行，Rust 149/149 全绿；七项原生菜单/左键=输入翻译/镜像重建/D7 握手+降级/pid 写清/HKCU 自启 逐条核对）
   - Owner: 实施工程师
   - Depends on: T1、T2、T3、T4
   - 涉及: `src-tauri/src/tray.rs`、`src-tauri/src/lib.rs`（single-instance / autostart 装配）、`instance.pid` 缓存文件逻辑
