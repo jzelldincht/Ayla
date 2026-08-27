@@ -597,3 +597,13 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 - D7：新实例在 Builder 装配前 read pid → OpenProcess+GetExitCodeProcess（STILL_ACTIVE=259）校验 → AllowSetForegroundWindow；被拒降级=日志+主实例侧无焦点置前；pid 于启动序列最早落点写入、退出清理；单实例插件回调 dispatch(InputTranslate)（EX-12/Q8）。
 - 自启：tauri-plugin-autostart 真实接线（general.autostart 开关驱动，启用写/关闭即移除，A10 便携版移动目录失效记录）。已知限制（X1/X2/A10 等）归真机矩阵。
 - 门禁（主 Agent 实测）：cargo test 149/149、clippy -D warnings 通过、fmt 通过；vitest 85/85；pnpm build 通过。真机冒烟（双实例唤起/托盘退出/自启重启）归 QA checklist I/A/X 组。
+
+---
+
+## 主 Agent 验收附录（T16，2026-08-27）
+
+- action_router 已完成五动作统一汇聚：热键、托盘、单实例、剪贴板触发、框选延续与面板提交均进入统一门控；依赖方向与 EX-13 单路径核对通过。
+- FR-11.4 挂起队列容量 1、guide 完成恢复、无 Key 不发网络请求、OCR 上下文恢复、场景切换与三方同步接线已实现。
+- Rust 回归：146/146 单测、11/11 SSE 集成测试通过；`cargo clippy --all-targets -- -D warnings`、`cargo fmt --check` 通过。
+- 前端回归：vitest 85/85、`pnpm lint`（svelte-check 0 错 0 警）、`pnpm build` 通过。
+- 集成冒烟未完全执行：真实窗口/首启引导/哑 Key 网络错误卡片需在 T17 构建后与 QA 真机矩阵统一执行；未使用真实凭据。

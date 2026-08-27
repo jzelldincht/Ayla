@@ -45,6 +45,39 @@ fn pool() -> &'static Mutex<MaskPool> {
     POOL.get_or_init(|| Mutex::new(MaskPool::default()))
 }
 
+// ---------------------------------------------------------------------------
+// 框选完成延续回调（T16：action_router 注入——识别/送翻分路归 router，保持依赖方向单向）
+// ---------------------------------------------------------------------------
+
+/// 框选确认（裁剪成功、遮罩已隐藏）后的流程延续回调接口：T16 由 action_router 注入。
+/// 依赖方向：windows/mask → 回调接口（本模块）→ action_router 注入实现（router → mask，spec 5.4 无反向）。
+pub trait SelectionCompletedHandler: Send + Sync + 'static {
+    fn on_completed(&self, app: &AppHandle, session_id: String, monitor_index: u32);
+}
+
+static SELECTION_CONTINUED: OnceLock<Box<dyn SelectionCompletedHandler>> = OnceLock::new();
+
+/// 注入延续回调（仅一次；重复注入拒绝，防多源接线——hotkey::set_callback 同先例）。
+pub fn set_selection_completed_handler(
+    handler: Box<dyn SelectionCompletedHandler>,
+) -> Result<(), AppError> {
+    SELECTION_CONTINUED
+        .set(handler)
+        .map_err(|_| AppError::Config("mask: 框选延续回调重复注入".to_string()))
+}
+
+fn dispatch_selection_completed(app: &AppHandle, session_id: String, monitor_index: u32) {
+    match SELECTION_CONTINUED.get() {
+        Some(handler) => handler.on_completed(app, session_id, monitor_index),
+        None => {
+            // 未接线（T16 前）：裁剪完成即止（识别/送翻分路不存在），显式打点非静默失败。
+            log::debug!(
+                "mask: 框选完成 sessionId={session_id}，延续回调未接线（T16 action_router 接入）"
+            );
+        }
+    }
+}
+
 fn mask_label(index: u32) -> String {
     format!("{WINDOW_MASK_LABEL_PREFIX}{index}")
 }
@@ -241,7 +274,7 @@ fn hide_all_masks() {
 /// （保持"遮罩可见 ⇔ 活动会话存在"不变量，无残留——FR-8.6）。
 #[tauri::command]
 pub async fn complete_selection(
-    _app: AppHandle,
+    app: AppHandle,
     session_id: String,
     monitor_index: u32,
     rect: SelectionRect,
@@ -278,6 +311,8 @@ pub async fn complete_selection(
                 crop.height,
                 crop.png_bytes.len()
             );
+            // T16：裁剪完成回调延续（OCR 识别/送翻分路由 action_router 处理——依赖方向单向）。
+            dispatch_selection_completed(&app, session_id.clone(), monitor_index);
             Ok(())
         }
         Err(err) => {

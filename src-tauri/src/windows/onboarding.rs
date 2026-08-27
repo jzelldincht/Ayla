@@ -134,6 +134,7 @@ fn show_and_begin(
     window
         .show()
         .map_err(|e| AppError::Window(format!("onboarding 窗显示失败: {e}")))?;
+    log::info!("onboarding: 引导窗已显示（mode={mode:?}，FR-11.4 挂起判定依赖可见性）");
     if let Err(err) = window.set_focus() {
         log::warn!("onboarding: 引导窗焦点失败: {err}");
     }

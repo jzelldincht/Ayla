@@ -200,7 +200,7 @@
 
 ### P4 集成打磨
 
-- [ ] T16：action_router 汇聚与全链路集成
+- [x] T16：action_router 汇聚与全链路集成（DONE，2026-08-27 主 Agent 验收：action_router 全链路接线与挂起队列完成；Rust 146/146 单测+11/11 集成、vitest 85/85、clippy/fmt/lint/build 全通过）
   - Owner: 实施工程师
   - Depends on: T4、T5、T6、T7、T8、T9、T10、T11、T12、T13、T14、T15
   - 涉及: `src-tauri/src/action_router.rs`、各模块接线点

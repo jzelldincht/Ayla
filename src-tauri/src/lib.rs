@@ -48,7 +48,17 @@ pub fn run() {
     }
 
     let app = match tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                // spec 7.4：Debug 级含性能打点（hotkey_received/selection_done/panel_visible），
+                // 发布默认关（Info）；dev 构建（debug_assertions）开启 Debug 支撑 J1 工程实测。
+                .level(if cfg!(debug_assertions) {
+                    log::LevelFilter::Debug
+                } else {
+                    log::LevelFilter::Info
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // EX-12（spec 5.7.9）：互斥体已存在——不创建第二进程（二次实例已在插件 setup 内退场），
             // 唤起既有实例呼出输入翻译面板（Q8：与托盘左键同语义）。
@@ -78,6 +88,10 @@ pub fn run() {
             windows::settings::open_settings, // T13：设置窗单例前置（6.1；EX-2 入口）
             windows::onboarding::open_config_guide, // T14 新增：FR-11.4 配置引导（guide 模式复用窗体）
             windows::onboarding::finish_onboarding, // T14：完成/跳过写 meta.onboardingCompleted
+            action_router::translate, // T16：面板提交（6.1；FR-11.4 门控+EX-13 单路径）
+            action_router::cancel_translation, // T16：显式取消（6.1；Esc 中止，design-spec 3.5）
+            action_router::reocr,     // T16：截图换语种重识别（6.1/FR-6.2）
+            action_router::send_ocr_to_translate, // T16：截图一键送翻（6.1/FR-6.5）
         ])
         .setup(|app| {
             // 启动序列 1：配置加载（T2 模块；原子写/迁移桩在 config::load_from 内完成）。
@@ -94,6 +108,10 @@ pub fn run() {
             }
             // 启动序列 2：五项热键逐一注册 + EX-7 失败聚合通知（T4）。
             hotkey::init(app.handle())?;
+            // 启动序列 2.5：T16 全链路汇聚接线——action_router handler 注入 +
+            // 热键/剪贴板/引导完成/框选延续四回调接线（依赖方向 action_router→能力模块，spec 5.4）。
+            // 失败阻断启动：热键回调可能于 setup 期间触发，未接线即丢事件属集成不完整。
+            action_router::wire(app.handle())?;
             // 启动序列 3：剪贴板监听按持久化开关恢复（T5；失败不阻断启动，仅记录）。
             clipboard_monitor::start_if_enabled(app.handle());
             // 启动序列 4：托盘初始化（T15，spec 5.7.9——七项原生菜单 + 左键=输入翻译 FR-12.2）。
@@ -112,31 +130,6 @@ pub fn run() {
                 }
             }
 
-            // TODO(T16)：action_router 完整实现注入——action_router::set_action_handler +
-            //   hotkey::set_callback + clipboard_monitor::set_translate_trigger
-            //   （依赖方向 action_router→能力模块，spec 5.4）；T15 已保证托盘/单实例回调
-            //   统一经 action_router::dispatch（minimal 直通，见 action_router.rs 模块头）。
-            // [T9 冒烟临时入口] ALYA_MASK_SMOKE=1 时按间隔时段触发三次框选（Esc / 无效单击 / 有效拖拽，
-            // 时间与冒烟脚本对齐；本块冒烟后移除，不进生产）。
-            if std::env::var_os("ALYA_MASK_SMOKE").is_some() {
-                let handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    for (delay_ms, tag) in [
-                        (3000u64, "esc"),
-                        (15000, "invalid-click"),
-                        (27000, "valid-drag"),
-                    ] {
-                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-                        log::info!("[冒烟] 触发截图框选：{tag}");
-                        match windows::mask::start_capture_session(&handle) {
-                            Ok(session_id) => {
-                                log::info!("[冒烟] 框选已触发 sessionId={session_id} tag={tag}")
-                            }
-                            Err(err) => log::error!("[冒烟] 框选触发失败 tag={tag}: {err}"),
-                        }
-                    }
-                });
-            }
             Ok(())
         })
         .build(tauri::generate_context!())
