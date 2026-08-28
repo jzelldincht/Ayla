@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   setClipboardMonitor: vi.fn(() => Promise.resolve()),
   setSettings: vi.fn(() => Promise.resolve()),
   setPanelTargetLang: vi.fn(() => Promise.resolve()),
+  startDragging: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../lib/ipc', () => ({
@@ -19,6 +20,10 @@ vi.mock('../lib/ipc', () => ({
   setPanelTargetLang: mocks.setPanelTargetLang,
   getSettings: vi.fn(() => Promise.resolve(null)),
   onSettingsChanged: vi.fn(() => Promise.resolve(() => {})),
+}));
+
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({ startDragging: mocks.startDragging }),
 }));
 
 afterEach(() => {
@@ -136,5 +141,23 @@ describe('顶栏场景分段与定向语言', () => {
     const { onClose } = renderTopBar();
     fireEvent.click(screen.getByRole('button', { name: '关闭面板' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('顶栏拖拽（真机修复轮 2：显式 startDragging）', () => {
+  it('顶栏空白处按下左键 → 调用 startDragging', async () => {
+    renderTopBar();
+    const header = screen.getByText('互译').closest('header')!;
+    fireEvent.mouseDown(header, { button: 0 });
+    await tick();
+    expect(mocks.startDragging).toHaveBeenCalledTimes(1);
+  });
+
+  it('按在交互控件（按钮/下拉）上不触发拖拽；非左键不触发', async () => {
+    renderTopBar();
+    fireEvent.mouseDown(screen.getByRole('button', { name: '关闭面板' }), { button: 0 });
+    fireEvent.mouseDown(screen.getByRole('switch', { name: '剪贴板监听' }), { button: 2 });
+    await tick();
+    expect(mocks.startDragging).not.toHaveBeenCalled();
   });
 });

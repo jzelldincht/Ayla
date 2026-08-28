@@ -9,6 +9,7 @@
   import { settingsState, currentScene } from '../lib/stores';
   import { setClipboardMonitor, setSettings, setPanelTargetLang } from '../lib/ipc';
   import { DIRECTED_TARGET_LANGS } from '../lib/types';
+  import { getCurrentWindow } from '@tauri-apps/api/window';
 
   let {
     tempTarget,
@@ -50,9 +51,23 @@
     // FR-2.7：仅对下一次翻译生效（易失槽）；不回写默认值、不自动重译。
     void setPanelTargetLang({ lang: label }).catch((err) => console.warn('临时目标语言设置失败', err));
   }
+
+  /**
+   * 顶栏拖拽（真机修复轮 2，用户反馈"无法拖动窗口"）：
+   * `data-tauri-drag-region` 的注入式处理器在本应用中未生效，改为显式调用
+   * `startDragging()`（权限 core:window:default 内置）。交互控件不触发拖拽。
+   */
+  function onDragRegionMousedown(e: MouseEvent) {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('button, select, input, textarea')) return;
+    void getCurrentWindow().startDragging().catch((err) => console.warn('窗口拖拽失败', err));
+  }
 </script>
 
-<header class="topbar" data-tauri-drag-region>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- 拖拽区属指针专属交互（窗口移动无键盘等价操作；Esc/关闭控件已覆盖键盘退出路径） -->
+<header class="topbar" onmousedown={onDragRegionMousedown}>
   <div class="left-cluster">
     <!-- 监听开关：关=fg/muted 线性图标，开=accent 填充图标；tooltip 照设计文案 -->
     <button
