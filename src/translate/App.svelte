@@ -127,6 +127,15 @@
 
   function handlePanelShow(mode: PanelMode, p: { text?: string; sessionId?: string }) {
     panelMode = mode;
+
+    // 真机修复轮 7：隐藏≠清空（FR-1.3 精神——面板隐藏只是不可见，内容保留）。
+    // 输入模式重呼出不再无条件清空原文/译文（用户实测：调尺寸误触发隐藏后长译文丢失）。
+    // 仅携带新内容的入口（划词/剪贴板/OCR）才重置翻译态并覆盖。
+    if (mode === 'input') {
+      form = 'B';
+      return;
+    }
+
     errorPayload = null;
     outputText = '';
     currentRound = null;
@@ -143,9 +152,6 @@
       if (original.trim()) {
         void startTranslation(original, mode);
       }
-    } else if (mode === 'input') {
-      form = 'B';
-      original = '';
     } else {
       // ocr：识别结果形态（Alt+S）；Alt+D 的翻译 begin 到达后自动转形态 D
       form = 'C';

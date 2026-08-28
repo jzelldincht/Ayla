@@ -210,6 +210,10 @@ static PANEL_DRAG_UNTIL_MS: AtomicU64 = AtomicU64::new(0);
 /// 真实拖拽期间窗口持捕获不产生真实失焦；宽限期误压制真实失焦的代价仅为隐藏延迟半秒。
 const DRAG_BLUR_GRACE_MS: u64 = 500;
 
+/// 失焦复核延迟（真机修复轮 7）：模态循环虚假失焦在窗口仍持前台时到达，延迟后以
+/// Win32 前台真值复核；真实失焦（点击其他窗口）同样延迟该时长后隐藏（体感无差）。
+const BLUR_RECHECK_DELAY_MS: u64 = 150;
+
 fn now_unix_ms() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -481,35 +485,51 @@ pub fn panel_start_drag(window: tauri::WebviewWindow) -> Result<(), String> {
 }
 
 /// `Focused(false)`：hideOnBlur 开 且 无压制条件 → 隐藏。
-/// 压制条件（spec 5.7.3 交汇矩阵）：框选进行中（任一 mask 窗可见）、
-/// onboarding 可见（含 T14 引导窗与 T16 引导期压制投影）。
+/// 真机修复轮 7：**延迟 + 前台核验**。实证（修复轮 5 诊断）表明拖拽/缩放的系统模态循环
+/// 会发出虚假 `Focused(false)`，而窗口实际仍是前台活动窗口（用户实测：缩放面板时面板被
+/// 误隐藏）。因此收到事件后不立即隐藏，延迟 BLUR_RECHECK_DELAY_MS 后以 Win32 前台窗口
+/// 真值复核：仍在前台 → 不隐藏；确已失焦（用户点击了其他窗口）→ 隐藏。
 fn on_focus_lost(app: &AppHandle) {
-    // 真机修复轮 5 诊断：记录每次 Focused(false) 到达时的关键状态（定位"点击顶栏即消失"真实触发序）。
-    log::debug!(
-        "translate: Focused(false) 到达（拖拽宽限内={}, mask可见={}, hideOnBlur={}）",
-        drag_blur_in_grace(),
-        crate::windows::mask::any_visible(),
-        config::read_global()
-            .map(|s| s.panel.hide_on_blur)
-            .unwrap_or(true),
-    );
-    let window = match get_panel(app) {
-        Ok(w) => w,
-        Err(_) => return,
-    };
-    if !window.is_visible().unwrap_or(false) {
-        return; // 已隐藏（含 JS 主动隐藏）→ 幂等
-    }
-    if is_hide_suppressed(app) {
-        return;
-    }
     let hide_on_blur = config::read_global()
         .map(|s| s.panel.hide_on_blur)
         .unwrap_or(true);
-    if hide_on_blur {
-        if let Err(err) = hide_panel(app) {
+    if !hide_on_blur {
+        return;
+    }
+    log::debug!("translate: Focused(false) 到达（{BLUR_RECHECK_DELAY_MS}ms 后前台核验）");
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(BLUR_RECHECK_DELAY_MS)).await;
+        // 抑制条件与焦点状态均以延时后的实时值为准（拖拽/框选/引导可能在此期间开始）。
+        if is_hide_suppressed(&app) {
+            return;
+        }
+        let Ok(window) = get_panel(&app) else {
+            return;
+        };
+        if !window.is_visible().unwrap_or(false) {
+            return; // 已隐藏（幂等）
+        }
+        if panel_is_foreground(&window) {
+            log::debug!("translate: 模态循环虚假失焦（仍为前台窗口）→ 不隐藏");
+            return;
+        }
+        if let Err(err) = hide_panel(&app) {
             log::error!("translate: 失焦隐藏失败: {err}");
         }
+    });
+}
+
+/// 面板是否为系统前台窗口（Win32 真值；查询失败按"仍在前台"处理——宁可延迟隐藏也不误隐藏）。
+fn panel_is_foreground(window: &tauri::WebviewWindow) -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+    match window.hwnd() {
+        Ok(hwnd) => {
+            // SAFETY：GetForegroundWindow 无特殊约束（读取系统前台窗口句柄）。
+            let fg = unsafe { GetForegroundWindow() };
+            fg.0 as isize == hwnd.0 as isize
+        }
+        Err(_) => true,
     }
 }
 
