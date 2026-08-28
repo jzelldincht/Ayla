@@ -49,7 +49,7 @@ describe('first 模式四步流转', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '我已了解，继续' }));
     await tick();
-    expect(screen.getByRole('heading', { name: '配置 API Key（可跳过，FR-11.3）' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '配置 API Key（可跳过）' })).toBeTruthy();
     expect(stepName()).toContain('配置 API Key');
 
     fireEvent.click(screen.getByRole('button', { name: '继续' }));

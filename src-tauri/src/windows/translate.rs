@@ -22,7 +22,8 @@
 //! 四角溢出翻转、负坐标副屏、屏小于面板、100%/150% 换算。
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow,
@@ -197,6 +198,12 @@ pub fn place_panel(
 /// 等 DWELL 后若代次未再变（＝松手），才执行一次持久化。
 static RESIZE_GENERATION: AtomicU64 = AtomicU64::new(0);
 
+/// 面板 WebView 页面加载完成标志（真机修复轮 1：防止内容未就绪时显示"透明黑窗口"）。
+static PANEL_PAGE_LOADED: AtomicBool = AtomicBool::new(false);
+
+/// 显示前等待页面就绪的上限（超时仍显示，避免极端加载失败下永久无窗）。
+const PAGE_READY_WAIT_MAX: Duration = Duration::from_secs(3);
+
 fn get_panel(app: &AppHandle) -> Result<WebviewWindow, AppError> {
     app.get_webview_window(WINDOW_TRANSLATE_LABEL)
         .ok_or_else(|| AppError::Window("translate 窗尚未创建（init 未执行）".to_string()))
@@ -231,7 +238,9 @@ fn create_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
     )
     .decorations(false)
     .transparent(true)
-    .shadow(true)
+    // 2026-08-28 用户反馈：transparent 圆角窗 + 系统 DWM 阴影会在圆角外透出方形阴影线；
+    // 关闭系统阴影，阴影感由 CSS 宿主自行处理（真机修复轮 1）。
+    .shadow(false)
     .skip_taskbar(true)
     // 无边框 + resizable：Windows 上保留系统隐形调尺寸边框（四边四角热区，FR-9.3）；
     // 松手后由 Resized 防抖持久化逻辑尺寸（本模块 on_window_event）。
@@ -240,6 +249,15 @@ fn create_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
     .always_on_top(false)
     // D5 暖窗：初始不可见，show 由统一显示路径执行。
     .visible(false)
+    // 2026-08-28 用户反馈（真机修复轮 1）：面板曾在 WebView 内容未就绪时被显示，
+    // 呈现"透明黑窗口"。on_page_load Finished 置位就绪标志；show_panel 显示前等待该
+    // 标志（上限 3s，超时仍显示——内容随后到达，避免永久黑窗）。
+    .on_page_load(|_, payload| {
+        if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+            PANEL_PAGE_LOADED.store(true, std::sync::atomic::Ordering::Relaxed);
+            log::debug!("translate: 页面加载完成（面板显示门控放行）");
+        }
+    })
     .build()
     .map_err(|e| AppError::Window(format!("translate 窗创建失败: {e}")))
     .inspect(|window| {
@@ -263,6 +281,19 @@ fn create_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
 pub fn show_panel(app: &AppHandle, payload: PanelShowPayload) -> Result<(), AppError> {
     let window = get_panel(app)?;
     let rect = place_at_cursor(app)?;
+
+    // 真机修复轮 1：等待 WebView 首次加载完成再显示（冷启动即触发时避免"透明黑窗口"）。
+    // 就绪标志一旦置位永久有效（暖窗常驻复用，仅首个页面加载）；超时兜底仍显示。
+    if !PANEL_PAGE_LOADED.load(Ordering::Relaxed) {
+        let started = Instant::now();
+        while !PANEL_PAGE_LOADED.load(Ordering::Relaxed) {
+            if started.elapsed() >= PAGE_READY_WAIT_MAX {
+                log::warn!("translate: 页面加载等待超时（{PAGE_READY_WAIT_MAX:?}），强制显示面板");
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
 
     window
         .set_position(PhysicalPosition::new(rect.x, rect.y))

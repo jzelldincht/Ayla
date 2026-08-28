@@ -227,7 +227,7 @@
           </div>
         {:else if isKeyStep}
           <div class="key-step">
-            <h2 class="title">配置 API Key（可跳过，FR-11.3）</h2>
+            <h2 class="title">配置 API Key（可跳过）</h2>
             <p class="lead">前往 DeepSeek 开放平台创建 API Key 并粘贴：</p>
             <div class="key-row">
               <input

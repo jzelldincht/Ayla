@@ -412,6 +412,9 @@
           ariaLabel="输入要翻译的文本"
         />
       </section>
+      <!-- 真机修复轮 1：形态 B 也保留分隔线（与形态 A 一致），并留出 12px 呼吸间距——
+           消除"翻译后/首次进入横线时有时无、译文与原文挤在一起"的不一致。 -->
+      <div class="divider" aria-hidden="true"></div>
       <section class="dest-block">
         <div class="label">译文</div>
         <StreamOutput
@@ -588,7 +591,8 @@
     flex: none;
     height: 1px;
     border-top: 1px solid var(--border-subtle);
-    margin: var(--space-2) 0;
+    /* 真机修复轮 1：间距从 8px 增至 12px——译文不再与原文输入框贴死，且各状态一致。 */
+    margin: var(--space-3) 0;
   }
   .label {
     font-size: var(--font-size-caption);

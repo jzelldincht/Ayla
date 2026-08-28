@@ -407,7 +407,7 @@
       <div class="row">
         <div class="row-label">
           <span class="label">定向目标语言</span>
-          <span class="desc">翻译面板可临时切换，不回写默认值（FR-2.7）</span>
+          <span class="desc">翻译面板可临时切换，不回写默认值</span>
         </div>
         <div class="row-control">
           {#if rowErrors['defaultTargetLang']}
@@ -487,7 +487,7 @@
       <div class="row">
         <div class="row-label">
           <span class="label">失焦即隐</span>
-          <span class="desc">面板失去焦点即隐藏；关闭后保留直至手动关闭（FR-9.2）</span>
+          <span class="desc">面板失去焦点即隐藏；关闭后保留直至手动关闭</span>
         </div>
         <div class="row-control">
           {#if rowErrors['hideOnBlur']}
@@ -514,7 +514,7 @@
       <div class="row">
         <div class="row-label">
           <span class="label">剪贴板监听</span>
-          <span class="desc">与面板开关、托盘勾选三方实时同步（FR-5.1）</span>
+          <span class="desc">与面板开关、托盘勾选三方实时同步</span>
         </div>
         <div class="row-control">
           {#if rowErrors['clipboardMonitor']}
@@ -546,7 +546,7 @@
         <div class="row">
           <div class="row-label">
             <span class="label">{row.label}</span>
-            <span class="desc">录制式改键：冲突自动回退并通知（EX-7）</span>
+            <span class="desc">录制式改键：冲突自动回退并通知</span>
           </div>
           <div class="row-control">
             {#if rowErrors[key]}
@@ -599,7 +599,7 @@
       <div class="row">
         <div class="row-label">
           <span class="label">开机自启</span>
-          <span class="desc">开启后随系统启动驻留托盘（FR-1.5）</span>
+          <span class="desc">开启后随系统启动驻留托盘</span>
         </div>
         <div class="row-control">
           {#if rowErrors['autostart']}
@@ -626,7 +626,7 @@
       <div class="row">
         <div class="row-label">
           <span class="label">主题</span>
-          <span class="desc">变更即时全窗预览（FR-1.2）</span>
+          <span class="desc">变更即时全窗预览</span>
         </div>
         <div class="row-control">
           {#if rowErrors['theme']}
