@@ -635,3 +635,9 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 附带：清理 7 处需求编号泄漏到 UI 文案（onboarding 标题 + settings 六处描述，同步修正测试断言）。
 
 回归证据：Rust 157/157（146 单测 + 11 集成）、vitest 85/85、clippy/fmt/lint/build 全绿；NSIS 与便携版已重建；用户配置保持（model=deepseek-v4-flash，hasKey=true），测试用临时开关已恢复默认（monitor=false / hideOnBlur=true）。
+
+## 真机修复轮 2（2026-08-28，用户反馈"无法拖动窗口"）
+
+- 根因：注入式 `data-tauri-drag-region` 处理器在本应用 WebView 中未生效。
+- 修复：TopBar 改为显式 `mousedown → getCurrentWindow().startDragging()`（权限在 core:window:default 内），交互控件（按钮/下拉/输入）不触发拖拽；移除失效属性。Esc/关闭控件已覆盖键盘退出路径，拖拽区为指针专属交互（带 svelte-ignore 注释说明）。
+- 回归：vitest 87/87（新增 2 项拖拽行为测试：空白处左键触发、控件上/非左键不触发）、svelte-check 0 错 0 警、clippy/fmt 通过、build 通过；NSIS+便携版重建，新版已启动（提交 89089a3）。
