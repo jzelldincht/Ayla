@@ -36,6 +36,9 @@
   --warning: #a96a08;
   --error: #c43d42;
   --error-bg: #fbeeef;
+  /* 译文高亮底（真机修复轮 8）/ 面板描边环 */
+  --accent-wash: #eef3fe;
+  --panel-ring: #c3ccd9;
   /* 截图框选遮罩（与主题无关，恒定） */
   --mask-select: rgba(15, 18, 24, 0.35);
 
@@ -67,6 +70,8 @@
   --warning: #e5a83b;
   --error: #ef7076;
   --error-bg: #33262a;
+  --accent-wash: rgba(110, 151, 240, 0.1);
+  --panel-ring: #3d4653;
   --mask-select: rgba(15, 18, 24, 0.35);
 
   /* 阴影（暗色主题透明度上调约 1.4 倍，design-spec 2.4） */
@@ -121,6 +126,7 @@
   --control-height-panel: 28px; /* 面板内按钮高 */
   --setting-row-height: 40px; /* 设置行高 */
   --panel-padding-x: 16px; /* 面板内容左右内边距 */
+  --panel-inset: 12px; /* 窗口透明边距：CSS 阴影/描边绘制空间（真机修复轮 8） */
 }
 
 /* ---------------------------------------------------------------------------

@@ -156,7 +156,7 @@
     /* 真机修复轮 1：负 margin 逃出容器 16px 内边距——
        左 12px + 图标按钮内缩 4px = 图标与下方内容左缘（16px）对齐；
        右 4px 让关闭按钮贴近右上角（用户反馈）。 */
-    margin: 0 calc(-1 * var(--panel-padding-x));
+    margin: 0 calc(-1 * (var(--panel-padding-x) + var(--panel-inset)));
     padding: 0 4px 0 12px;
     flex: none;
     user-select: none;

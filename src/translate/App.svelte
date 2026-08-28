@@ -536,13 +536,26 @@
 </div>
 
 <style>
+  /* 真机修复轮 8：body 留 12px 透明边距，供 CSS 阴影/描边绘制（白色背景下面板不再融界）；
+     仅 translate 页加载此样式，不影响 settings/onboarding 的原生窗口。 */
+  :global(body) {
+    box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    padding: var(--panel-inset);
+    display: flex;
+  }
   .panel-container {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    height: 100vh;
     padding: 0 var(--panel-padding-x);
     background: var(--bg-base);
     border-radius: var(--radius-window);
+    /* 真机修复轮 8：1px 描边环 + CSS 阴影（系统阴影在透明圆角窗上会画出方形轮廓，已关） */
+    border: 1px solid var(--panel-ring);
     box-shadow: var(--shadow-panel);
     overflow: hidden;
     color: var(--fg-body);
@@ -593,6 +606,10 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+    /* 真机修复轮 8：译文高亮底（accent 浅色 wash），与原文区明确区分、聚焦结果。 */
+    background: var(--accent-wash);
+    border-radius: var(--radius-card);
+    padding: var(--space-2) var(--space-3);
   }
   .divider {
     flex: none;
