@@ -1,7 +1,7 @@
 <script lang="ts">
   // 原文编辑区（design-spec 3.3 四形态共用；用户裁决 A1：所有原文区可编辑）。
   // - 形态 A/D：裸文本/浅底框，修改后右下角浮现「重译 ↵」按钮（未修改不显示）；Enter 同效。
-  // - 形态 B：输入框（bg/subtle），「翻译 ↵」按钮常驻；Enter 提交、Shift+Enter 换行。
+  // - 形态 B：输入框（bg/subtle），轮 12 起无按钮（Enter 提交、Shift+Enter 换行）。
   // 高度自适应：随内容增高，上限约面板 40%（A/B）或 35%（D，由外层 class 控制），超出内部滚动。
 
   import { onMount } from 'svelte';
@@ -24,8 +24,8 @@
     submitted: string;
     oninput: (v: string) => void;
     onaction: () => void;
-    /** 'always'（形态 B 按钮常驻）| 'whenModified'（形态 A/D 修改后浮现）。 */
-    buttonMode: 'always' | 'whenModified';
+    /** 'always'（按钮常驻）| 'whenModified'（修改后浮现）| 'never'（无按钮，仅 Enter 提交）。 */
+    buttonMode: 'always' | 'whenModified' | 'never';
     buttonLabel: string;
     placeholder?: string;
     /** 'bare' 裸文本（A）| 'boxed' 输入框（B）| 'subtle' 浅底框（D）。 */
@@ -39,9 +39,14 @@
   let userPinned = false;
   let lastSetHeight = 0;
 
-  /** A1：重译按钮浮现 = 内容被修改（≠ 已提交）且非纯空白（FR-4.3 拦截空提交）。 */
+  /** A1：重译按钮浮现 = 内容被修改（≠ 已提交）且非纯空白（FR-4.3 拦截空提交）。
+      轮 12：'never' 模式无按钮（形态 B 去"翻译 ↵"，Enter 提交）。 */
   const showAction = $derived(
-    buttonMode === 'always' ? value.trim().length > 0 : retranslateVisible(submitted, value),
+    buttonMode === 'never'
+      ? false
+      : buttonMode === 'always'
+        ? value.trim().length > 0
+        : retranslateVisible(submitted, value),
   );
 
   // 高度自适应（≤40%（A/B 由 .limit-40 外层）/≤35%（D .limit-35），超出滚动）。
@@ -73,8 +78,9 @@
 
   function onKeydown(e: KeyboardEvent) {
     if (e.key !== 'Enter' || e.shiftKey) return; // Shift+Enter 换行（原生行为）
-    if (buttonMode === 'always') {
-      if (value.trim().length === 0) return; // FR-4.3：空白回车不发起、无错误
+    // 轮 12：never（无按钮纯 Enter 提交）与 always 同语义；空白回车不发起、无错误（FR-4.3）。
+    if (buttonMode === 'never' || buttonMode === 'always') {
+      if (value.trim().length === 0) return;
       e.preventDefault();
       onaction();
     } else if (showAction) {

@@ -168,9 +168,36 @@ pub struct TranslationSettings {
     /// 长文整段阈值（FR-10.2：1000 字符，含空白与换行 Q10）；仅分档呈现生效。
     #[serde(default = "long_text_threshold_default")]
     pub long_text_threshold_chars: u32,
+    /// 原文变化自动翻译（真机修复轮 12；用户需求：默认关，回车翻译）。
+    #[serde(default)]
+    pub auto_translate: AutoTranslateSettings,
     /// 未知字段保留透传。
     #[serde(flatten)]
     pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+/// 原文变化自动翻译（轮 12）：`enabled` 出厂默认关（按回车翻译）；
+/// `delay_ms` = 打字停顿/续输后等待触发的防抖时长（档位 300~2000，出厂 700）。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AutoTranslateSettings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "auto_translate_delay_default")]
+    pub delay_ms: u32,
+    /// 未知字段保留透传。
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+impl Default for AutoTranslateSettings {
+    fn default() -> Self {
+        AutoTranslateSettings {
+            enabled: false,
+            delay_ms: auto_translate_delay_default(),
+            extra: serde_json::Map::new(),
+        }
+    }
 }
 
 /// 译文呈现模式（Q4 裁决：两档）。
@@ -306,6 +333,9 @@ fn default_target_lang_value() -> String {
 fn long_text_threshold_default() -> u32 {
     1000
 }
+fn auto_translate_delay_default() -> u32 {
+    700
+}
 fn hide_on_blur_default() -> bool {
     true
 }
@@ -353,6 +383,7 @@ impl Default for TranslationSettings {
             default_target_lang: DEFAULT_TARGET_LANG.to_string(),
             presentation: PresentationMode::StreamAll,
             long_text_threshold_chars: 1000,
+            auto_translate: AutoTranslateSettings::default(),
             extra: serde_json::Map::new(),
         }
     }

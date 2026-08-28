@@ -180,12 +180,18 @@
   }
 
   // 真机修复轮 9：原文变化自动翻译（防抖，规则见 lib/autoTranslate.ts）。
+  // 真机修复轮 12：默认关闭（回车翻译），开关与防抖时长由设置项
+  // translation.autoTranslate 控制（settings://changed 镜像实时生效）。
   // resolveSource 在触发时求值——形态 A 的 source 跟随触发瞬间的面板模式。
   const autoTranslate = new AutoTranslateScheduler();
 
   function onOriginalInput(v: string, resolveSource: () => TranslateSource) {
     original = v;
-    autoTranslate.input(v, submitted, () => void startTranslation(v, resolveSource()));
+    const auto = settingsState.current?.translation.autoTranslate;
+    if (!auto?.enabled) return;
+    autoTranslate.input(v, submitted, auto.delayMs, () =>
+      void startTranslation(v, resolveSource()),
+    );
   }
 
   async function startTranslation(text: string, source: TranslateSource): Promise<void> {
@@ -437,7 +443,7 @@
           submitted={submitted}
           oninput={(v) => onOriginalInput(v, () => 'input')}
           onaction={() => void startTranslation(original, 'input')}
-          buttonMode="always"
+          buttonMode="never"
           buttonLabel="翻译 ↵"
           placeholder="输入要翻译的文本…"
           variant="boxed"

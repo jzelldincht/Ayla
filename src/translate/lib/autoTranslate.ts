@@ -11,20 +11,24 @@
 
 import { retranslateVisible } from './retranslate';
 
+/** 出厂默认防抖（config autoTranslate.delayMs 缺省值同源）。 */
 export const AUTO_TRANSLATE_DELAY_MS = 700;
 
 export class AutoTranslateScheduler {
   private timer: ReturnType<typeof setTimeout> | null = null;
 
-  /** 原文输入事件驱动：满足自动翻译条件则（重新）计时，否则清除挂起任务。 */
-  input(current: string, submitted: string, fire: () => void): void {
+  /**
+   * 原文输入事件驱动：满足自动翻译条件则（重新）计时，否则清除挂起任务。
+   * `delayMs` 由调用方从设置镜像取（轮 12 可配置；建议 300~5000，出厂 700）。
+   */
+  input(current: string, submitted: string, delayMs: number, fire: () => void): void {
     this.cancel();
     if (!retranslateVisible(submitted, current)) return;
     this.timer = setTimeout(() => {
       this.timer = null;
       if (!document.hasFocus()) return; // 失焦放弃（见头注）
       fire();
-    }, AUTO_TRANSLATE_DELAY_MS);
+    }, delayMs);
   }
 
   /** 显式提交 / 内容被面板新事件覆盖时调用：清除挂起的自动翻译。 */

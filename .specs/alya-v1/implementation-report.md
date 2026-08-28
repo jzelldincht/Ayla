@@ -705,3 +705,14 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 
 - 判定收紧：`retranslateVisible` 改为 **trim 后比较**（`next !== submitted.trim()`）——首尾空白变化不算实质修改，自动翻译不触发、重译按钮不浮现（两处单一判定源，行为一致；翻译结果与首尾空白无关）。中间空白变化仍视为实质变化（影响分词，照常触发）。
 - 回归：vitest 95/95（+3：首尾空白不触发/不浮现、实质变化照常）、svelte-check 0/0（Rust 无改动）；NSIS+便携版重建。
+
+## 真机修复轮 12（2026-08-28，用户需求：自动翻译可配置 + 去掉翻译按钮）
+
+**需求梳理（用户原话锚定）**：①自动翻译做成可配置，可设置停顿/续输多久后触发；②默认关闭（按回车翻译）；③Enter 已承担提交，形态 B 常驻"翻译 ↵"按钮冗余，去掉。
+
+- 配置层（Rust）：`TranslationSettings` 新增 `autoTranslate: { enabled: bool, delayMs: u32 }`——出厂默认**关 + 700ms**；`AutoTranslateSettings` 带 extra 透传与 serde default（旧配置文件零迁移兼容）；`TranslationPatch`/`AutoTranslatePatch` 走 `set_settings` 通用通道；`apply_settings_patch` 合并时 delayMs 越界（非 300~5000）按出厂 700 钳制（防误输入过短请求风暴/过长像失效）。
+- 设置页：翻译组新增两行——"自动翻译"开关（desc：原文输入或修改后自动翻译；关闭时按回车翻译）+ "自动翻译延迟"档位下拉（0.3/0.5/0.7/1/1.5/2 秒，未开启时禁用）；经 `settings://changed` 镜像实时生效（INV-8 既有链路）。
+- 面板：`AutoTranslateScheduler.input` 接受调用方传入的 delayMs（读设置镜像）；`enabled=false` 时不调度（纯回车语义）。默认行为与轮 9 之前一致。
+- 去按钮：`OriginalEditor` 新增 `buttonMode='never'`；形态 B 改 never（无按钮）。**真机验证抓到回归**：`onKeydown` 的 Enter 提交只挂在 always/showAction 分支，never 后 Enter 落空——修复为 never/always 同语义（空白回车仍拦截 FR-4.3）。A/D 修改后浮现的"重译 ↵"与 OCR"送翻译"不受影响。
+- 实证（SendInput + 真实 DeepSeek）：①出厂默认：打字停顿不自动翻（译文保持 idle）+ Enter 正常出译；②配置开启（enabled+300ms）：打字停顿后自动出译，无任何按键。③设置页五项渲染/镜像断言（vitest）+ patch 钳制（cargo）。
+- 回归：cargo 159/159（148 lib + 11 集成，+1 钳制用例）、vitest 96/96（+1 延迟可配 + 设置页改五项断言）、clippy -D warnings、svelte-check 0/0；NSIS+便携版重建。

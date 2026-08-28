@@ -90,6 +90,16 @@ pub fn apply_settings_patch(
         if let Some(chars) = translation.long_text_threshold_chars {
             settings.translation.long_text_threshold_chars = chars;
         }
+        if let Some(auto_translate) = &translation.auto_translate {
+            if let Some(enabled) = auto_translate.enabled {
+                settings.translation.auto_translate.enabled = enabled;
+            }
+            if let Some(delay_ms) = auto_translate.delay_ms {
+                // 越界值按出厂默认处理（防误输入过短造成请求风暴/过长像失效）。
+                settings.translation.auto_translate.delay_ms =
+                    if (300..=5000).contains(&delay_ms) { delay_ms } else { 700 };
+            }
+        }
     }
     if let Some(panel) = &patch.panel {
         if let Some(hide) = panel.hide_on_blur {
@@ -258,7 +268,8 @@ mod tests {
     use super::*;
 
     use crate::events::{
-        GeneralPatch, MetaPatch, OcrPatch, PanelPatch, ScenePatch, TranslationPatch,
+        AutoTranslatePatch, GeneralPatch, MetaPatch, OcrPatch, PanelPatch, ScenePatch,
+        TranslationPatch,
     };
 
     /// 无 unwrap/expect 的取值辅助（INV-6：clippy deny 覆盖测试；panic 仅用于测试断言失败）。
@@ -279,6 +290,7 @@ mod tests {
                     default_target_lang: Some("日文".to_string()),
                     presentation: Some(config::PresentationMode::Staged),
                     long_text_threshold_chars: Some(2000),
+                    auto_translate: None,
                 }),
                 panel: Some(PanelPatch {
                     hide_on_blur: Some(false),
@@ -311,6 +323,44 @@ mod tests {
         // 未触及字段保持出厂默认
         assert_eq!(s.ai.base_url, config::DEFAULT_BASE_URL);
         assert_eq!(s.hotkeys.selection, "Alt+Q");
+    }
+
+    #[test]
+    fn apply_patch_auto_translate_enabled_and_delay_clamped() {
+        let mut s = config::Settings::default();
+        // 出厂默认：关 + 700ms（轮 12 用户需求：默认关，按回车翻译）。
+        assert!(!s.translation.auto_translate.enabled);
+        assert_eq!(s.translation.auto_translate.delay_ms, 700);
+        ok_of(apply_settings_patch(
+            &mut s,
+            &SettingsPatch {
+                translation: Some(TranslationPatch {
+                    auto_translate: Some(AutoTranslatePatch {
+                        enabled: Some(true),
+                        delay_ms: Some(1000),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        ));
+        assert!(s.translation.auto_translate.enabled);
+        assert_eq!(s.translation.auto_translate.delay_ms, 1000);
+        // 越界延迟按出厂默认 700 处理。
+        ok_of(apply_settings_patch(
+            &mut s,
+            &SettingsPatch {
+                translation: Some(TranslationPatch {
+                    auto_translate: Some(AutoTranslatePatch {
+                        enabled: None,
+                        delay_ms: Some(1),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        ));
+        assert_eq!(s.translation.auto_translate.delay_ms, 700);
     }
 
     #[test]

@@ -54,6 +54,7 @@ function fakeSettings(overrides: Partial<SettingsView> = {}): SettingsView {
       defaultTargetLang: '英文',
       presentation: 'stream_all',
       longTextThresholdChars: 1000,
+      autoTranslate: { enabled: false, delayMs: 700 },
     },
     panel: { hideOnBlur: true, widthLogical: 460, heightLogical: 340 },
     clipboardMonitor: false,
@@ -108,7 +109,7 @@ describe('六分组渲染与出厂默认值（FR-13 全表来自 get_settings �
     ).toBeTruthy();
   });
 
-  it('翻译组：三项（Q5 九语种 / 呈现两档 / 阈值）按镜像渲染', async () => {
+  it('翻译组：五项（Q5 九语种 / 呈现两档 / 阈值 / 自动翻译开关+延迟）按镜像渲染', async () => {
     await renderApp();
     await gotoGroup('翻译');
     const lang = screen.getByLabelText('定向目标语言') as HTMLSelectElement;
@@ -118,6 +119,13 @@ describe('六分组渲染与出厂默认值（FR-13 全表来自 get_settings �
     );
     expect((screen.getByLabelText('译文呈现') as HTMLSelectElement).value).toBe('stream_all');
     expect((screen.getByLabelText('长文整段阈值') as HTMLInputElement).value).toBe('1000');
+    // 轮 12：自动翻译默认关（回车翻译），延迟档默认 700ms 且未开启时禁用
+    expect(screen.getByRole('switch', { name: '自动翻译' }).getAttribute('aria-checked')).toBe(
+      'false',
+    );
+    const delay = screen.getByLabelText('自动翻译延迟') as HTMLSelectElement;
+    expect(delay.value).toBe('700');
+    expect(delay.disabled).toBe(true);
   });
 
   it('面板组：失焦即隐开 / 剪贴板监听关；截图组：OCR 自动；通用组：自启关、主题跟随系统', async () => {

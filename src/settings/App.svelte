@@ -226,6 +226,25 @@
     void saveRow('threshold', { translation: { longTextThresholdChars: value } });
   }
 
+  /** 自动翻译开关/延迟（轮 12）：走 set_settings 通用通道，面板经镜像实时生效。 */
+  const AUTO_TRANSLATE_DELAY_OPTIONS = [
+    { value: 300, label: '0.3 秒' },
+    { value: 500, label: '0.5 秒' },
+    { value: 700, label: '0.7 秒' },
+    { value: 1000, label: '1 秒' },
+    { value: 1500, label: '1.5 秒' },
+    { value: 2000, label: '2 秒' },
+  ];
+
+  function onAutoTranslateChange(next: boolean): void {
+    void saveRow('autoTranslate', { translation: { autoTranslate: { enabled: next } } });
+  }
+
+  function onAutoTranslateDelayChange(e: Event): void {
+    const value = Number((e.currentTarget as HTMLSelectElement).value);
+    void saveRow('autoTranslateDelay', { translation: { autoTranslate: { delayMs: value } } });
+  }
+
   function onHideOnBlurChange(next: boolean): void {
     void saveRow('hideOnBlur', { panel: { hideOnBlur: next } });
   }
@@ -479,6 +498,63 @@
             value={settings?.translation.longTextThresholdChars ?? ''}
             onchange={onThresholdChange}
           />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          <span class="label">自动翻译</span>
+          <span class="desc">原文输入或修改后自动翻译；关闭时按回车翻译</span>
+        </div>
+        <div class="row-control">
+          {#if rowErrors['autoTranslate']}
+            <span class="row-error" role="alert">{rowErrors['autoTranslate']}</span>
+          {:else if savedState['autoTranslate']}
+            <span
+              class="row-saved {savedState['autoTranslate'].fading ? 'fading' : ''}"
+              role="status">已保存</span
+            >
+          {/if}
+          <button
+            class="switch"
+            type="button"
+            role="switch"
+            aria-label="自动翻译"
+            aria-checked={settings?.translation.autoTranslate?.enabled ?? false}
+            disabled={!settings}
+            onclick={() =>
+              onAutoTranslateChange(!(settings?.translation.autoTranslate?.enabled ?? false))}
+          >
+            <span class="switch-knob"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          <span class="label">自动翻译延迟</span>
+          <span class="desc">打字停顿后等待多久触发；未开启自动翻译时不生效</span>
+        </div>
+        <div class="row-control">
+          {#if rowErrors['autoTranslateDelay']}
+            <span class="row-error" role="alert">{rowErrors['autoTranslateDelay']}</span>
+          {:else if savedState['autoTranslateDelay']}
+            <span
+              class="row-saved {savedState['autoTranslateDelay'].fading ? 'fading' : ''}"
+              role="status">已保存</span
+            >
+          {/if}
+          <select
+            class="select"
+            aria-label="自动翻译延迟"
+            disabled={!settings?.translation.autoTranslate?.enabled}
+            value={settings?.translation.autoTranslate?.delayMs ?? 700}
+            onchange={onAutoTranslateDelayChange}
+          >
+            {#each AUTO_TRANSLATE_DELAY_OPTIONS as opt (opt.value)}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
         </div>
       </div>
     {:else if activeGroup === 'panel'}

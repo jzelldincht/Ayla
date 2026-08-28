@@ -84,6 +84,13 @@ export interface TranslationSettings {
   defaultTargetLang: string;
   presentation: PresentationMode;
   longTextThresholdChars: number;
+  autoTranslate: AutoTranslateSettings;
+}
+
+/** 原文变化自动翻译（轮 12；默认关＝按回车翻译）。 */
+export interface AutoTranslateSettings {
+  enabled: boolean;
+  delayMs: number;
 }
 
 export interface PanelSettings {
@@ -141,6 +148,12 @@ export interface TranslationPatch {
   defaultTargetLang?: string;
   presentation?: PresentationMode;
   longTextThresholdChars?: number;
+  autoTranslate?: AutoTranslatePatch;
+}
+
+export interface AutoTranslatePatch {
+  enabled?: boolean;
+  delayMs?: number;
 }
 
 export interface PanelPatch {

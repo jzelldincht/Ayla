@@ -42,6 +42,7 @@ function fakeSettings(overrides: Partial<SettingsView> = {}): SettingsView {
       defaultTargetLang: '英文',
       presentation: 'stream_all',
       longTextThresholdChars: 1000,
+      autoTranslate: { enabled: false, delayMs: 700 },
     },
     panel: { hideOnBlur: true, widthLogical: 460, heightLogical: 340 },
     clipboardMonitor: false,

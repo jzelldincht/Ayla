@@ -16,3 +16,5 @@
 2026-08-28 - 事件：真机修复轮 10（热区宽度 + 顶栏 15px 定稿）。关键结果：--panel-inset 6→2px（resize 热区从窗口外沿起算，环宽即光标偏移，两轮用户反馈后定稿 2px），--shadow-panel 降为贴身轻阴影（描边承担抗融界）；TopBar 左右内缩 11px+4px 图标内缩=视觉 15px（用户定稿）。实际验证及结果：vitest 92/92、svelte-check 0/0；HMR 放大截图确认 15px 与满高渲染；NSIS+便携版重建。未解决问题：无。
 
 2026-08-28 - 事件：真机修复轮 11（首尾空白不触发自动翻译）。关键结果：retranslateVisible 判定改 trim 后比较（自动翻译与重译按钮单一判定源），首尾空白变化不再触发重译/浮现按钮，中间空白仍算实质变化。实际验证及结果：vitest 95/95（+3 用例）、svelte-check 0/0；HMR 热载；NSIS+便携版重建。未解决问题：无。
+
+2026-08-28 - 事件：真机修复轮 12（自动翻译可配置化 + 去掉形态 B 翻译按钮）。关键结果：新增 translation.autoTranslate{enabled=false,delayMs=700} 配置（serde default 零迁移），设置页翻译组加开关+延迟档位（0.3~2s，未开启禁用），set_settings 通用通道 + delayMs 越界钳 700；面板调度器改由镜像取参，默认关=纯回车语义；OriginalEditor 加 never 模式去掉 B 常驻按钮，真机抓到 Enter 提交落空回归并修复（never/always 同语义）。实际验证及结果：cargo 159/159、vitest 96/96、clippy 0、svelte-check 0/0；SendInput 实证默认关不自动翻+Enter 出译、开启后打字停顿自动出译；NSIS+便携版重建。未解决问题：无。

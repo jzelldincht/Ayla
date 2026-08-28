@@ -202,6 +202,18 @@ pub struct TranslationPatch {
     pub presentation: Option<PresentationMode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub long_text_threshold_chars: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_translate: Option<AutoTranslatePatch>,
+}
+
+/// 原文变化自动翻译补丁（轮 12）。
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AutoTranslatePatch {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delay_ms: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
