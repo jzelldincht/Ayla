@@ -57,7 +57,7 @@
 
 ### P0 脚手架
 
-- [ ] T1：Tauri 2 + Svelte 5 工程脚手架与窗口骨架
+- [x] T1：Tauri 2 + Svelte 5 工程脚手架与窗口骨架
   - Owner: 实施工程师
   - Depends on: N/A
   - 涉及: 仓库根（pnpm workspace、package.json、Vite 配置、rustfmt/clippy 配置含 unwrap_used=deny）、`src-tauri/`（Cargo.toml、tauri.conf.json、build.rs）、`src-tauri/src/`（main.rs、lib.rs 装配骨架与插件注册顺序占位）、`src/`（translate/mask/settings/onboarding 四窗口入口占位页、`src/lib/` 共享层目录）
@@ -68,7 +68,7 @@
 
 ### P1 配置与安全基线
 
-- [ ] T2：config 模块（Settings schema、原子持久化、迁移桩）
+- [x] T2：config 模块（Settings schema、原子持久化、迁移桩）
   - Owner: 实施工程师
   - Depends on: T1
   - 涉及: `src-tauri/src/config/mod.rs`
@@ -77,7 +77,7 @@
   - 追溯: FR-13、FR-2.3、FR-2.7、FR-5.3、FR-9.3、FR-10.2、FR-14.1、spec 6.3、Q5/Q7/Q10、INV-8
   - Status: DONE（2026-08-26 实施工程师交付：Settings 逐字段对齐 spec 6.3（camelCase），默认值严格 FR-13 全表（含面板 460×340 对齐 spec v0.2）；tmp+rename 原子写（sync_all+重试兜底）；未知字段 flatten 保留透传；schemaVersion=1 迁移桩（缺失键视 v0→升 v1 回写，未来版本容忍不重写）；Q5 九语言常量表+校验；全局 RwLock 访问器（锁序声明先 config 后 sessions）；app_config_dir 解析+测试注入临时目录；`cargo test config` 17 通过（含 crypto 4），全量 28/28，fmt/clippy -D warnings PASS，未改动 tauri.conf.json，偏离见 implementation-report §5）
 
-- [ ] T3：DPAPI 加密模块 + AppError/EX 映射 + 事件契约类型
+- [x] T3：DPAPI 加密模块 + AppError/EX 映射 + 事件契约类型
   - Owner: 实施工程师
   - Depends on: T1
   - 涉及: `src-tauri/src/config/crypto.rs`、`src-tauri/src/error.rs`、`src-tauri/src/events.rs`、`src/lib/types.ts` 与 `src/lib/ipc.ts`（TS 镜像类型与类型化 invoke 包装）
@@ -88,7 +88,7 @@
 
 ### P2 核心能力
 
-- [ ] T4：热键管理服务
+- [x] T4：热键管理服务
   - Owner: 实施工程师
   - Depends on: T2、T3
   - 涉及: `src-tauri/src/hotkey/mod.rs`
@@ -97,7 +97,7 @@
   - 追溯: FR-14.1~14.3、EX-7、spec 5.7.1/7.2、FR-12.1（降级口径）
   - Status: DONE（2026-08-26 实施工程师交付：hotkey/mod.rs 启动五项逐一注册＋{function,combo,ok|err} 聚合＋EX-7 一则系统通知列功能名＋失败入降级态（degraded 清单/registered_snapshot 供 T15）；rebind_hotkey 命令（已注册进 invoke_handler）＝内部查重→解旧→注新→成功才写 config，失败回退旧键不改配置，返回 AppError（EX-7）；HotkeyAction 五动作枚举＋HotkeyCallback trait 注入接口（T16 接线，未接线仅 Debug 打点）；hotkey_received 打点；`cargo test hotkey` 6 通过（查重/回退决策三态/聚合/名称映射/配置读写/EX-7），全量 45/45，fmt/clippy -D warnings PASS；冒烟 pnpm tauri dev 实跑日志：五项注册成功 5/5（Alt+Q/E/S/D/W），进程与端口已清理；偏离见 implementation-report §5）
 
-- [ ] T5：剪贴板监听状态机
+- [x] T5：剪贴板监听状态机
   - Owner: 实施工程师
   - Depends on: T2、T3
   - 涉及: `src-tauri/src/clipboard_monitor/mod.rs`
@@ -106,7 +106,7 @@
   - 追溯: FR-5.1~5.7、EX-8、D2、D3、spec 5.6.3、INV-8
   - Status: DONE（2026-08-26 实施工程师交付：clipboard_monitor/mod.rs 状态机＝500ms tick 仅查 GetClipboardSequenceNumber（Cargo.toml 追加 Win32_System_DataExchange feature），序号变才 arboard 读文本；enable 基线不触发存量/disable 立即失效；D2 内容去重；EX-8 非文本静默；D3 超 50,000 字符跳过＋系统通知（MAX_AUTO_CHARS 常量可调）；同一把 Mutex 的 begin_suppression（备份前置位）/end_suppression（刷新基线后清位）供 T6；set_clipboard_monitor 命令（已注册）＝写 config＋settings://changed 广播三方同步（INV-8，开启失败回滚 config），循环 tauri async_runtime spawn，代次管理关闭即退出；触发出口经 ClipboardTranslateTrigger trait 注入（T16 接线）；`cargo test clipboard_monitor` 10 通过（全转移表：新文本/重复/非文本/抑制窗吞写与恢复/恢复竞态放弃恢复/超限跳过/关闭后不触发/开启读失败/读失败跳 tick），全量 45/45，fmt/clippy -D warnings PASS；偏离与残余竞态说明见 implementation-report §4-6）
 
-- [ ] T6：取词编排（模拟复制链路）
+- [x] T6：取词编排（模拟复制链路）
   - Owner: 实施工程师
   - Depends on: T5
   - 涉及: `src-tauri/src/selection/mod.rs`
@@ -115,7 +115,7 @@
   - 追溯: FR-3.1~3.3、FR-5.7、EX-9、EX-10、INV-5、spec 5.6.1/7.2
   - Status: DONE（2026-08-26 实施工程师交付：selection/mod.rs＝备份(内容+序号)→begin_suppression（备份前，T5 接口）→SendInput Ctrl+C（windows Win32_UI_Input_KeyboardAndMouse，主 Agent 指定 feature 名实际不存在已按实际更名——见报告）→轮询序号变化 220ms→读文本→恢复前校验（当前≠取词所得则放弃防覆盖）→end_suppression（先刷新基线后清位）；全程不显示/聚焦 Alya 窗口（INV-5）；EX-9「未获取到选中文本」/EX-10「未能获取文本」分路系统通知（需求 v0.4 EX-10 行文与 design-spec 4.4 不一致，按 design-spec 执行——详见报告偏离）；ClipboardOps/CopyInjector trait 注入；selection_done 打点（仅字符数不记原文 INV-7）；`cargo test selection` 10 通过（成功/超时/空白/非文本/恢复竞态/抑制时序/注入失败/恢复写失败/非文本备份清残留/备份读失败，全部在监听 On 态下验证真实抑制位序：置位先于备份、清位晚于恢复、失败路径必清位、竞态放弃恢复后基线以用户内容为准）；全量 84 单测 + 11 集成 = 95/95，fmt/clippy -D warnings PASS；记事本真机冒烟依赖 action_router 接线（T16）与真机前提，留 T16 集成阶段执行；偏离见 implementation-report T6 节）
 
-- [ ] T7：翻译会话与提示词构造
+- [x] T7：翻译会话与提示词构造
   - Owner: 实施工程师
   - Depends on: T2、T3
   - 涉及: `src-tauri/src/translate/prompt.rs`、`src-tauri/src/translate/service.rs`
@@ -124,7 +124,7 @@
   - 追溯: FR-2.1~2.7、FR-9.6、FR-10.1/10.2、EX-13、Q5/Q10、spec §4 权威源声明、5.7.7 会话模型
   - Status: DONE（2026-08-26 实施工程师交付：prompt.rs＝FR-2.5/FR-2.6 模板从 requirements.md v0.4 逐字收录为常量（含防乱码规则行），`{{target}}`/`{{text}}` 字面替换（replacen 恰一次，不做转义）；定向 target＝面板临时目标语言（易失槽位 set_panel_temp_target/panel_temp_target，Q5 九语言校验）否则设置默认值（service 层读 config）；快照测试把两段模板同时硬编码于测试逐字比对（注释记录源文件路径与 v0.4）；service.rs＝sessions Mutex<HashMap<Source,Round>> + 全局 generation AtomicU64 + 每来源串行门；EX-13 顶替＝bump→cancel(CancellationToken)→join(≤100ms)→才 spawn 新值；跨源隔离；decide_render_mode/count_chars/decide_presentation 纯函数（999/1000/1001 边界、Q10 含空白换行、与 C1 renderMode 全貌）；`cargo test translate::prompt` 7 通过、`service` 8 通过（同源顶替事件序/跨源隔离/取消/join 上限/并发峰值恒 1/分档边界三分例/中文 emoji 计数/stream_all 恒流式）；偏离见 implementation-report T7 节）
 
-- [ ] T8：SSE 流式客户端、连接验证与错误分类
+- [x] T8：SSE 流式客户端、连接验证与错误分类
   - Owner: 实施工程师
   - Depends on: T7
   - 涉及: `src-tauri/src/translate/sse.rs`、`src-tauri/src/translate/verify.rs`、`src-tauri/tests/sse_integration.rs`
@@ -142,7 +142,7 @@
   - 要点: 触发瞬间依次抓全部显示器快照入内存（D4 定格；抓取先于遮罩显示，遮罩永不被截入）；每显示器一窗、池化复用、每次触发前按拓扑校验几何否则销毁重建（spec 5.7.4）；遮罩 rgba(15,18,24,0.35) + 选区挖空透亮 + 2px accent 外框 + 1px 白色内衬描边 + 拖拽中物理像素尺寸标签 + 十字光标（design-spec 5）；松开即确认 `complete_selection{sessionId, monitorIndex, rect 该屏局部物理px}`；Esc→`cancel_selection` 无任何残留（FR-8.3/8.6）；无效判定：位移 <4 物理px 或面积 <64 物理px² 视同取消（Q11/FR-8.5）；裁剪 `crop_imm`→PNG 内存字节存会话、释放整屏帧，全程零落盘、位图不过 IPC（INV-3、5.7.5）
   - Verification: `cargo test capture`（rect 局部↔全局换算 INV-4、无效判定阈值边界、裁剪尺寸正确性）；`pnpm build`；冒烟：本机单屏走通框选→Esc/无效单击路径（多屏与 DPI 项归 checklist 真机矩阵 F 组）
   - 追溯: FR-8.1~8.6、D4、Q11、spec 5.7.4/5.7.5/5.6.2、INV-3、INV-4
-  - Status: NOT_STARTED
+  - Status: DONE（已完成，详见 implementation-report.md 与 test-report.md）
 
 - [x] T10：OCR 封装（Windows.Media.Ocr）（DONE，2026-08-27 主 Agent 验收：同上，EX-6 两形态与语言枚举实现确认）
   - Owner: 实施工程师
@@ -151,7 +151,7 @@
   - 要点: `recognize(png_bytes, Auto|Tag)`：PNG 字节→InMemoryRandomAccessStream→BitmapDecoder→SoftwareBitmap（阻塞解码入 spawn_blocking）；Auto=`TryCreateFromUserProfileLanguages`（系统首选语言口径 A6）、Tag=`CreateLanguage`+`TryCreateFromLanguage`；`AvailableRecognizerLanguages()` 枚举已装语言包供设置下拉（固定语种只能从中选，源头减少 EX-6）；引擎创建失败/null→EX-6（区分“自动无可用包”与“固定语种未装”，附微软官方指引链接），截图翻译就此停止不发翻译请求；使用时对所存语种二次校验（可能事后被卸载）
   - Verification: `cargo test ocr`（错误分类映射纯逻辑：HRESULT/null→EX-6 两形态、空文本交上游 FR-7.2 分支）；冒烟：对本机含文字的内存裁剪块识别出文本（不落盘）
   - 追溯: FR-6.1~6.4、FR-7.1/FR-7.2 前置、EX-6、假设 A6、spec 5.7.5/5.7.6
-  - Status: NOT_STARTED
+  - Status: DONE（已完成，详见 implementation-report.md 与 test-report.md）
 
 - [x] T11：翻译面板窗口生命周期与定位（DONE，2026-08-27 主 Agent 验收：132 Rust 测试全绿、clippy/fmt 通过；钳制算法含四角翻转/负坐标副屏/150%DPI/屏小于面板单测；失焦隐藏+D10+C3 topmost 逐条核对）
   - Owner: 实施工程师
@@ -160,7 +160,7 @@
   - 要点: 启动序列末尾预创建并隐藏（D5 暖窗，J1 前提）；`place_at_cursor` 统一显示路径：cursor_position 物理坐标（失败回落主屏中心）→ 归属显示器（含负坐标副屏）→ 持久逻辑尺寸 × scale_factor → 偏移（+16,+16 逻辑 px，design-spec 3.4）→ 选区避让按 C2 裁决（缺省走鼠标锚点退化路径）→ 右溢出左翻 / 下溢出上翻 / 角部双翻 → 工作区内四周 8px 边距钳制，绝不跨屏（spec 5.7.2 + design-spec 3.4）；`Focused(false)` 且 hideOnBlur 开且无压制条件→hide，隐藏不取消进行中翻译（D10）；四边四角 6px 拖拽调尺寸、松手持久化逻辑宽高（FR-9.3，四形态共用单一记忆值 A4）；`panel://show` 统一发射；打点 panel_visible（7.2）
   - Verification: `cargo test windows::translate`——钳制算法：四角溢出翻转、负坐标副屏、屏小于面板、100%/150% scale 换算（spec 测试策略点名项）；冒烟：鼠标在不同屏位触发，弹出位置合理不出屏
   - 追溯: FR-3.1、FR-9.1~FR-9.3、D5、D10、spec 5.7.2/5.7.3、design-spec 3.4、INV-4、7.2、假设 A4
-  - Status: NOT_STARTED
+  - Status: DONE（已完成，详见 implementation-report.md 与 test-report.md）
 
 - [x] T12：翻译面板前端（四形态与状态设计）（DONE，2026-08-27 主 Agent 验收：vitest 57/57、svelte-check 0 错 0 警、pnpm build 通过；主 Agent 修复 8 项 svelte-check 错误与 StreamOutput 非响应式告警）
   - Owner: 前端工程师
@@ -169,7 +169,7 @@
   - 要点: Design Tokens 亮/暗双套 CSS 变量 + 字体栈 + 间距/圆角/阴影/动效时长（design-spec 2，±5% 明度微调不得破 4.5:1 对比度底线）；顶栏骨架：监听开关（左一，图标式）→ 互译/定向分段控件 → （定向时）语言下拉 → 幽灵关闭按钮（3.2）；形态 A/B/C/D 布局与独有控件（3.3；用户裁决 A1：所有原文区可编辑，修改后浮现「重译」，Enter 同效）；键盘契约 3.5（Esc 隐藏、Enter 提交/重译、Shift+Enter 换行、Tab 序）；状态设计 4 章：空态、呼吸点+2px 不确定进度条、流式增量淡入（≤90ms）+光标条+滚动锚定（距底 <24px 跟随、上滚停锚）、整段等待徽标「预估剩余约 N 秒」每秒刷新且“预估”醒目（FR-10.3/Q3）、六类错误卡片文案与按钮逐条照 4.4、传输中断部分结果保留（4.5）；译文纯文本节点增量追加不整绘（D9）；主题经 `settings://changed` 与系统偏好联动（FR-1.2）；减弱动效与无障碍（2px accent 焦点环、可访问名称、对比度，design-spec 9）；renderMode 消费方式待 C1 裁决
   - Verification: `pnpm vitest run src/translate`——流式追加不整段重绘、滚动锚定/停锚恢复、六类错误卡片渲染与重试/打开设置回调、重译按钮浮现逻辑、面板侧监听开关镜像；`pnpm build`
   - 追溯: FR-1.2、FR-2.4/FR-2.7（面板侧）、FR-4.1~4.3、FR-5.1、FR-9.4~9.6、FR-10.1~10.4、design-spec 2/3/4/9、D9、4.4 六类错误
-  - Status: NOT_STARTED
+  - Status: DONE（已完成，详见 implementation-report.md 与 test-report.md）
 
 - [x] T13：设置页（DONE，2026-08-27 实施工程师交付：见 implementation-report T13/T14 节）
   - Owner: 前端工程师（`windows/settings.rs` 窗壳：实施工程师协作）
@@ -196,7 +196,7 @@
   - 要点: 托盘右键七项原生菜单（当前场景单选子菜单 / 输入翻译 / 截图识别 / 截图翻译 / 剪贴板监听勾选 / 设置 / 退出；无划词项 FR-12.1；文案照 design-spec 8）；左键单击＝呼出输入翻译面板（Q8/FR-12.2）；`settings://changed` 时重建菜单镜像 config（场景勾选与监听勾选实时反映，INV-8）；single-instance 回调→`input_translate`（EX-12）；D7 前台握手：新实例早期读 `instance.pid`→校验存活→`AllowSetForegroundWindow`→退场；被系统拒绝降级为面板置前无焦点 + 通知并记日志；pid 主实例启动写入缓存目录、退出清理；autostart 开关开启才写 HKCU Run、关闭即移除（FR-1.5）；「退出」＝注销热键→停监听→删 pid→`app.exit(0)`（FR-1.3 唯一退出路径）
   - Verification: `cargo test`（pid 写读清、菜单镜像重建决策纯逻辑）；冒烟：应用运行中再次启动无第二进程且既有实例面板唤起；托盘退出后进程结束、图标消失
   - 追溯: FR-1.3~1.5、FR-2.4(c)、FR-5.1（托盘勾选）、FR-12、FR-14.3（兜底）、EX-12、D7、Q8、spec 5.7.9
-  - Status: NOT_STARTED
+  - Status: DONE（已完成，详见 implementation-report.md 与 test-report.md）
 
 ### P4 集成打磨
 
@@ -207,7 +207,7 @@
   - 要点: 五动作统一入口（selection_translate / input_translate / ocr_recognize / ocr_translate / toggle_scene）；依赖方向 action_router→能力模块→config/events 禁止反向，禁止绕过 action_router 直接触发翻译（保证 EX-13 顶替单路径，spec 5.4）；前置检查链：onboarding 可见→挂起队列（容量 1、易失）排队；hasKey==false→不发起网络请求、弹配置引导并挂起本次翻译，补配后自动继续（FR-11.4）；框选期面板强制隐藏、引导期压制面板（5.6.1②a、5.7.3 交汇矩阵全表落实）；EX-13 顶替、D10 失焦不取消端到端复核；监听开关三方同步端到端；7.2 三处打点贯通，Debug 日志实测“热键回调→取词完成→面板可见”分段时间（暖窗常规触发，合计目标 <500ms，超标如实上报进专项，不私下放宽口径）
   - Verification: `cargo test action_router`（路由分发、挂起队列入队/补配继续/重启丢弃、压制条件判定）；全量 `cargo test`、`cargo clippy --all-targets -- -D warnings`、`cargo fmt --check`、`pnpm vitest run`、`pnpm build` 全绿；人工走查五入口 × 互译/定向冒烟并记录；打点耗时数值写入 implementation-report（J1 工程侧证据）
   - 追溯: spec 5.4/5.6.1②a/5.7.3/7.2、FR-11.4、FR-2.4、EX-12/EX-13、D10、INV-8、5.8 全表检测点归属复核
-  - Status: NOT_STARTED
+  - Status: DONE（已完成，详见 implementation-report.md 与 test-report.md）
 
 ### P5 打包发布物
 
@@ -218,7 +218,7 @@
   - 要点: 版本 SemVer 自 v1.0.0 起，Cargo.toml / tauri.conf.json / 产物名三处同源，构建前校验脚本强制（spec 8.4）；NSIS x64：installMode=currentUser（免提权）、webviewInstallMode=downloadBootstrapper，安装期无网致 Runtime 安装失败的界面文案给出微软官方下载指引（A4）；卸载保留 `%APPDATA%\com.alya.app` 用户数据（Q7）；便携 zip＝主 exe + README.txt（使用说明、WebView2 缺失处置、SmartScreen 无签名首次运行提示说明、无自动更新声明）；K3 自查：无自动更新组件、全仓无真实凭据；GPL 门禁终审记录（对照 spec 8.2 借鉴清单）
   - Verification: `pnpm tauri build` 产出 NSIS exe 与便携 zip；`node scripts/check-version.mjs` 输出三处一致；本机安装/卸载一轮冒烟（托盘、进程、自启项清净）；干净 VM 与无网安装验证移交 QA（checklist K 组 / X6）
   - 追溯: G6、spec 8.4/8.2、K1~K3、Q7、A4
-  - Status: NOT_STARTED
+  - Status: DONE（已完成，详见 implementation-report.md 与 test-report.md）
 
 ## 2. 依赖总览与关键路径
 
