@@ -607,3 +607,15 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 - Rust 回归：146/146 单测、11/11 SSE 集成测试通过；`cargo clippy --all-targets -- -D warnings`、`cargo fmt --check` 通过。
 - 前端回归：vitest 85/85、`pnpm lint`（svelte-check 0 错 0 警）、`pnpm build` 通过。
 - 集成冒烟未完全执行：真实窗口/首启引导/哑 Key 网络错误卡片需在 T17 构建后与 QA 真机矩阵统一执行；未使用真实凭据。
+
+---
+
+## 主 Agent 验收附录（T17，2026-08-28）
+
+- `pnpm release:check` 通过：package.json、Cargo.toml、tauri.conf.json 三处版本一致为 1.0.0。
+- Rust 发布门禁通过：cargo fmt --check、cargo clippy --all-targets -- -D warnings、cargo test（146 单测 + 11 集成）全绿；前端 pnpm lint（svelte-check 0 错 0 警）、pnpm vitest run（85/85）、pnpm build 全绿。
+- NSIS x64 安装包已生成：`src-tauri/target/release/bundle/nsis/Alya_1.0.0_x64-setup.exe`，大小约 3.43 MB。
+- 便携版已生成：`release/Alya-1.0.0-portable.zip`，大小约 4.70 MB；压缩包仅含 `Alya.exe` 与 `README.txt`，README 含 WebView2、隐私、SmartScreen、无自动更新说明。
+- 修复并验证 `scripts/build-portable.mjs` 的 Windows `file://` 路径处理：使用 `fileURLToPath`，避免 `/D:/` 被重复解析成 `D:\D:\...`。
+- 发布门禁扫描：未发现真实 Key 模式；无 updater 依赖/代码（仅规格文档中的“明确不引入”说明）；便携版与 NSIS 均未签名，SmartScreen 属已知限制。
+- 未完成项：干净 VM 安装/卸载、无 WebView2/无网络安装、真机快捷键/多屏 DPI/OCR/DeepSeek 联调仍需独立 QA 执行。

@@ -1,7 +1,7 @@
 {
   "name": "alya",
   "private": true,
-  "version": "0.1.0-dev",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,9 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "release:check": "node scripts/check-version.mjs",
+    "release:portable": "node scripts/build-portable.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1"

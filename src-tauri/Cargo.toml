@@ -1,6 +1,6 @@
 [package]
 name = "alya"
-version = "0.1.0-dev"
+version = "1.0.0"
 description = "Alya：Windows 桌面 AI 翻译工具（DeepSeek 驱动）"
 authors = ["Alya Team"]
 edition = "2021"

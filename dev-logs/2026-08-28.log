@@ -1,0 +1,1 @@
+2026-08-28 - 事件：T17 发布物构建与验收。关键结果：版本三处统一 1.0.0；NSIS x64 安装包 Alya_1.0.0_x64-setup.exe（约3.43MB）构建成功；便携版 Alya-1.0.0-portable.zip（约4.70MB，含 Alya.exe+README.txt）生成成功；修复便携脚本 Windows file:// 路径解析缺陷。实际验证及结果：cargo fmt/clippy/test（146+11）、pnpm lint/vitest（85）/build、release:check 全通过；无真实凭据与 updater 组件扫描命中。未解决问题：干净 VM、WebView2 缺失/无网、真机矩阵与 DeepSeek 联调待 QA。

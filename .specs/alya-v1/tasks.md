@@ -211,7 +211,7 @@
 
 ### P5 打包发布物
 
-- [ ] T17：NSIS + 便携版发布物与发布门禁
+- [x] T17：NSIS + 便携版发布物与发布门禁（DONE，2026-08-28 主 Agent 验收：版本校验通过；NSIS x64 3.43MB；便携版 zip 4.70MB 含 Alya.exe+README.txt；Rust 146/146+11/11、vitest 85/85、lint/build 全绿）
   - Owner: 实施工程师
   - Depends on: T16
   - 涉及: `src-tauri/tauri.conf.json`（bundle 配置）、`scripts/check-version.mjs`（版本一致性校验）、`src-tauri/src/portable_check.rs`（winreg 探测 WebView2 Runtime + MessageBoxW 原生指引，装配于启动最早段、任何 WebView 创建之前）、README.txt 模板
