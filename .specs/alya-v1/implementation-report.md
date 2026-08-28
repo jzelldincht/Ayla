@@ -641,3 +641,9 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 - 根因：注入式 `data-tauri-drag-region` 处理器在本应用 WebView 中未生效。
 - 修复：TopBar 改为显式 `mousedown → getCurrentWindow().startDragging()`（权限在 core:window:default 内），交互控件（按钮/下拉/输入）不触发拖拽；移除失效属性。Esc/关闭控件已覆盖键盘退出路径，拖拽区为指针专属交互（带 svelte-ignore 注释说明）。
 - 回归：vitest 87/87（新增 2 项拖拽行为测试：空白处左键触发、控件上/非左键不触发）、svelte-check 0 错 0 警、clippy/fmt 通过、build 通过；NSIS+便携版重建，新版已启动（提交 89089a3）。
+
+## 真机修复轮 4（2026-08-28，用户反馈"点击顶栏面板即消失"）
+
+- 根因：修复轮 2 使 `start_dragging` 真正生效后，其系统模态循环会触发一次**虚假 `Focused(false)`**；hideOnBlur 开启（默认）时失焦隐藏把它当真，面板在点击瞬间被藏掉。修复轮 1~2 的自动化测试期间 hideOnBlur 临时关闭，故未暴露。
+- 修复：`panel_start_drag` 期间置 `PANEL_DRAGGING` 标志（`start_dragging` 阻塞至鼠标释放，标志覆盖全拖拽期）；`is_hide_suppressed` 经纯函数 `decide_hide_suppressed` 消费该标志，拖拽中失焦不隐藏。新增 1 项单测（4 分支）。
+- 回归：Rust 158/158、clippy/fmt 通过；NSIS+便携版重建。

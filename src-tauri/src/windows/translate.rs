@@ -201,6 +201,10 @@ static RESIZE_GENERATION: AtomicU64 = AtomicU64::new(0);
 /// 面板 WebView 页面加载完成标志（真机修复轮 1：防止内容未就绪时显示"透明黑窗口"）。
 static PANEL_PAGE_LOADED: AtomicBool = AtomicBool::new(false);
 
+/// 拖拽进行中标志（真机修复轮 3：`start_dragging` 的系统模态循环会触发一次虚假的
+/// `Focused(false)`；hideOnBlur 开启时该事件会把面板在点击瞬间藏掉——用户实测复现）。
+static PANEL_DRAGGING: AtomicBool = AtomicBool::new(false);
+
 /// 显示前等待页面就绪的上限（超时仍显示，避免极端加载失败下永久无窗）。
 const PAGE_READY_WAIT_MAX: Duration = Duration::from_secs(3);
 
@@ -447,9 +451,14 @@ pub fn panel_hide(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 /// 顶栏拖拽命令（真机修复轮 2：`startDragging()` 同被 ACL 拒绝，改走自定义命令）。
+/// 真机修复轮 3：`start_dragging` 阻塞至鼠标释放（系统模态循环），期间置拖拽标志——
+/// 模态循环引发的虚假 `Focused(false)` 不得触发 hideOnBlur（is_hide_suppressed 消费）。
 #[tauri::command]
 pub fn panel_start_drag(window: tauri::WebviewWindow) -> Result<(), String> {
-    window.start_dragging().map_err(|e| e.to_string())
+    PANEL_DRAGGING.store(true, Ordering::Relaxed);
+    let result = window.start_dragging().map_err(|e| e.to_string());
+    PANEL_DRAGGING.store(false, Ordering::Relaxed);
+    result
 }
 
 /// `Focused(false)`：hideOnBlur 开 且 无压制条件 → 隐藏。
@@ -477,6 +486,10 @@ fn on_focus_lost(app: &AppHandle) {
 }
 
 fn is_hide_suppressed(app: &AppHandle) -> bool {
+    // 拖拽进行中（真机修复轮 3：start_dragging 模态循环的虚假失焦不得隐藏面板）。
+    if decide_hide_suppressed(false, PANEL_DRAGGING.load(Ordering::Relaxed)) {
+        return true;
+    }
     // 引导窗可见（T14 建窗后按可见性判定；引导期压制的面板本身也处于被隐藏态）。
     if let Some(onboarding) = app.get_webview_window("onboarding") {
         if onboarding.is_visible().unwrap_or(false) {
@@ -485,6 +498,11 @@ fn is_hide_suppressed(app: &AppHandle) -> bool {
     }
     // 框选进行中（spec 5.7.3：面板已在触发时强制隐藏，此判定防御散落状态漂移）。
     crate::windows::mask::any_visible()
+}
+
+/// 压制决策纯函数（可单测）：`dragging` 任一为真即压制失焦隐藏。
+fn decide_hide_suppressed(onboarding_visible: bool, dragging: bool) -> bool {
+    onboarding_visible || dragging
 }
 
 // ---------------------------------------------------------------------------
@@ -822,5 +840,17 @@ mod tests {
         assert!(rect.x < 0, "面板应整体留在副屏（负坐标）");
         assert!(rect.x >= left.x, "不得越过副屏左缘");
         ok_of::<u32, AppError>(Ok(0)); // 工具函数签名检查（成功分支）
+    }
+
+    #[test]
+    fn decide_hide_suppressed_dragging_blocks_blur_hide() {
+        // 真机修复轮 3：拖拽模态循环的虚假 Focused(false) 不得隐藏面板。
+        assert!(decide_hide_suppressed(false, true), "拖拽中必须压制");
+        assert!(decide_hide_suppressed(true, false), "引导可见必须压制");
+        assert!(decide_hide_suppressed(true, true), "叠加仍压制");
+        assert!(
+            !decide_hide_suppressed(false, false),
+            "常规失焦（非拖拽/无引导）不压制"
+        );
     }
 }
