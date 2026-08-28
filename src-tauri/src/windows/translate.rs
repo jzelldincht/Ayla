@@ -201,9 +201,27 @@ static RESIZE_GENERATION: AtomicU64 = AtomicU64::new(0);
 /// 面板 WebView 页面加载完成标志（真机修复轮 1：防止内容未就绪时显示"透明黑窗口"）。
 static PANEL_PAGE_LOADED: AtomicBool = AtomicBool::new(false);
 
-/// 拖拽进行中标志（真机修复轮 3：`start_dragging` 的系统模态循环会触发一次虚假的
-/// `Focused(false)`；hideOnBlur 开启时该事件会把面板在点击瞬间藏掉——用户实测复现）。
-static PANEL_DRAGGING: AtomicBool = AtomicBool::new(false);
+/// 拖拽失焦宽限期（真机修复轮 5）。实测证明：`start_dragging()` **立即返回**（仅代理至主线程），
+/// 其引发的 2 次虚假 `Focused(false)` 在返回**之后**异步到达（同秒内）——"拖拽期间置标志"
+/// 无法覆盖（修复轮 4 无效的原因）。改为记录拖拽开始时刻，失焦处理时判断是否仍在宽限期内。
+static PANEL_DRAG_UNTIL_MS: AtomicU64 = AtomicU64::new(0);
+
+/// 拖拽宽限期长度：虚假失焦实测在 start_dragging 返回后 ~50ms 内到达，取 500ms 裕量。
+/// 真实拖拽期间窗口持捕获不产生真实失焦；宽限期误压制真实失焦的代价仅为隐藏延迟半秒。
+const DRAG_BLUR_GRACE_MS: u64 = 500;
+
+fn now_unix_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// 拖拽宽限期内？（拖拽开始后 DRAG_BLUR_GRACE_MS 毫秒内）。
+fn drag_blur_in_grace() -> bool {
+    let until = PANEL_DRAG_UNTIL_MS.load(Ordering::Relaxed);
+    until != 0 && now_unix_ms() < until + DRAG_BLUR_GRACE_MS
+}
 
 /// 显示前等待页面就绪的上限（超时仍显示，避免极端加载失败下永久无窗）。
 const PAGE_READY_WAIT_MAX: Duration = Duration::from_secs(3);
@@ -451,13 +469,14 @@ pub fn panel_hide(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 /// 顶栏拖拽命令（真机修复轮 2：`startDragging()` 同被 ACL 拒绝，改走自定义命令）。
-/// 真机修复轮 3：`start_dragging` 阻塞至鼠标释放（系统模态循环），期间置拖拽标志——
-/// 模态循环引发的虚假 `Focused(false)` 不得触发 hideOnBlur（is_hide_suppressed 消费）。
+/// 真机修复轮 5：`start_dragging` 立即返回、虚假失焦异步后至——以"拖拽宽限期"取代
+/// "拖拽期间标志"（见 PANEL_DRAG_UNTIL_MS 注释与诊断记录）。
 #[tauri::command]
 pub fn panel_start_drag(window: tauri::WebviewWindow) -> Result<(), String> {
-    PANEL_DRAGGING.store(true, Ordering::Relaxed);
+    log::debug!("translate: panel_start_drag 进入（开启失焦宽限期）");
+    PANEL_DRAG_UNTIL_MS.store(now_unix_ms(), Ordering::Relaxed);
     let result = window.start_dragging().map_err(|e| e.to_string());
-    PANEL_DRAGGING.store(false, Ordering::Relaxed);
+    log::debug!("translate: start_dragging 返回（err={}）", result.is_err());
     result
 }
 
@@ -465,6 +484,15 @@ pub fn panel_start_drag(window: tauri::WebviewWindow) -> Result<(), String> {
 /// 压制条件（spec 5.7.3 交汇矩阵）：框选进行中（任一 mask 窗可见）、
 /// onboarding 可见（含 T14 引导窗与 T16 引导期压制投影）。
 fn on_focus_lost(app: &AppHandle) {
+    // 真机修复轮 5 诊断：记录每次 Focused(false) 到达时的关键状态（定位"点击顶栏即消失"真实触发序）。
+    log::debug!(
+        "translate: Focused(false) 到达（拖拽宽限内={}, mask可见={}, hideOnBlur={}）",
+        drag_blur_in_grace(),
+        crate::windows::mask::any_visible(),
+        config::read_global()
+            .map(|s| s.panel.hide_on_blur)
+            .unwrap_or(true),
+    );
     let window = match get_panel(app) {
         Ok(w) => w,
         Err(_) => return,
@@ -486,8 +514,8 @@ fn on_focus_lost(app: &AppHandle) {
 }
 
 fn is_hide_suppressed(app: &AppHandle) -> bool {
-    // 拖拽进行中（真机修复轮 3：start_dragging 模态循环的虚假失焦不得隐藏面板）。
-    if decide_hide_suppressed(false, PANEL_DRAGGING.load(Ordering::Relaxed)) {
+    // 拖拽宽限期内（真机修复轮 5：start_dragging 的虚假 Focused(false) 异步后至）。
+    if decide_hide_suppressed(false, drag_blur_in_grace()) {
         return true;
     }
     // 引导窗可见（T14 建窗后按可见性判定；引导期压制的面板本身也处于被隐藏态）。

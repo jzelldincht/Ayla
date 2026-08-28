@@ -647,3 +647,11 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 - 根因：修复轮 2 使 `start_dragging` 真正生效后，其系统模态循环会触发一次**虚假 `Focused(false)`**；hideOnBlur 开启（默认）时失焦隐藏把它当真，面板在点击瞬间被藏掉。修复轮 1~2 的自动化测试期间 hideOnBlur 临时关闭，故未暴露。
 - 修复：`panel_start_drag` 期间置 `PANEL_DRAGGING` 标志（`start_dragging` 阻塞至鼠标释放，标志覆盖全拖拽期）；`is_hide_suppressed` 经纯函数 `decide_hide_suppressed` 消费该标志，拖拽中失焦不隐藏。新增 1 项单测（4 分支）。
 - 回归：Rust 158/158、clippy/fmt 通过；NSIS+便携版重建。
+
+## 真机修复轮 5（2026-08-28，"点击顶栏即消失"复发——根治）
+
+- 实证诊断：调试版事件级日志证实修复轮 4 假设错误——`start_dragging()` **立即返回**（仅代理至主线程，并不阻塞至松手），其引发的 2 次虚假 `Focused(false)` 在返回**之后**异步到达（同秒内），此时拖拽标志已被清除，压制失效。
+- 根治方案：`PANEL_DRAGGING` 布尔标志替换为 `PANEL_DRAG_UNTIL_MS` 时间戳（拖拽开始时刻 + 500ms 宽限期，`DRAG_BLUR_GRACE_MS`）；失焦处理经 `drag_blur_in_grace()` 判定，不依赖任何事件时序假设。真实失焦在宽限外正常隐藏（代价仅半秒延迟）。
+- 主 Agent 实测证据（调试版 + Win32 SendInput 系统级拖拽）：面板被实际拖动至新位置且**未消失**；日志显示 `Focused(false) 到达（拖拽宽限内=true）` 压制生效；× 关闭后进程驻留（FR-1.3 关闭=隐藏语义正确）。
+- 回归：Rust 158/158、vitest 87/87、svelte-check 0/0、clippy/fmt 通过；NSIS+便携版重建。
+- 遗留诊断日志：`on_focus_lost`/`panel_start_drag` 的 Debug 级事件日志保留（发布默认 Info 不输出，spec 7.4），便于后续真机问题定位。
