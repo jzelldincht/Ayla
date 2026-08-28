@@ -326,5 +326,8 @@
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+    /* 真机修复轮 6：.host 的 pointer-events:none 会被子元素继承，canvas 必须显式恢复
+       auto，否则遮罩页收不到任何指针事件——框选完全失效（用户真机实测复现）。 */
+    pointer-events: auto;
   }
 </style>

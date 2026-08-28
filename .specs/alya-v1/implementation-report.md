@@ -655,3 +655,10 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 - 主 Agent 实测证据（调试版 + Win32 SendInput 系统级拖拽）：面板被实际拖动至新位置且**未消失**；日志显示 `Focused(false) 到达（拖拽宽限内=true）` 压制生效；× 关闭后进程驻留（FR-1.3 关闭=隐藏语义正确）。
 - 回归：Rust 158/158、vitest 87/87、svelte-check 0/0、clippy/fmt 通过；NSIS+便携版重建。
 - 遗留诊断日志：`on_focus_lost`/`panel_start_drag` 的 Debug 级事件日志保留（发布默认 Info 不输出，spec 7.4），便于后续真机问题定位。
+
+## 真机修复轮 6（2026-08-28，用户反馈"截图遮罩出现但无法框选"）
+
+- 根因：mask 页 CSS 陷阱——`.host { pointer-events: none }` 被子元素继承，canvas 未显式恢复 `pointer-events: auto`，整个遮罩页收不到任何指针事件，框选完全失效。T9 交付时的"单屏框选冒烟"声明未经真实指针验证（教训记录：交互类冒烟必须以系统级输入实测）。
+- 修复：canvas 显式 `pointer-events: auto`（单行）。遮罩窗属性核查无误（resizable=false 无隐形边框抢点击）。
+- 主 Agent 实测证据（SendInput 全链路）：Alt+S → 遮罩出现 → 系统级拖框 (800,300)-(1300,450) → 日志 `框选完成 裁剪 410x78（PNG 内存 7041 字节）` → OCR 面板弹出并正确识别屏幕文字（含语种下拉与送翻译控件）。识别内容含用户屏幕敏感信息，未在任何工件/日志中记录。
+- 回归：lint 0/0、vitest 全量、NSIS+便携版重建。
