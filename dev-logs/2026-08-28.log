@@ -14,3 +14,5 @@
 2026-08-28 - 事件：真机修复轮 9（自动翻译 + 样式回归根治 + 三项界面问题）。关键结果：①新增 autoTranslate.ts 防抖 700ms 原文变化自动翻译（复用 retranslateVisible 判定；显式提交 cancel 防双发；失焦放弃；四形态接线，单测 +5）；②定位轮 8 样式回归真根因——#app 挂载层无样式导致 body flex/100vh 架空、panel-container 塌到内容高（译文"被截断"），补 :global(#app) 拉伸链；③译文区重构：标题独立行 + dest-card（wash 仅翻译中出现，84px 保底）；④body cursor:move 移除（恢复右下角系统 resize 光标），外圈环拖动功能保留（onRingMousedown→panel_start_drag）；⑤最小尺寸 380×300（用户建议值，交互实测钳制精确生效，测试断言改引常量）；⑥--panel-inset 12→6px + 阴影收紧（热区贴近可见面板）；⑦顶栏控件视觉距边 10px。实际验证及结果：cargo 158/158、clippy 0、vitest 92/92、svelte-check 0/0；SendInput 实证——自动翻译两轮真实 DeepSeek 出译、外圈拖动窗口跟随、380×300 钳制生效、满高渲染截图确认；NSIS+便携版重建。未解决问题：无（待用户日常使用反馈）。
 
 2026-08-28 - 事件：真机修复轮 10（热区宽度 + 顶栏 15px 定稿）。关键结果：--panel-inset 6→2px（resize 热区从窗口外沿起算，环宽即光标偏移，两轮用户反馈后定稿 2px），--shadow-panel 降为贴身轻阴影（描边承担抗融界）；TopBar 左右内缩 11px+4px 图标内缩=视觉 15px（用户定稿）。实际验证及结果：vitest 92/92、svelte-check 0/0；HMR 放大截图确认 15px 与满高渲染；NSIS+便携版重建。未解决问题：无。
+
+2026-08-28 - 事件：真机修复轮 11（首尾空白不触发自动翻译）。关键结果：retranslateVisible 判定改 trim 后比较（自动翻译与重译按钮单一判定源），首尾空白变化不再触发重译/浮现按钮，中间空白仍算实质变化。实际验证及结果：vitest 95/95（+3 用例）、svelte-check 0/0；HMR 热载；NSIS+便携版重建。未解决问题：无。

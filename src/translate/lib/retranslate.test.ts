@@ -11,6 +11,16 @@ describe('retranslateVisible（A/D 修改后浮现）', () => {
     expect(retranslateVisible('敏捷的狐狸', '敏捷的狐狸')).toBe(false);
   });
 
+  it('仅首尾空白变化（轮 11）→ 不算实质修改，不浮现', () => {
+    expect(retranslateVisible('hello', ' hello ')).toBe(false);
+    expect(retranslateVisible('hello', 'hello\n')).toBe(false);
+    expect(retranslateVisible(' hello', 'hello')).toBe(false);
+  });
+
+  it('首尾空白之外有实质变化 → 仍浮现', () => {
+    expect(retranslateVisible('hello', ' hello world ')).toBe(true);
+  });
+
   it('修改后为纯空白（清空/空格）→ 不浮现（FR-4.3 空提交拦截）', () => {
     expect(retranslateVisible('原文', '')).toBe(false);
     expect(retranslateVisible('原文', '  \n  ')).toBe(false);

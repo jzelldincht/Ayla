@@ -38,6 +38,14 @@ describe('AutoTranslateScheduler（原文变化自动翻译）', () => {
     expect(fire).not.toHaveBeenCalled();
   });
 
+  it('仅首尾空白变化（轮 11）：不触发自动翻译', () => {
+    const fire = vi.fn();
+    scheduler.input(' hello ', 'hello', fire);
+    scheduler.input('hello\n', 'hello', fire);
+    vi.advanceTimersByTime(AUTO_TRANSLATE_DELAY_MS * 2);
+    expect(fire).not.toHaveBeenCalled();
+  });
+
   it('连续输入防抖：计时随输入重置，只在最后一次停顿后触发一次', () => {
     const fire = vi.fn();
     scheduler.input('a', '', fire);
