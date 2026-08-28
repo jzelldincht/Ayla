@@ -154,10 +154,10 @@
     align-items: center;
     height: var(--topbar-height);
     /* 真机修复轮 1：负 margin 逃出容器 16px 内边距。
-       真机修复轮 9：左右内缩 6px + 图标按钮内缩 4px = 控件视觉距窗口边界 10px
-       （用户反馈：工具栏+关闭按钮区域距左右边界各 10px）。 */
+       真机修复轮 9/10：左右内缩 11px + 图标按钮内缩 4px = 控件视觉距窗口边界 15px
+       （用户定稿值：10px 调整为 15px，与整体留白对齐更协调）。 */
     margin: 0 calc(-1 * (var(--panel-padding-x) + var(--panel-inset)));
-    padding: 0 6px 0 6px;
+    padding: 0 11px 0 11px;
     flex: none;
     user-select: none;
     -webkit-user-select: none;
