@@ -438,6 +438,20 @@ pub fn hide_panel(app: &AppHandle) -> Result<(), AppError> {
 // 失焦隐藏（FR-9.2，spec 5.7.3 交汇矩阵）
 // ---------------------------------------------------------------------------
 
+/// 面板隐藏命令（6.1；FR-1.3 关闭=隐藏）。真机修复轮 2：前端直调 `getCurrentWindow().hide()`
+/// 被 Tauri ACL 拒绝（core:window:default 不含 allow-hide）且 catch 静默，表现为"关闭无反应"；
+/// 统一改走自定义命令（与 hide_panel 同一实现，语义不重复）。
+#[tauri::command]
+pub fn panel_hide(app: tauri::AppHandle) -> Result<(), String> {
+    hide_panel(&app).map_err(|e| e.to_string())
+}
+
+/// 顶栏拖拽命令（真机修复轮 2：`startDragging()` 同被 ACL 拒绝，改走自定义命令）。
+#[tauri::command]
+pub fn panel_start_drag(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.start_dragging().map_err(|e| e.to_string())
+}
+
 /// `Focused(false)`：hideOnBlur 开 且 无压制条件 → 隐藏。
 /// 压制条件（spec 5.7.3 交汇矩阵）：框选进行中（任一 mask 窗可见）、
 /// onboarding 可见（含 T14 引导窗与 T16 引导期压制投影）。

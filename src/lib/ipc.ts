@@ -223,3 +223,13 @@ export function onOnboardingBegin(
 ): Promise<UnlistenFn> {
   return subscribeEvent<OnboardingBeginPayload>(EVENTS.onboardingBegin, handler);
 }
+
+/** 面板隐藏（FR-1.3 关闭=隐藏）。真机修复轮 2：窗口插件 API（window:hide）被 ACL 拒绝，改走自定义命令。 */
+export function panelHide(): Promise<void> {
+  return invoke('panel_hide');
+}
+
+/** 顶栏拖拽（真机修复轮 2）：window:start_dragging 同被 ACL 拒绝，改走自定义命令。 */
+export function panelStartDrag(): Promise<void> {
+  return invoke('panel_start_drag');
+}

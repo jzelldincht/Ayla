@@ -92,6 +92,8 @@ pub fn run() {
             action_router::cancel_translation, // T16：显式取消（6.1；Esc 中止，design-spec 3.5）
             action_router::reocr,     // T16：截图换语种重识别（6.1/FR-6.2）
             action_router::send_ocr_to_translate, // T16：截图一键送翻（6.1/FR-6.5）
+            windows::translate::panel_hide, // 真机修复轮 2：关闭=隐藏（窗口插件 API 被 ACL 拒绝）
+            windows::translate::panel_start_drag, // 真机修复轮 2：顶栏拖拽
         ])
         .setup(|app| {
             // 启动序列 1：配置加载（T2 模块；原子写/迁移桩在 config::load_from 内完成）。

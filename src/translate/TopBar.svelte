@@ -7,9 +7,8 @@
   // 本组件值一律读镜像 store（settings），由事件回流更新——不在前端乐观改值。
 
   import { settingsState, currentScene } from '../lib/stores';
-  import { setClipboardMonitor, setSettings, setPanelTargetLang } from '../lib/ipc';
+  import { setClipboardMonitor, setSettings, setPanelTargetLang, panelStartDrag } from '../lib/ipc';
   import { DIRECTED_TARGET_LANGS } from '../lib/types';
-  import { getCurrentWindow } from '@tauri-apps/api/window';
 
   let {
     tempTarget,
@@ -53,15 +52,15 @@
   }
 
   /**
-   * 顶栏拖拽（真机修复轮 2，用户反馈"无法拖动窗口"）：
-   * `data-tauri-drag-region` 的注入式处理器在本应用中未生效，改为显式调用
-   * `startDragging()`（权限 core:window:default 内置）。交互控件不触发拖拽。
+   * 顶栏拖拽（真机修复轮 2）：`data-tauri-drag-region` 注入处理器与前端直调
+   * `startDragging()` 均未生效/被 ACL 拒绝，改走自定义命令 `panel_start_drag`。
+   * 交互控件（按钮/下拉）不触发拖拽。
    */
   function onDragRegionMousedown(e: MouseEvent) {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement | null;
     if (target?.closest('button, select, input, textarea')) return;
-    void getCurrentWindow().startDragging().catch((err) => console.warn('窗口拖拽失败', err));
+    void panelStartDrag().catch((err) => console.warn('窗口拖拽失败', err));
   }
 </script>
 

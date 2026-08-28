@@ -16,7 +16,6 @@
   // INV-8：本页所有设置状态只读镜像 store（settings://changed/广播回流）；写动作仅经 IPC 命令。
 
   import { onMount } from 'svelte';
-  import { getCurrentWindow } from '@tauri-apps/api/window';
 
   import {
     translate,
@@ -32,6 +31,7 @@
     onTranslationError,
     onOcrResult,
     onSelectionClosed,
+    panelHide,
   } from '../lib/ipc';
   import {
     settingsState,
@@ -316,7 +316,8 @@
 
   async function hideWindow() {
     try {
-      await getCurrentWindow().hide();
+      // 真机修复轮 2：getCurrentWindow().hide() 被 Tauri ACL 拒绝且静默吞错，改走自定义命令。
+      await panelHide();
     } catch {
       // 非 Tauri 环境（vitest/浏览器）或窗口已销毁：忽略
     }
