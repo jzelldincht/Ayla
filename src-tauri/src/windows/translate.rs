@@ -39,9 +39,10 @@ use crate::events::{PanelShowPayload, EVENT_PANEL_SHOW, WINDOW_TRANSLATE_LABEL};
 // 规格常量（design-spec 3.1/3.4 + spec 5.7.2）
 // ---------------------------------------------------------------------------
 
-/// 面板最小尺寸（逻辑像素，design-spec 3.1：最小 360×240）。
-pub const PANEL_MIN_WIDTH_LOGICAL: u32 = 360;
-pub const PANEL_MIN_HEIGHT_LOGICAL: u32 = 240;
+/// 面板最小尺寸（逻辑像素；真机修复轮 9 按用户反馈从 360×240 上调——
+/// 360 宽下顶栏关闭按钮贴住窗口圆角被视觉裁切，380×300 留出呼吸空间）。
+pub const PANEL_MIN_WIDTH_LOGICAL: u32 = 380;
+pub const PANEL_MIN_HEIGHT_LOGICAL: u32 = 300;
 
 /// 面板最大尺寸＝所在显示器工作区的 80%（design-spec 3.1）。
 pub const PANEL_MAX_WORK_AREA_RATIO: f64 = 0.8;
@@ -811,12 +812,18 @@ mod tests {
     fn clamp_size_min_and_cap_boundaries() {
         // 正常大屏：出厂 460×340 原样保留。
         assert_eq!(clamp_logical_size(460, 340, 2000, 1500), (460, 340));
-        // 小于最小 → 抬升到 360×240。
-        assert_eq!(clamp_logical_size(100, 100, 2000, 1500), (360, 240));
+        // 小于最小 → 抬升到最小尺寸（真机修复轮 9 起 380×300；断言引用常量防再漂移）。
+        assert_eq!(
+            clamp_logical_size(100, 100, 2000, 1500),
+            (PANEL_MIN_WIDTH_LOGICAL, PANEL_MIN_HEIGHT_LOGICAL)
+        );
         // 超大 → 压到 80%（逻辑）。
         assert_eq!(clamp_logical_size(2000, 1500, 1000, 800), (800, 640));
         // 0（配置异常/早期值）→ 最小。
-        assert_eq!(clamp_logical_size(0, 0, 2000, 1500), (360, 240));
+        assert_eq!(
+            clamp_logical_size(0, 0, 2000, 1500),
+            (PANEL_MIN_WIDTH_LOGICAL, PANEL_MIN_HEIGHT_LOGICAL)
+        );
         // cap < 最小（更极端窄屏）→ cap 优先。
         assert_eq!(clamp_logical_size(460, 340, 300, 200), (240, 160));
     }

@@ -677,3 +677,20 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 2. **原文输入框可纵向拉伸**：boxed 输入框 `resize: vertical`（仅上下方向）；拖过一次后 userPinned 置位、自动增高停用（避免程序覆盖用户调整），mouseup 偏差检测实现。
 3. **译文高亮底色**：dest-block 加 accent 浅色 wash 底（亮 #EEF3FE/暗 rgba(110,151,240,0.10)）+ 圆角卡片化，译文与原文区明确区分。
 - 回归：Rust 158/158、vitest 87/87、lint 0/0；NSIS+便携版重建。
+
+## 真机修复轮 9（2026-08-28，用户反馈自动翻译 + 样式回归 + 三项界面问题）
+
+**功能：原文变化自动翻译（用户明确需求）**
+- 新增 `src/translate/lib/autoTranslate.ts`：防抖 700ms 调度器，可翻译判定复用 `retranslateVisible`（A1 裁决同源：非纯空白且 ≠ 已提交版本）。交互规则：连续输入只在停顿后触发一次；显式提交（回车/翻译/重译/送翻译）先 cancel 防双重请求；触发时面板已失焦则放弃（不空耗请求）；四形态（A/B/C/D）原文编辑全接线，Enter 立即提交路径保留。
+- 实证（SendInput + 真实 DeepSeek）：形态 B 打字 "the quick brown fox jumps" 停顿后自动出译文「敏捷的棕色狐狸跳了过去」；续输 " over the lazy dog" 无任何按键操作译文自动更新为整句新译。单测 5 例（防抖重置/同文不触发/空白不触发/cancel/失焦放弃）。
+
+**样式回归根因（"面目全非"的真因，追溯至轮 8）**
+- `#app` 挂载层无任何样式：body 的 flex/100vh 全部架空，panel-container 高度塌到内容高——窗口越小/内容越少，下方越透明（用户实测"高度只有 140、译文被截断"）。轮 8 布局改动后该缺陷与译文 wash 挤压叠加放大。
+- 修复：`:global(#app)` 纳入拉伸链（width/height 100% + flex）；译文区重构为标题独立行 + `.dest-card`（wash 底只包内容卡，`filled={outStatus !== 'idle'}` 闲置态不显示背景色，84px 保底防挤压）。
+
+**三项界面问题（用户轮 9 反馈）**
+1. 右下角光标错误（move 取代 resize）：`body { cursor: move }`（外圈拖拽可供性）覆盖了系统 resize 光标——移除，外圈拖拽功能保留（`onRingMousedown`：点击落在 body 本体即 `panel_start_drag`，实证从左环拖动窗口 0→240 跟随）。
+2. 顶栏控件贴边：TopBar 左右内缩改为视觉 10px（padding 6px + 图标按钮内缩 4px），关闭钮不再贴住圆角。
+3. 最小尺寸与热区：`PANEL_MIN_WIDTH/HEIGHT_LOGICAL` 360×240 → **380×300**（用户建议值；交互缩放强制拖到 180×240 实测精确钳在 380×300，Rust 断言改引常量防漂移）；`--panel-inset` 12px → **6px** 并收紧 `--shadow-panel` 扩散——留白环属窗口热区，过宽导致 resize 光标离可见面板太远（用户截图红框证据）。
+
+- 回归：Rust 158/158、vitest 92/92（+5）、clippy -D warnings、svelte-check 0/0；NSIS+便携版重建。

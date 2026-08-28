@@ -4,7 +4,7 @@
   // 数据流：
   // - 后端统一 show 后发射 `panel://show {mode, text?, sessionId?}`（6.2）——本页据此切四形态；
   // - 形态 A（划词/剪贴板监听）：展示原文后前端 invoke `translate {text, source}`（spec 5.6.1⑥）；
-  // - 形态 B（输入）：用户输入后回车/按钮 invoke translate（FR-4.1~4.3）；
+  // - 形态 B（输入）：输入/粘贴停顿 700ms 自动翻译，回车/按钮立即提交（FR-4.1~4.3 + 轮 9）；
   // - 形态 C（OCR 识别）：`ocr://result` 展示（勿需 API Key）；语种下拉 → reocr（FR-6.2）；
   //   「送翻译」→ send_ocr_to_translate（FR-6.5），begin 到达后转形态 D；
   // - 形态 D（截图翻译）：识别原文（可编辑，用户裁决 A1）+ 译文流；Alt+D 全景 begin 后自动转入；
@@ -32,6 +32,7 @@
     onOcrResult,
     onSelectionClosed,
     panelHide,
+    panelStartDrag,
   } from '../lib/ipc';
   import {
     settingsState,
@@ -50,6 +51,7 @@
   } from '../lib/types';
   import { computeEtaSeconds, ETA_RATE_WINDOW_MS } from './lib/estimate';
   import { OCR_LANGPACK_TITLE, ocrLangpackDescription, MICROSOFT_GUIDE_URL } from './lib/errors';
+  import { AutoTranslateScheduler } from './lib/autoTranslate';
   import TopBar from './TopBar.svelte';
   import OriginalEditor from './OriginalEditor.svelte';
   import StreamOutput from './StreamOutput.svelte';
@@ -117,6 +119,7 @@
     // Esc 先隐藏前若活动轮存在 → 中止（design-spec 3.5 任何形态任何状态）
     return () => {
       window.removeEventListener('keydown', onWindowKeydown);
+      autoTranslate.cancel();
       for (const u of unlisteners) u();
     };
   });
@@ -168,7 +171,25 @@
   // 翻译发起（EX-13 顶替语义前端段：新一轮清空译文区进入等待态）
   // ---------------------------------------------------------------------------
 
+  // 真机修复轮 9：面板外圈 12px 透明留白（body padding 区）兼任窗口拖拽移动区——
+  // 用户反馈"外边界无法拖动"。点击落在 body 本体（未进 panel-container / 顶栏）即拖拽。
+  function onRingMousedown(e: MouseEvent) {
+    if (e.button !== 0) return;
+    if (e.target !== document.body) return;
+    void panelStartDrag().catch((err) => console.warn('窗口拖拽失败', err));
+  }
+
+  // 真机修复轮 9：原文变化自动翻译（防抖，规则见 lib/autoTranslate.ts）。
+  // resolveSource 在触发时求值——形态 A 的 source 跟随触发瞬间的面板模式。
+  const autoTranslate = new AutoTranslateScheduler();
+
+  function onOriginalInput(v: string, resolveSource: () => TranslateSource) {
+    original = v;
+    autoTranslate.input(v, submitted, () => void startTranslation(v, resolveSource()));
+  }
+
   async function startTranslation(text: string, source: TranslateSource): Promise<void> {
+    autoTranslate.cancel(); // 显式提交优先：清掉挂起的自动翻译，避免双重请求
     if (text.trim().length === 0) return; // FR-4.3/EX-9 前端拦截：不发起、无错误
     submitted = text;
     activeSource = source;
@@ -195,6 +216,7 @@
 
   async function sendOcrToTranslation() {
     if (!sessionId || original.trim().length === 0 || ocrEmpty) return;
+    autoTranslate.cancel(); // 显式提交优先：清掉挂起的自动翻译
     submitted = original;
     activeSource = 'ocr';
     outputText = '';
@@ -364,6 +386,8 @@
   });
 </script>
 
+<svelte:window onmousedown={onRingMousedown} />
+
 <div class="panel-container">
   <TopBar {tempTarget} onTargetChange={(v) => (tempTarget = v)} onClose={hideWindow} />
 
@@ -380,7 +404,7 @@
         <OriginalEditor
           value={original}
           submitted={submitted}
-          oninput={(v) => (original = v)}
+          oninput={(v) => onOriginalInput(v, () => (panelMode === 'clipboard' ? 'clipboard' : 'selection'))}
           onaction={() => void startTranslation(original, panelMode === 'clipboard' ? 'clipboard' : 'selection')}
           buttonMode="whenModified"
           buttonLabel="重译 ↵"
@@ -391,16 +415,18 @@
       <div class="divider" aria-hidden="true"></div>
       <section class="dest-block">
         <div class="label">{translationLabel}</div>
-        <StreamOutput
-          status={outStatus}
-          text={outputText}
-          renderMode={renderMode}
-          etaSeconds={etaSeconds}
-          errorExCode={errorPayload?.ex_code ?? null}
-          roundKey={roundKey}
-          onRetry={retry}
-          onOpenSettings={openSettingsClick}
-        />
+        <div class="dest-card" class:filled={outStatus !== 'idle'}>
+          <StreamOutput
+            status={outStatus}
+            text={outputText}
+            renderMode={renderMode}
+            etaSeconds={etaSeconds}
+            errorExCode={errorPayload?.ex_code ?? null}
+            roundKey={roundKey}
+            onRetry={retry}
+            onOpenSettings={openSettingsClick}
+          />
+        </div>
       </section>
 
     {:else if form === 'B'}
@@ -409,7 +435,7 @@
         <OriginalEditor
           value={original}
           submitted={submitted}
-          oninput={(v) => (original = v)}
+          oninput={(v) => onOriginalInput(v, () => 'input')}
           onaction={() => void startTranslation(original, 'input')}
           buttonMode="always"
           buttonLabel="翻译 ↵"
@@ -424,16 +450,18 @@
       <div class="divider" aria-hidden="true"></div>
       <section class="dest-block">
         <div class="label">译文</div>
-        <StreamOutput
-          status={outStatus}
-          text={outputText}
-          renderMode={renderMode}
-          etaSeconds={etaSeconds}
-          errorExCode={errorPayload?.ex_code ?? null}
-          roundKey={roundKey}
-          onRetry={retry}
-          onOpenSettings={openSettingsClick}
-        />
+        <div class="dest-card" class:filled={outStatus !== 'idle'}>
+          <StreamOutput
+            status={outStatus}
+            text={outputText}
+            renderMode={renderMode}
+            etaSeconds={etaSeconds}
+            errorExCode={errorPayload?.ex_code ?? null}
+            roundKey={roundKey}
+            onRetry={retry}
+            onOpenSettings={openSettingsClick}
+          />
+        </div>
         <div class="caption">Enter 翻译 · Shift+Enter 换行</div>
       </section>
 
@@ -486,7 +514,7 @@
         <OriginalEditor
           value={original}
           submitted={submitted}
-          oninput={(v) => (original = v)}
+          oninput={(v) => onOriginalInput(v, () => 'ocr')}
           onaction={() => void startTranslation(original, 'ocr')}
           buttonMode="whenModified"
           buttonLabel="重译 ↵"
@@ -508,7 +536,7 @@
           <OriginalEditor
             value={original}
             submitted={submitted}
-            oninput={(v) => (original = v)}
+            oninput={(v) => onOriginalInput(v, () => 'ocr')}
             onaction={() => void startTranslation(original, 'ocr')}
             buttonMode="whenModified"
             buttonLabel="重译 ↵"
@@ -519,16 +547,18 @@
         <div class="divider" aria-hidden="true"></div>
         <section class="dest-block">
           <div class="label">{translationLabel}</div>
-          <StreamOutput
-            status={outStatus}
-            text={outputText}
-            renderMode={renderMode}
-            etaSeconds={etaSeconds}
-            errorExCode={errorPayload?.ex_code ?? null}
-            roundKey={roundKey}
-            onRetry={retry}
-            onOpenSettings={openSettingsClick}
-          />
+          <div class="dest-card" class:filled={outStatus !== 'idle'}>
+            <StreamOutput
+              status={outStatus}
+              text={outputText}
+              renderMode={renderMode}
+              etaSeconds={etaSeconds}
+              errorExCode={errorPayload?.ex_code ?? null}
+              roundKey={roundKey}
+              onRetry={retry}
+              onOpenSettings={openSettingsClick}
+            />
+          </div>
         </section>
       {/if}
     {/if}
@@ -538,6 +568,15 @@
 <style>
   /* 真机修复轮 8：body 留 12px 透明边距，供 CSS 阴影/描边绘制（白色背景下面板不再融界）；
      仅 translate 页加载此样式，不影响 settings/onboarding 的原生窗口。 */
+  /* 真机修复轮 9：#app 挂载层必须参与拉伸链——此前无样式，body 的 flex/100vh
+     全部架空，panel-container 高度塌到内容高（用户实测：窗口 300 高仅 ~140 可见、
+     译文区"被截断"，轮 8"面目全非"的真根因）。 */
+  :global(#app) {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+  }
   :global(body) {
     box-sizing: border-box;
     width: 100vw;
@@ -558,6 +597,9 @@
     border: 1px solid var(--panel-ring);
     box-shadow: var(--shadow-panel);
     overflow: hidden;
+    /* 光标保持 default：body 曾设 cursor:move 作外圈拖拽可供性，但会覆盖右下角
+       系统 resize 光标（用户反馈图标不对）；外圈拖拽功能保留（onRingMousedown）。 */
+    cursor: default;
     color: var(--fg-body);
     font-size: var(--font-size-body);
   }
@@ -606,7 +648,18 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    /* 真机修复轮 8：译文高亮底（accent 浅色 wash），与原文区明确区分、聚焦结果。 */
+    gap: var(--space-1);
+  }
+  /* 真机修复轮 9：译文标题独立成行在 wash 外；wash 底只包内容卡，且仅有翻译内容
+     时出现（用户反馈"没有要翻译的就不显示背景色"）；84px 保底防被拉高的输入框挤没。 */
+  .dest-card {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .dest-card.filled {
+    min-height: 84px;
     background: var(--accent-wash);
     border-radius: var(--radius-card);
     padding: var(--space-2) var(--space-3);

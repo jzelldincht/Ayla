@@ -153,11 +153,11 @@
     display: flex;
     align-items: center;
     height: var(--topbar-height);
-    /* 真机修复轮 1：负 margin 逃出容器 16px 内边距——
-       左 12px + 图标按钮内缩 4px = 图标与下方内容左缘（16px）对齐；
-       右 4px 让关闭按钮贴近右上角（用户反馈）。 */
+    /* 真机修复轮 1：负 margin 逃出容器 16px 内边距。
+       真机修复轮 9：左右内缩 6px + 图标按钮内缩 4px = 控件视觉距窗口边界 10px
+       （用户反馈：工具栏+关闭按钮区域距左右边界各 10px）。 */
     margin: 0 calc(-1 * (var(--panel-padding-x) + var(--panel-inset)));
-    padding: 0 4px 0 12px;
+    padding: 0 6px 0 6px;
     flex: none;
     user-select: none;
     -webkit-user-select: none;

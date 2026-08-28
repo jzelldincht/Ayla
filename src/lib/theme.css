@@ -42,9 +42,9 @@
   /* 截图框选遮罩（与主题无关，恒定） */
   --mask-select: rgba(15, 18, 24, 0.35);
 
-  /* 阴影（亮） */
+  /* 阴影（亮）；轮 9 随 --panel-inset 12→6px 收紧扩散，避免在窗口边缘被硬截断 */
   --shadow-panel:
-    0 8px 28px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
+    0 4px 12px rgba(0, 0, 0, 0.2), 0 1px 4px rgba(0, 0, 0, 0.12);
   --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.14);
 }
 
@@ -74,9 +74,9 @@
   --panel-ring: #3d4653;
   --mask-select: rgba(15, 18, 24, 0.35);
 
-  /* 阴影（暗色主题透明度上调约 1.4 倍，design-spec 2.4） */
+  /* 阴影（暗色主题透明度上调约 1.4 倍，design-spec 2.4）；轮 9 随留白环收窄收紧 */
   --shadow-panel:
-    0 8px 28px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.14);
+    0 4px 12px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.16);
   --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -126,7 +126,9 @@
   --control-height-panel: 28px; /* 面板内按钮高 */
   --setting-row-height: 40px; /* 设置行高 */
   --panel-padding-x: 16px; /* 面板内容左右内边距 */
-  --panel-inset: 12px; /* 窗口透明边距：CSS 阴影/描边绘制空间（真机修复轮 8） */
+  /* 窗口透明边距：CSS 阴影/描边绘制空间（轮 8 引入 12px；轮 9 收窄至 6px——
+     留白环属于窗口热区（resize/外圈拖动），过宽会让光标离可见面板太远（用户反馈） */
+  --panel-inset: 6px;
 }
 
 /* ---------------------------------------------------------------------------
