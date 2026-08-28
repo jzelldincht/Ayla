@@ -619,3 +619,19 @@ T15 实施代理被用户中断，但代码已基本落盘（tray.rs 381 行 / i
 - 修复并验证 `scripts/build-portable.mjs` 的 Windows `file://` 路径处理：使用 `fileURLToPath`，避免 `/D:/` 被重复解析成 `D:\D:\...`。
 - 发布门禁扫描：未发现真实 Key 模式；无 updater 依赖/代码（仅规格文档中的“明确不引入”说明）；便携版与 NSIS 均未签名，SmartScreen 属已知限制。
 - 未完成项：干净 VM 安装/卸载、无 WebView2/无网络安装、真机快捷键/多屏 DPI/OCR/DeepSeek 联调仍需独立 QA 执行。
+
+---
+
+## 真机修复轮 1（2026-08-28，用户真机反馈 5 项）
+
+用户在真机测试（配置了自建 Alya-Translator Key，模型切至 deepseek-v4-flash）后反馈 5 项，全部修复并重建发布物（提交 bf5a192）：
+
+1. **圆角窗外透出方形阴影线**：translate 窗 `shadow(true)` 的 DWM 方形阴影在圆角透明窗外露出 → 改 `shadow(false)`。
+2. **顶栏控件与内容左对齐**：topbar 负 margin 逃出容器 16px 内边距，左 12px + 图标内缩 4px = 图标与内容左缘对齐。
+3. **译文分隔线时有时无、与原文贴死**：形态 B 补齐与形态 A 一致的分隔线（始终存在），分隔线上下间距 8px→12px。
+4. **关闭按钮贴右上角**：topbar 右内边距 8px→4px。
+5. **偶发"透明黑窗口"**：面板在 WebView 内容加载完成前被显示 → `on_page_load Finished` 置位就绪标志，`show_panel` 显示前等待（上限 3s，超时兜底仍显示）；Tauri 2 API 为 Builder 方法（首版误挂窗口实例，编译期发现已改）。
+
+附带：清理 7 处需求编号泄漏到 UI 文案（onboarding 标题 + settings 六处描述，同步修正测试断言）。
+
+回归证据：Rust 157/157（146 单测 + 11 集成）、vitest 85/85、clippy/fmt/lint/build 全绿；NSIS 与便携版已重建；用户配置保持（model=deepseek-v4-flash，hasKey=true），测试用临时开关已恢复默认（monitor=false / hideOnBlur=true）。
