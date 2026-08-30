@@ -70,10 +70,10 @@ impl Language {
             Self::En => "Mutual",
             Self::Ja => "相互",
             Self::Ko => "상호",
-            Self::Fr => "Mutuelle",
+            Self::Fr => "Bidirectionnelle",
             Self::De => "Gegenseitig",
-            Self::Es => "Mutua",
-            Self::Ru => "Взаимный",
+            Self::Es => "Bidireccional",
+            Self::Ru => "Взаимная",
         }
     }
     pub fn tray_scene_directed(self) -> &'static str {
@@ -83,10 +83,10 @@ impl Language {
             Self::En => "Directed",
             Self::Ja => "指定",
             Self::Ko => "지정",
-            Self::Fr => "Dirigée",
+            Self::Fr => "Unidirectionnelle",
             Self::De => "Gerichtet",
-            Self::Es => "Dirigida",
-            Self::Ru => "Направленный",
+            Self::Es => "Direccional",
+            Self::Ru => "Направленная",
         }
     }
     pub fn tray_input_translate(self) -> &'static str {
@@ -134,7 +134,7 @@ impl Language {
             Self::ZhTw => "剪貼簿監聽",
             Self::En => "Clipboard monitor",
             Self::Ja => "クリップボード監視",
-            Self::Ko => "클립보드 모니터",
+            Self::Ko => "클립보드 모니터링",
             Self::Fr => "Presse-papiers",
             Self::De => "Zwischenablage",
             Self::Es => "Portapapeles",
