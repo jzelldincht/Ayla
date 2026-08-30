@@ -3,26 +3,32 @@
 //! 职责：
 //! - **暖窗预创建**（D5/J1 前提）：启动序列末尾 `init()` 创建并隐藏（无边框、透明、阴影、
 //!   skip_taskbar、初始不可见；C3：topmost 于 show 置位、隐藏后清除）；常驻复用，隐藏≠销毁。
-//! - **统一显示路径** `show_panel`：place_at_cursor（光标物理坐标 → 归属显示器含负坐标副屏 →
-//!   持久逻辑尺寸 × 该屏 scale → (+16,+16) 逻辑偏移 → 选区避让退化（C2：无系统选区矩形，直按
-//!   鼠标锚点规则）→ 右/下/角部翻转 → 工作区 8px 钳制，绝不跨屏）→ show + set_focus →
-//!   `panel://show` 统一发射 → 打点 `panel_visible`（7.2）。
+//! - **统一显示路径** `show_panel`：place_remembered_rect（真机修复轮 13g 用户需求，取代
+//!   spec 5.7.2 光标锚点定位）——记忆位置（`panel.posXLogical/posYLogical`，用户拖动/磁吸
+//!   松手后防抖保存）优先并钳回所在屏工作区；**无记忆 → 默认贴屏幕右侧垂直居中** →
+//!   show + set_focus → `panel://show` 统一发射 → 打点 `panel_visible`（7.2）。
 //! - **失焦隐藏**（FR-9.2/5.7.3）：`Focused(false)` 且 `panel.hideOnBlur` 开且无压制条件
 //!   （框选进行中=遮罩可见 / onboarding 可见；T16 的引导期压制同样经 onboarding 可见投影）→
 //!   隐藏；隐藏**不取消**进行中翻译（D10）；隐藏幂等（重复 hide 无副作用）。
 //! - **尺寸调整**（FR-9.3/A4）：`resizable(true)`（无边框窗在 Windows 上保留原生隐形调尺寸
 //!   边框＝四边四角热区，约系统边框宽度）＋ `Resized` 事件防抖（500ms 松手后）持久化逻辑宽高
 //!   （`panel.widthLogical/heightLogical`，INV-4 存逻辑值抗 DPI 变更），并在持久化时按当前
-//!   显示器工作区 80% 上限与最小 360×240 钳制回写。
-//! - **尺寸上限**（design-spec 3.1）：最小 360×240、上限所在工作区 80%——show 前与 resize
-//!   持久化时均经 `clamp_logical_size` 钳制（cap < 最小尺寸时 cap 优先，保证绝不出屏）。
+//!   显示器工作区上限与最小 380×300 钳制回写。
+//! - **尺寸上限**（真机修复轮 13 起；design-spec 3.1 的"工作区 80%"废弃）：最小 380×300、
+//!   宽度上限＝工作区宽 − 左右各 8px、高度上限＝工作区高 − 顶部 8px（**底部贴死工作区底边**，
+//!   即磁吸到任务栏上沿）——show 前、resize 持久化、内容自适应（`panel_resize_for_content`）
+//!   均经 `clamp_logical_size` 钳制（cap < 最小尺寸时 cap 优先，保证绝不出屏）。
+//! - **译文内容自适应高度**（真机修复轮 13 用户需求）：前端测量译文不滚动所需窗口总高，
+//!   经 `panel_resize_for_content` 应用＝max(用户偏好高度, 内容所需) 钳到 [最小, 所在位置上限
+//!   （工作区底 − 窗顶，贴底无空带）]；窗口贴底时底边钉住、顶边上移（等效向上生长）。内容驱动
+//!   的变更**不持久化**（用户拖拽的偏好尺寸不被长文撑大覆盖，每次 show 回到偏好值）。
 //!
 //! 依赖方向：windows/translate.rs → config/events/windows::mask（spec 5.4 禁止反向）。
 //! 定位/钳制为纯函数（`place_panel`/`clamp_logical_size`），单测覆盖 spec 测试策略点名项：
 //! 四角溢出翻转、负坐标副屏、屏小于面板、100%/150% 换算。
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use tauri::{
@@ -44,8 +50,12 @@ use crate::events::{PanelShowPayload, EVENT_PANEL_SHOW, WINDOW_TRANSLATE_LABEL};
 pub const PANEL_MIN_WIDTH_LOGICAL: u32 = 380;
 pub const PANEL_MIN_HEIGHT_LOGICAL: u32 = 300;
 
-/// 面板最大尺寸＝所在显示器工作区的 80%（design-spec 3.1）。
-pub const PANEL_MAX_WORK_AREA_RATIO: f64 = 0.8;
+/// 面板最大尺寸（真机修复轮 13 用户需求"拖到多大就是多大，上限即磁吸到 Windows 边界"；
+/// design-spec 3.1 原定工作区 80%，自本轮起废弃）：
+/// - 宽度上限＝工作区宽 − 左右各 `PANEL_MAX_EDGE_MARGIN_LOGICAL`；
+/// - 高度上限＝工作区高 − 顶部 `PANEL_MAX_EDGE_MARGIN_LOGICAL`（**底部 0**——窗口底边贴死
+///   工作区底边即任务栏上沿，消除"贴底拖大后卡片与任务栏之间的空带"）。
+pub const PANEL_MAX_EDGE_MARGIN_LOGICAL: f64 = WORK_MARGIN_LOGICAL;
 
 /// 锚点偏移（逻辑像素；design-spec 3.4 第 2/6 条：偏移量按逻辑像素定义，各屏按缩放换算；
 /// spec 5.7.2 缺省值为 +16,+16——任务书明确按设计规范的逻辑 px 口径执行）。
@@ -103,16 +113,34 @@ pub struct PanelRect {
 // 纯算法：尺寸钳制 + 定位（spec 5.7.2 第 3~5 步 + design-spec 3.4）
 // ---------------------------------------------------------------------------
 
-/// 面板逻辑尺寸钳制（design-spec 3.1）：
-/// - 最小 360×240（不足抬升到最小）；
-/// - 上限＝所在工作区 80%（超出压回）；
-/// - 工作区 80% < 最小尺寸的极端窄屏：**上限优先**（绝不出屏的硬约束优先于最小尺寸）。
+/// 面板逻辑尺寸钳制（真机修复轮 13 起，design-spec 3.1 的 80% 上限废弃）：
+/// - 最小 380×300（不足抬升到最小）；
+/// - 宽度上限＝工作区宽 − 左右各 8px；**高度上限＝工作区高（顶/底零边距——
+///   真机修复轮 13e：磁吸/拖拽到工作区整高时原样保留，不被 −8px 上限"回弹"出空带；
+///   满高时 y 钳到 0 贴顶贴底）**；
+/// - 上限 < 最小尺寸的极端窄屏：**上限优先**（绝不出屏的硬约束优先于最小尺寸）。
 ///
 /// `work_w/work_h` 为工作区**逻辑像素**尺寸（调用方负责按所在屏 scale 换算）。
 pub fn clamp_logical_size(width: u32, height: u32, work_w: u32, work_h: u32) -> (u32, u32) {
-    let cap_w = (work_w as f64 * PANEL_MAX_WORK_AREA_RATIO).round() as u32;
-    let cap_h = (work_h as f64 * PANEL_MAX_WORK_AREA_RATIO).round() as u32;
+    let cap_w = cap_w_len(work_w);
     let w = std::cmp::min(std::cmp::max(width, PANEL_MIN_WIDTH_LOGICAL), cap_w);
+    let h = std::cmp::min(std::cmp::max(height, PANEL_MIN_HEIGHT_LOGICAL), work_h);
+    (w, h)
+}
+
+/// 工作区宽度 → 面板宽度上限（左右各减 `PANEL_MAX_EDGE_MARGIN_LOGICAL`；防下溢取 0 下界）。
+fn cap_w_len(work_w: u32) -> u32 {
+    ((work_w as f64) - 2.0 * PANEL_MAX_EDGE_MARGIN_LOGICAL).round().max(0.0) as u32
+}
+
+/// 持久化钳制（真机修复轮 13e）：与 `clamp_logical_size` 同构，但高度上限由调用方按窗口
+/// 顶边位置推导（`工作区底 − 顶边`）——系统磁吸贴满工作区（顶=工作区顶）时上限=整工作区高，
+/// 尺寸原样保留，不被压回（消除磁吸后"回弹出空带"）。极端小屏上限优先口径一致。
+pub fn clamp_persist_size(width: u32, height: u32, work_w: u32, cap_h: u32) -> (u32, u32) {
+    let w = std::cmp::min(
+        std::cmp::max(width, PANEL_MIN_WIDTH_LOGICAL),
+        cap_w_len(work_w),
+    );
     let h = std::cmp::min(std::cmp::max(height, PANEL_MIN_HEIGHT_LOGICAL), cap_h);
     (w, h)
 }
@@ -134,7 +162,8 @@ fn clamp_i(value: i32, lo: i32, hi: i32) -> i32 {
 /// 2. 右溢出 → 面板右上角贴锚点左侧（偏移 −16），下溢出 → 面板底边在锚点上方（−16），
 ///    角部溢出 → 双轴同时翻转；C2 裁决：无系统选区矩形能力，选区避让退化为鼠标锚点规则
 ///    （即上述首选位本身，无额外禁区步）；
-/// 3. 仍有溢出 → 工作区内钳制，四周 8px 逻辑边距；
+/// 3. 仍有溢出 → 工作区内钳制（顶部/左右 8px 逻辑边距；**底边贴死工作区底边**——
+///    真机修复轮 13c，磁吸边界=任务栏上沿）；
 /// 4. 归属显示器工作区固定由调用方传入（含负坐标副屏），矩形绝不越出该工作区。
 pub fn place_panel(
     anchor_x: f64,
@@ -165,7 +194,9 @@ pub fn place_panel(
     let ax = anchor_x.round() as i32;
     let ay = anchor_y.round() as i32;
     let right_limit = work.right() - margin; // 允许的右边缘上界（物理）
-    let bottom_limit = work.bottom() - margin;
+    // 底边贴死工作区底边（真机修复轮 13c：呼出路径与拖拽/内容自适应同口径——磁吸边界即
+    // 任务栏上沿，消除"呼出后卡片与任务栏之间 8px 空带"；顶部仍留 8px 呼吸）。
+    let bottom_limit = work.bottom();
 
     // 首选位：锚点向右下偏移（+16,+16）
     let mut x = ax + offset;
@@ -179,9 +210,11 @@ pub fn place_panel(
     if y + panel_h > bottom_limit {
         y = ay - offset - panel_h;
     }
-    // 钳制（8px 边距；翻转后仍溢出或触碰边缘时贴回工作区，绝不跨屏）
+    // 钳制（8px 边距；翻转后仍溢出或触碰边缘时贴回工作区，绝不跨屏）。
     x = clamp_i(x, work.x + margin, right_limit - panel_w);
-    y = clamp_i(y, work.y + margin, bottom_limit - panel_h);
+    // y 下界放至工作区顶（真机修复轮 13e）：满高面板（h=工作区高）时 y 必须=0 贴顶，
+    // 旧下界 work.y+margin 会把满高窗口推下 8px 越过工作区底边（压住任务栏）。
+    y = clamp_i(y, work.y, bottom_limit - panel_h);
 
     PanelRect {
         x,
@@ -257,7 +290,8 @@ fn create_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
         WINDOW_TRANSLATE_LABEL,
         WebviewUrl::App(PathBuf::from("src/translate/index.html")),
     )
-    .title("翻译面板")
+    // i18n-1：建窗标题按当前语言（后续 show 时刷新，语言切换即时生效）。
+    .title(crate::ui_text::resolve_global().panel_window_title())
     .inner_size(DEFAULT_INNER_SIZE_LOGICAL.0, DEFAULT_INNER_SIZE_LOGICAL.1)
     .min_inner_size(
         PANEL_MIN_WIDTH_LOGICAL as f64,
@@ -293,6 +327,7 @@ fn create_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
         window.on_window_event(move |event| match event {
             WindowEvent::Focused(false) => on_focus_lost(&app_clone),
             WindowEvent::Resized(size) => on_resized(&app_clone, *size),
+            WindowEvent::Moved(_) => on_moved(&app_clone),
             _ => {}
         });
     })
@@ -307,7 +342,7 @@ fn create_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
 /// T16 action_router 的五个动作入口均须经本函数显示面板（禁止散落 show 调用）。
 pub fn show_panel(app: &AppHandle, payload: PanelShowPayload) -> Result<(), AppError> {
     let window = get_panel(app)?;
-    let rect = place_at_cursor(app)?;
+    let rect = place_remembered_rect(app)?;
 
     // 真机修复轮 1：等待 WebView 首次加载完成再显示（冷启动即触发时避免"透明黑窗口"）。
     // 就绪标志一旦置位永久有效（暖窗常驻复用，仅首个页面加载）；超时兜底仍显示。
@@ -322,12 +357,16 @@ pub fn show_panel(app: &AppHandle, payload: PanelShowPayload) -> Result<(), AppE
         }
     }
 
-    window
-        .set_position(PhysicalPosition::new(rect.x, rect.y))
-        .map_err(|e| AppError::Window(format!("translate 定位失败: {e}")))?;
+    // 真机修复轮 13g：定位走 tracked（Moved 事件消费豁免计数——复位到记忆位置不得被
+    // 误当作"用户拖动"覆盖保存的位置）。
+    if let Err(e) = set_position_tracked(&window, rect.x, rect.y) {
+        return Err(AppError::Window(format!("translate 定位失败: {e}")));
+    }
     window
         .set_size(PhysicalSize::new(rect.width, rect.height))
         .map_err(|e| AppError::Window(format!("translate 尺寸设置失败: {e}")))?;
+    // i18n-1：标题按当前语言刷新（建窗后语言可能已切换）。
+    let _ = window.set_title(crate::ui_text::resolve_global().panel_window_title());
     // C3：show 置位 topmost（弹出瞬间置顶一次，非常驻）。
     window
         .set_always_on_top(true)
@@ -344,7 +383,7 @@ pub fn show_panel(app: &AppHandle, payload: PanelShowPayload) -> Result<(), AppE
             .notification()
             .builder()
             .title("Alya")
-            .body("翻译面板已显示，但未能获得焦点；请点击任务栏图标或按 Alt+E 重新呼出。")
+            .body(crate::ui_text::resolve_global().focus_fallback_notify_body())
             .show()
         {
             log::error!("translate: 无焦点降级通知发送失败: {notify_err}");
@@ -366,21 +405,77 @@ pub fn show_panel(app: &AppHandle, payload: PanelShowPayload) -> Result<(), AppE
     Ok(())
 }
 
-/// 面板定位（spec 5.7.2）：光标物理坐标 → 归属显示器（含负坐标副屏）→
-/// 持久逻辑尺寸 × 该屏 scale → `place_panel`（偏移/翻转/钳制）。
-/// 光标位置获取失败 → 回落主屏工作区中心（spec 5.7.2 第 1 步）。
-pub fn place_at_cursor(app: &AppHandle) -> Result<PanelRect, AppError> {
+/// 面板定位（真机修复轮 13g 用户需求，取代 spec 5.7.2 光标锚点）：
+/// 记忆位置（`panel.posXLogical/posYLogical`，用户上次拖动/磁吸后松手保存）优先，
+/// 经目标屏工作区钳制复位；**无记忆（从未拖动过）→ 默认贴屏幕右侧垂直居中**。
+/// 目标屏＝光标所在显示器（含负坐标副屏；获取失败回落主屏）。
+pub fn place_remembered_rect(app: &AppHandle) -> Result<PanelRect, AppError> {
     let cursor = app.cursor_position().ok().map(|p| (p.x, p.y));
-    let (anchor_x, anchor_y, work, scale) = resolve_anchor(app, cursor)?;
+    let (_anchor_x, _anchor_y, work, scale) = resolve_anchor(app, cursor)?;
     let settings = config::read_global()?;
-    Ok(place_panel(
-        anchor_x,
-        anchor_y,
+    let saved = match (
+        settings.panel.pos_x_logical,
+        settings.panel.pos_y_logical,
+    ) {
+        (Some(x), Some(y)) => Some((x, y)),
+        _ => None,
+    };
+    Ok(place_remembered(
+        saved,
         settings.panel.width_logical,
         settings.panel.height_logical,
         scale,
         work,
     ))
+}
+
+/// 记忆定位纯函数：尺寸经 `clamp_logical_size` 钳制；
+/// - 有记忆：逻辑坐标 × 该屏 scale → 钳回工作区（左右 8px 边距；顶/底零边距贴边合法）；
+/// - 无记忆：贴屏幕右侧（右缘留 8px）、垂直居中。
+pub fn place_remembered(
+    saved: Option<(i32, i32)>,
+    logical_width: u32,
+    logical_height: u32,
+    scale: f64,
+    work: WorkArea,
+) -> PanelRect {
+    let scale = if scale.is_finite() && scale > 0.0 {
+        scale
+    } else {
+        1.0
+    };
+    let (logical_work_w, logical_work_h) = work.logical_size(scale);
+    let (lw, lh) = clamp_logical_size(
+        logical_width,
+        logical_height,
+        logical_work_w,
+        logical_work_h,
+    );
+    let panel_w = scale_len(lw, scale) as i32;
+    let panel_h = scale_len(lh, scale) as i32;
+    let margin = (WORK_MARGIN_LOGICAL * scale).round() as i32;
+
+    let (x, y) = match saved {
+        Some((sx, sy)) => {
+            let px = (sx as f64 * scale).round() as i32;
+            let py = (sy as f64 * scale).round() as i32;
+            (
+                clamp_i(px, work.x + margin, work.right() - margin - panel_w),
+                clamp_i(py, work.y, work.bottom() - panel_h),
+            )
+        }
+        None => {
+            let x = work.right() - margin - panel_w;
+            let y = work.y + ((work.height as i32 - panel_h) / 2).max(0);
+            (x, y)
+        }
+    };
+    PanelRect {
+        x,
+        y,
+        width: panel_w as u32,
+        height: panel_h as u32,
+    }
 }
 
 /// 解析锚点所在显示器工作区与缩放：
@@ -485,6 +580,167 @@ pub fn panel_start_drag(window: tauri::WebviewWindow) -> Result<(), String> {
     result
 }
 
+// ---------------------------------------------------------------------------
+// 译文内容自适应高度（真机修复轮 13 用户需求：译文区随内容自动展开，上限为
+// "当前屏幕位置所能达到的最大窗口高"＝工作区底边 − 窗口顶边 − 8px 安全边距；
+// 超出即回落为译文区内滚动）
+// ---------------------------------------------------------------------------
+
+/// 内容自适应逻辑高度的待定豁免计数：每次程序化 set_size 前自增，对应 `Resized` 事件到达时
+/// 消费一枚并跳过持久化（内容驱动的临时生长不得覆盖用户拖拽的偏好尺寸——否则一次长文
+/// 会把偏好高度永久撑大，短译文时窗口又空又占屏）。计数而非布尔的兜底：事件合并/乱序时
+/// 至多豁免多一枚，下一次真实手动拖拽照常持久化（自愈）。
+static AUTO_RESIZE_PENDING: AtomicU32 = AtomicU32::new(0);
+
+// ---------------------------------------------------------------------------
+// 位置记忆（真机修复轮 13g 用户需求：Alt+E 记住用户最后位置；未拖动过 → 默认贴屏幕右侧）
+// ---------------------------------------------------------------------------
+
+/// 位置持久化防抖代次：Moved 静默 400ms 视为拖动/磁吸结束，保存一次位置。
+static MOVE_PERSIST_GENERATION: AtomicU64 = AtomicU64::new(0);
+const MOVE_PERSIST_DWELL: Duration = Duration::from_millis(400);
+
+/// 程序化 set_position 豁免计数（show 复位到记忆位置、内容自适应钳位等）：对应 `Moved`
+/// 事件跳过位置持久化——复位不是用户拖动，不得覆盖已保存的位置。计数口径同 AUTO_RESIZE_PENDING。
+static AUTO_MOVE_PENDING: AtomicU32 = AtomicU32::new(0);
+
+/// 程序化改位置（豁免 Moved 持久化）；失败回滚计数。
+fn set_position_tracked(
+    window: &WebviewWindow,
+    x: i32,
+    y: i32,
+) -> Result<(), tauri::Error> {
+    AUTO_MOVE_PENDING.fetch_add(1, Ordering::Relaxed);
+    let result = window.set_position(PhysicalPosition::new(x, y));
+    if result.is_err() {
+        AUTO_MOVE_PENDING.fetch_sub(1, Ordering::Relaxed);
+    }
+    result
+}
+
+/// `Moved`：程序化复位 → 消费豁免；用户拖动/磁吸 → 静默 400ms 后持久化逻辑位置。
+fn on_moved(app: &AppHandle) {
+    if AUTO_MOVE_PENDING
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| {
+            (n > 0).then(|| n - 1)
+        })
+        .is_ok()
+    {
+        return;
+    }
+    let generation = MOVE_PERSIST_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(MOVE_PERSIST_DWELL).await;
+        if MOVE_PERSIST_GENERATION.load(Ordering::Relaxed) != generation {
+            return; // 仍在移动
+        }
+        if let Err(err) = persist_panel_position(&app) {
+            log::warn!("translate: 面板位置持久化失败: {err}");
+        }
+    });
+}
+
+/// 保存逻辑位置（÷ 所在屏 scale，INV-4）；值未变跳过落盘。
+fn persist_panel_position(app: &AppHandle) -> Result<(), AppError> {
+    let window = get_panel(app)?;
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let pos = window
+        .outer_position()
+        .map_err(|e| AppError::Window(format!("translate 位置读取失败: {e}")))?;
+    let x = ((pos.x as f64) / scale).round() as i32;
+    let y = ((pos.y as f64) / scale).round() as i32;
+    let dir = config::app_config_dir(app)?;
+    {
+        let mut guard = config::write_global()?;
+        if guard.panel.pos_x_logical == Some(x) && guard.panel.pos_y_logical == Some(y) {
+            return Ok(());
+        }
+        guard.panel.pos_x_logical = Some(x);
+        guard.panel.pos_y_logical = Some(y);
+    }
+    let settings = config::read_global()?;
+    config::save_to(&dir, &settings)?;
+    log::debug!("translate: 面板位置已持久化（逻辑 {x},{y}）");
+    Ok(())
+}
+
+/// 内容自适应应用高度（纯函数）：max(内容所需, 用户偏好, 最小) 再钳上限；上限更小时上限优先
+/// （绝不出屏硬约束与 clamp_logical_size 同一口径）。
+pub fn fit_height_logical(needed: u32, preferred: u32, cap: u32) -> u32 {
+    let h = std::cmp::max(std::cmp::max(needed, preferred), PANEL_MIN_HEIGHT_LOGICAL);
+    std::cmp::min(h, cap)
+}
+
+/// 生长后的纵坐标钳制（纯函数）：顶边有空间则保持（向下生长）；底边越界则底边**贴死工作区
+/// 底边**（等效向上生长）。下界放至工作区顶（真机修复轮 13e）：满高窗口 y=0 贴顶，
+/// 不得被旧下界（顶+8px 边距）推下越过工作区底边压住任务栏。
+pub fn clamp_y_after_growth(y: i32, height_phys: u32, work: WorkArea) -> i32 {
+    let max_y = work.bottom() - height_phys as i32;
+    std::cmp::max(std::cmp::min(y, max_y), work.y)
+}
+
+/// `panel_resize_for_content`（真机修复轮 13 新增命令）：前端测量"译文不滚动所需的窗口总高"
+/// （CSS 逻辑像素，含顶栏/原文区等常驻 chrome），应用窗口高度＝
+/// `fit_height_logical(needed, panel.heightLogical, cap)`，其中 cap 由窗口当前位置与所在
+/// 显示器工作区现场推导（工作区底 − 窗顶，底部贴死；窗口贴底时底边钉住、顶边上移）。
+/// 仅改高度不改宽度；**不持久化**（AUTO_RESIZE_PENDING 豁免）；窗口不可见时直接忽略
+/// （呼出时 show 会重置偏好尺寸）。
+#[tauri::command]
+pub fn panel_resize_for_content(
+    window: tauri::WebviewWindow,
+    content_height: f64,
+) -> Result<(), String> {
+    if !window.is_visible().unwrap_or(false) {
+        return Ok(());
+    }
+    let needed = if content_height.is_finite() && content_height > 0.0 {
+        content_height.round() as u32
+    } else {
+        return Ok(()); // 测量异常（0/负/NaN）：保持现状，下次内容变更再校准
+    };
+    let scale = window.scale_factor().map_err(|e| e.to_string())?;
+    let preferred = config::read_global()
+        .map(|s| s.panel.height_logical)
+        .unwrap_or(PANEL_MIN_HEIGHT_LOGICAL);
+
+    let pos = window.outer_position().map_err(|e| e.to_string())?;
+    let monitor = window.current_monitor().map_err(|e| e.to_string())?;
+    // cap（逻辑）：工作区底边 − 窗口顶边（贴顶=整工作区高；底部贴死无空带——磁吸边界即
+    // 任务栏上沿）；无显示器信息时不设上限（仅最小/偏好钳制）。
+    let (applied_logical, work_opt) = match &monitor {
+        Some(m) => {
+            let work = work_area_of(m);
+            let cap_logical =
+                (((work.bottom() - pos.y) as f64) / scale).floor().max(0.0) as u32;
+            (fit_height_logical(needed, preferred, cap_logical), Some(work))
+        }
+        None => (fit_height_logical(needed, preferred, u32::MAX), None),
+    };
+
+    let applied_phys = scale_len(applied_logical, scale);
+    let current = window.outer_size().map_err(|e| e.to_string())?;
+    if current.height != applied_phys {
+        AUTO_RESIZE_PENDING.fetch_add(1, Ordering::Relaxed);
+        if let Err(err) = window.set_size(PhysicalSize::new(current.width, applied_phys)) {
+            AUTO_RESIZE_PENDING.fetch_sub(1, Ordering::Relaxed);
+            return Err(err.to_string());
+        }
+        // 高度变化后位置复钳：向下放得下保持顶边；放不下底边钉住（等效向上生长）。
+        // tracked：程序化复位不触发位置持久化（13g）。
+        if let Some(work) = work_opt {
+            let new_y = clamp_y_after_growth(pos.y, applied_phys, work);
+            if new_y != pos.y {
+                let _ = set_position_tracked(&window, pos.x, new_y);
+            }
+        }
+        log::debug!(
+            "translate: 内容自适应高度（逻辑 {applied_logical}，内容所需 {needed}，偏好 {preferred}）"
+        );
+    }
+    Ok(())
+}
+
 /// `Focused(false)`：hideOnBlur 开 且 无压制条件 → 隐藏。
 /// 真机修复轮 7：**延迟 + 前台核验**。实证（修复轮 5 诊断）表明拖拽/缩放的系统模态循环
 /// 会发出虚假 `Focused(false)`，而窗口实际仍是前台活动窗口（用户实测：缩放面板时面板被
@@ -559,6 +815,13 @@ fn decide_hide_suppressed(onboarding_visible: bool, dragging: bool) -> bool {
 // ---------------------------------------------------------------------------
 
 fn on_resized(app: &AppHandle, size: PhysicalSize<u32>) {
+    // 内容自适应的程序化 set_size 到达：消费一枚豁免计数，跳过持久化（不覆盖用户偏好尺寸）。
+    if AUTO_RESIZE_PENDING
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| (n > 0).then(|| n - 1))
+        .is_ok()
+    {
+        return;
+    }
     let generation = RESIZE_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -572,24 +835,37 @@ fn on_resized(app: &AppHandle, size: PhysicalSize<u32>) {
     });
 }
 
-/// 松手持久化：物理 → 逻辑（÷ 所在屏 scale，INV-4）→ 钳制（最小 360×240、上限工作区 80%）→
-/// 若被钳制先回写窗口 → 写 config（值未变则跳过落盘）。
+/// 松手持久化：物理 → 逻辑（÷ 所在屏 scale，INV-4）→ 钳制（最小 380×300；宽−左右 8px；
+/// **高＝工作区底 − 窗口顶（位置感知，真机修复轮 13e）**——系统磁吸贴满工作区的整高
+/// （顶=工作区顶）原样保留，不再被固定"−8px"上限压回出空带）→ 若被钳制先回写窗口 →
+/// 写 config（值未变则跳过落盘）。内容自适应的变更不经过本函数
+/// （AUTO_RESIZE_PENDING 豁免——临时生长不覆盖用户偏好尺寸）。
 fn persist_panel_size(app: &AppHandle, physical: PhysicalSize<u32>) -> Result<(), AppError> {
     let window = get_panel(app)?;
     let scale = window.scale_factor().unwrap_or(1.0);
-    let (work_w, work_h) = match window.current_monitor() {
-        Ok(Some(monitor)) => {
-            let wa = work_area_of(&monitor);
-            wa.logical_size(scale)
-        }
-        Ok(None) => (u32::MAX / 2, u32::MAX / 2), // 无显示器信息：仅最小尺寸钳制
-        Err(_) => (u32::MAX / 2, u32::MAX / 2),
+    let wa = match window.current_monitor() {
+        Ok(Some(monitor)) => Some(work_area_of(&monitor)),
+        Ok(None) => None,
+        Err(_) => None,
     };
+    let top_phys = window
+        .outer_position()
+        .map(|p| p.y)
+        .unwrap_or_else(|_| wa.map(|w| w.y).unwrap_or(0));
     let logical_w = ((physical.width as f64) / scale).round() as u32;
     let logical_h = ((physical.height as f64) / scale).round() as u32;
-    let (lw, lh) = clamp_logical_size(logical_w, logical_h, work_w, work_h);
+    // 位置感知上限：窗口顶边在工作区内的可用高；顶边越低可用越高，贴顶=整工作区高。
+    let (work_w_logical, cap_h) = match wa {
+        Some(w) => {
+            let top_clamped = top_phys.clamp(w.y, w.bottom());
+            let cap = (((w.bottom() - top_clamped) as f64) / scale).floor() as u32;
+            (w.logical_size(scale).0, cap)
+        }
+        None => (u32::MAX / 2, u32::MAX / 2), // 无显示器信息：仅最小尺寸钳制
+    };
+    let (lw, lh) = clamp_persist_size(logical_w, logical_h, work_w_logical, cap_h);
 
-    // 上限钳制回写窗口（把超 80% 的窗口物理尺寸压回）
+    // 上限钳制回写窗口（把超上限的窗口物理尺寸压回）
     let new_physical_w = scale_len(lw, scale);
     let new_physical_h = scale_len(lh, scale);
     if new_physical_w != physical.width || new_physical_h != physical.height {
@@ -790,7 +1066,8 @@ mod tests {
 
     #[test]
     fn panel_larger_than_small_screen_clamps_to_cap_and_fits() {
-        // 小屏物理 400×300（100%）：80% 上限=320×240 < 出厂 460×340 → 钳到上限；布局仍完整贴边。
+        // 小屏物理 400×300（100%）：宽上限=400−16=384、高上限=300−8=292 < 出厂 460×340 →
+        // 钳到上限；贴底定位（真机修复轮 13：底部不留空带，磁吸边界=任务栏上沿）。
         let small = WorkArea {
             x: 0,
             y: 0,
@@ -798,14 +1075,12 @@ mod tests {
             height: 300,
         };
         let (w, h) = clamp_logical_size(460, 340, 400, 300);
-        assert_eq!(
-            (w, h),
-            (320, 240),
-            "屏小于面板：上限 80% 优先（不出屏硬约束）"
-        );
+        assert_eq!((w, h), (384, 300), "屏小于面板：宽−16、高=工作区高（零边距）优先");
         let rect = place_panel(200.0, 150.0, 460, 340, 1.0, small);
-        assert_eq!((rect.width, rect.height), (320, 240));
-        assert_within_work_area(rect, small, 1.0);
+        assert_eq!((rect.width, rect.height), (384, 300));
+        // 满高（=工作区高 300）：y 钳到工作区顶 0，底边 300=工作区底（贴顶贴底，无空带）。
+        assert_eq!(rect.y, 0);
+        assert_eq!(rect.y + rect.height as i32, small.bottom());
     }
 
     #[test]
@@ -817,15 +1092,99 @@ mod tests {
             clamp_logical_size(100, 100, 2000, 1500),
             (PANEL_MIN_WIDTH_LOGICAL, PANEL_MIN_HEIGHT_LOGICAL)
         );
-        // 超大 → 压到 80%（逻辑）。
-        assert_eq!(clamp_logical_size(2000, 1500, 1000, 800), (800, 640));
+        // 超大 → 宽压到工作区−16、高=工作区高（磁吸整高原样保留；真机修复轮 13e）。
+        assert_eq!(clamp_logical_size(2000, 1500, 1000, 800), (984, 800));
         // 0（配置异常/早期值）→ 最小。
         assert_eq!(
             clamp_logical_size(0, 0, 2000, 1500),
             (PANEL_MIN_WIDTH_LOGICAL, PANEL_MIN_HEIGHT_LOGICAL)
         );
-        // cap < 最小（更极端窄屏）→ cap 优先。
-        assert_eq!(clamp_logical_size(460, 340, 300, 200), (240, 160));
+        // 极端窄屏（工作区高 < 最小高）→ 高 cap 优先。
+        assert_eq!(clamp_logical_size(460, 340, 300, 200), (284, 200));
+    }
+
+    #[test]
+    fn fit_height_prefers_content_then_preference_then_cap() {
+        // 内容所需 > 偏好 → 随内容展开。
+        assert_eq!(fit_height_logical(900, 340, 2000), 900);
+        // 内容所需 < 偏好 → 保持用户偏好（短译文不收缩到内容高）。
+        assert_eq!(fit_height_logical(320, 340, 2000), 340);
+        // 内容所需与偏好均低于最小 → 最小兜底（偏好异常小时的防御路径）。
+        assert_eq!(fit_height_logical(10, 200, 2000), PANEL_MIN_HEIGHT_LOGICAL);
+        // 上限压回（贴底无空带即极限）。
+        assert_eq!(fit_height_logical(2000, 340, 1200), 1200);
+        // 上限 < 最小（极端小屏）→ 上限优先。
+        assert_eq!(fit_height_logical(900, 340, 100), 100);
+    }
+
+    #[test]
+    fn clamp_y_after_growth_keeps_top_or_pins_bottom() {
+        let work = WorkArea {
+            x: 0,
+            y: 0,
+            width: 1000,
+            height: 1000,
+        };
+        // 顶边有空间：保持原 y（向下生长）。
+        assert_eq!(clamp_y_after_growth(100, 500, work), 100);
+        // 底边越界：底边贴死工作区底边（等效向上生长，无空带）。
+        assert_eq!(clamp_y_after_growth(600, 500, work), 1000 - 500);
+        // 满高（=工作区高 1000）：y=0 贴顶，底边=工作区底（不被顶边距推下压任务栏；13e）。
+        assert_eq!(clamp_y_after_growth(100, 1000, work), 0);
+        assert_eq!(0 + 1000, work.bottom(), "满高：贴顶且底边=工作区底边");
+    }
+
+    #[test]
+    fn persist_clamp_keeps_snapped_full_height_and_shrinks_floating() {
+        // 真机修复轮 13e 场景：系统磁吸贴满工作区（顶=工作区顶 → cap=整工作区高），
+        // 952 原样保留——不再被 −8px 上限"回弹"出空带。
+        // 工作区 1600×952 逻辑；窗口 800×952 贴顶 → cap_h=952。
+        assert_eq!(clamp_persist_size(800, 952, 1600, 952), (800, 952));
+        // 浮动小窗（顶边 y=8 逻辑 → cap=944）：944 原样；952 压回 944（防越界）。
+        assert_eq!(clamp_persist_size(800, 944, 1600, 944), (800, 944));
+        assert_eq!(clamp_persist_size(800, 952, 1600, 944), (800, 944));
+        // 小于最小 → 抬升；宽超 → 压到工作区−16。
+        assert_eq!(
+            clamp_persist_size(100, 100, 1600, 944),
+            (PANEL_MIN_WIDTH_LOGICAL, PANEL_MIN_HEIGHT_LOGICAL)
+        );
+        assert_eq!(clamp_persist_size(2000, 944, 1600, 944), (1584, 944));
+    }
+
+    #[test]
+    fn place_remembered_defaults_to_right_centered_without_save() {
+        // 真机修复轮 13g：无记忆（从未拖动）→ 贴屏幕右侧（右缘 8px）、垂直居中。
+        let work = WorkArea {
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1040,
+        };
+        let rect = place_remembered(None, 460, 340, 1.0, work);
+        assert_eq!(rect.x, 1920 - 8 - 460, "右缘留 8px 边距");
+        assert_eq!(rect.y, (1040 - 340) / 2, "垂直居中");
+        assert_within_work_area(rect, work, 1.0);
+    }
+
+    #[test]
+    fn place_remembered_restores_saved_position_clamped_into_work() {
+        let work = WorkArea {
+            x: 0,
+            y: 0,
+            width: 1920,
+            height: 1040,
+        };
+        // 记忆位置原样恢复。
+        let rect = place_remembered(Some((100, 50)), 460, 340, 1.0, work);
+        assert_eq!((rect.x, rect.y), (100, 50));
+        // 记忆越界（换屏/改分辨率后）→ 钳回工作区（左右 8px；顶/底零边距）。
+        let rect = place_remembered(Some((-5000, 9999)), 460, 340, 1.0, work);
+        assert_eq!(rect.x, 8);
+        assert_eq!(rect.y, 1040 - 340, "底部贴工作区底边");
+        // 满高记忆（磁吸整高，y=0）→ 原样保留（贴顶合法）。
+        let rect = place_remembered(Some((800, 0)), 460, 1040, 1.0, work);
+        assert_eq!(rect.y, 0);
+        assert_eq!(rect.y + rect.height as i32, work.bottom());
     }
 
     #[test]

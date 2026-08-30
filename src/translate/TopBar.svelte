@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../lib/i18n.svelte';
   // 顶栏骨架（design-spec 3.2，四形态共用）：监听开关（左一，图标式）→ 互译/定向分段控件 →
   // （定向时）目标语言下拉 → 幽灵关闭按钮；中间弹性空白。高 44px，兼任窗口拖拽移动区
   // （data-tauri-drag-region，Tauri 2 原生拖拽区域属性）。
@@ -74,8 +75,8 @@
       type="button"
       role="switch"
       aria-checked={monitorOn}
-      aria-label="剪贴板监听"
-      title="开启后，自动翻译新复制的内容"
+      aria-label={t('panel.clipboardToggle')}
+      title={t('panel.clipboardToggleHint')}
       onclick={toggleMonitor}
     >
       {#if monitorOn}
@@ -94,7 +95,7 @@
     </button>
 
     <!-- 活动场景分段控件：两段等宽；选中段 accent 底 + on-primary 文字（Alt+W 触发时滑块同步平移） -->
-    <div class="segmented" role="group" aria-label="活动场景">
+    <div class="segmented" role="group" aria-label={t('panel.sceneGroup')}>
       <button
         class="segment"
         type="button"
@@ -102,7 +103,7 @@
         aria-pressed={scene === 'mutual'}
         onclick={() => switchScene(false)}
       >
-        互译
+        {t('panel.sceneMutual')}
       </button>
       <button
         class="segment"
@@ -111,7 +112,7 @@
         aria-pressed={scene === 'directed'}
         onclick={() => switchScene(true)}
       >
-        定向
+        {t('panel.sceneDirected')}
       </button>
       <span class="thumb" class:thumb-right={scene === 'directed'} aria-hidden="true"></span>
     </div>
@@ -120,7 +121,7 @@
     <div class="lang-wrap" class:shown={scene === 'directed'} aria-hidden={scene !== 'directed'}>
       <select
         class="lang-select"
-        aria-label="目标语言"
+        aria-label={t('panel.targetLang')}
         value={targetValue}
         onchange={onLangChange}
         tabindex={scene === 'directed' ? 0 : -1}
@@ -137,8 +138,8 @@
     <button
       class="icon-btn close-btn"
       type="button"
-      aria-label="关闭面板"
-      title="关闭面板"
+      aria-label={t('panel.close')}
+      title={t('panel.close')}
       onclick={onClose}
     >
       <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">

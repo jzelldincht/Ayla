@@ -1,6 +1,8 @@
 // 六类错误卡片文案单测（design-spec 4.4 表逐字核对：标题/说明/操作按钮逐条不得变异）。
+// i18n-1：文案迁至 i18n 目录（err.*），本文件经 errorCardFor/ocrLangpack* 以中文断言
+// （vitest setup 锁定 zh-CN），动作映射与回落语义不变。
 import { describe, expect, it } from 'vitest';
-import { ERROR_CARDS, errorCardFor, ocrLangpackDescription, OCR_LANGPACK_TITLE } from './errors';
+import { errorCardFor, ocrLangpackDescription, ocrLangpackTitle } from './errors';
 
 describe('六类错误卡片（design-spec 4.4 逐字）', () => {
   const expected: Array<[string, string, string, string, string]> = [
@@ -14,8 +16,7 @@ describe('六类错误卡片（design-spec 4.4 逐字）', () => {
   ];
 
   it.each(expected)('%s 文案与按钮逐字一致', (ex, title, desc, actionLabel, action) => {
-    const card = ERROR_CARDS[ex];
-    expect(card).toBeDefined();
+    const card = errorCardFor(ex);
     expect(card.title).toBe(title);
     expect(card.description).toBe(desc);
     expect(card.actionLabel).toBe(actionLabel);
@@ -23,10 +24,10 @@ describe('六类错误卡片（design-spec 4.4 逐字）', () => {
   });
 
   it('EX-2/EX-3 打开设置；EX-1/4/5/14 重试（spec 5.8 呈现层口径）', () => {
-    expect(ERROR_CARDS['EX-2'].action).toBe('openSettings');
-    expect(ERROR_CARDS['EX-3'].action).toBe('openSettings');
+    expect(errorCardFor('EX-2').action).toBe('openSettings');
+    expect(errorCardFor('EX-3').action).toBe('openSettings');
     for (const ex of ['EX-1', 'EX-4', 'EX-5', 'EX-14']) {
-      expect(ERROR_CARDS[ex].action).toBe('retry');
+      expect(errorCardFor(ex).action).toBe('retry');
     }
   });
 
@@ -37,7 +38,7 @@ describe('六类错误卡片（design-spec 4.4 逐字）', () => {
   });
 
   it('EX-6 横条文案（4.4 附注：固定语种点名 tag；自动形态通用提示）', () => {
-    expect(OCR_LANGPACK_TITLE).toBe('缺少 OCR 语言包');
+    expect(ocrLangpackTitle()).toBe('缺少 OCR 语言包');
     expect(ocrLangpackDescription('zh-CN')).toBe('未安装“zh-CN”语言包，无法识别该语种。');
     expect(ocrLangpackDescription(null)).toBe('未找到可用的 OCR 语言包，请安装后重试。');
   });

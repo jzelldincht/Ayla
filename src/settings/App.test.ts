@@ -67,7 +67,7 @@ function fakeSettings(overrides: Partial<SettingsView> = {}): SettingsView {
       toggleScene: 'Alt+W',
     },
     ocr: { language: 'auto' },
-    general: { autostart: false, theme: 'system' },
+    general: { autostart: false, theme: 'system', language: 'system' },
     meta: { onboardingCompleted: false },
     ...overrides,
   };
@@ -209,6 +209,25 @@ describe('即时保存（design-spec 7.4）', () => {
     mergeSettingsPatch({ general: { theme: 'dark' } });
     await tick();
     expect(document.documentElement.dataset.theme).toBe('dark');
+  });
+
+  it('自动翻译开关：patch + 广播回流 → aria-checked 翻转 + 延迟下拉解除禁用并随 delayMs 更新', async () => {
+    await renderApp();
+    await gotoGroup('翻译');
+    const sw = screen.getByRole('switch', { name: '自动翻译' });
+    const delay = screen.getByLabelText('自动翻译延迟') as HTMLSelectElement;
+    fireEvent.click(sw);
+    expect(mocks.setSettings).toHaveBeenCalledWith({
+      translation: { autoTranslate: { enabled: true } },
+    });
+    // INV-8：状态以镜像回流为准（点击本身不乐观更新）
+    mergeSettingsPatch({ translation: { autoTranslate: { enabled: true } } });
+    await tick();
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    expect(delay.disabled).toBe(false);
+    mergeSettingsPatch({ translation: { autoTranslate: { delayMs: 1500 } } });
+    await tick();
+    expect(delay.value).toBe('1500');
   });
 });
 

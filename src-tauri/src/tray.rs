@@ -122,17 +122,20 @@ pub fn init(app: &AppHandle) -> Result<(), AppError> {
 }
 
 /// 从 config 构建菜单（原生：Submenu/MenuItem/CheckMenuItem/Separator——design-spec 8 顺序）。
+/// i18n-1：文案按 config general.language 解析（System 按系统 UI 语言），语言切换后菜单
+/// 镜像重建自动跟随。
 fn build_menu(app: &AppHandle, settings: &config::Settings) -> Result<Menu<Wry>, AppError> {
+    let lang = crate::ui_text::resolve(settings);
     let snapshot = menu_snapshot_of(settings);
     let scene_menu = Submenu::with_items(
         app,
-        "当前场景",
+        lang.tray_scene_menu(),
         true,
         &[
             &CheckMenuItem::with_id(
                 app,
                 ID_SCENE_MUTUAL,
-                "互译",
+                lang.tray_scene_mutual(),
                 true,
                 snapshot.scene_mutual,
                 None::<&str>,
@@ -141,7 +144,7 @@ fn build_menu(app: &AppHandle, settings: &config::Settings) -> Result<Menu<Wry>,
             &CheckMenuItem::with_id(
                 app,
                 ID_SCENE_DIRECTED,
-                "定向",
+                lang.tray_scene_directed(),
                 true,
                 snapshot.scene_directed,
                 None::<&str>,
@@ -151,17 +154,17 @@ fn build_menu(app: &AppHandle, settings: &config::Settings) -> Result<Menu<Wry>,
     )
     .map_err(map_menu_err)?;
     let separator1 = PredefinedMenuItem::separator(app).map_err(map_menu_err)?;
-    let input = MenuItem::with_id(app, ID_INPUT_TRANSLATE, "输入翻译", true, None::<&str>)
+    let input = MenuItem::with_id(app, ID_INPUT_TRANSLATE, lang.tray_input_translate(), true, None::<&str>)
         .map_err(map_menu_err)?;
-    let ocr_recognize = MenuItem::with_id(app, ID_OCR_RECOGNIZE, "截图识别", true, None::<&str>)
+    let ocr_recognize = MenuItem::with_id(app, ID_OCR_RECOGNIZE, lang.tray_ocr_recognize(), true, None::<&str>)
         .map_err(map_menu_err)?;
-    let ocr_translate = MenuItem::with_id(app, ID_OCR_TRANSLATE, "截图翻译", true, None::<&str>)
+    let ocr_translate = MenuItem::with_id(app, ID_OCR_TRANSLATE, lang.tray_ocr_translate(), true, None::<&str>)
         .map_err(map_menu_err)?;
     let separator2 = PredefinedMenuItem::separator(app).map_err(map_menu_err)?;
     let clipboard = CheckMenuItem::with_id(
         app,
         ID_CLIPBOARD_TOGGLE,
-        "剪贴板监听",
+        lang.tray_clipboard(),
         true,
         snapshot.clipboard_checked,
         None::<&str>,
@@ -169,8 +172,8 @@ fn build_menu(app: &AppHandle, settings: &config::Settings) -> Result<Menu<Wry>,
     .map_err(map_menu_err)?;
     let separator3 = PredefinedMenuItem::separator(app).map_err(map_menu_err)?;
     let settings_item =
-        MenuItem::with_id(app, ID_SETTINGS, "设置", true, None::<&str>).map_err(map_menu_err)?;
-    let quit = MenuItem::with_id(app, ID_QUIT, "退出", true, None::<&str>).map_err(map_menu_err)?;
+        MenuItem::with_id(app, ID_SETTINGS, lang.tray_settings(), true, None::<&str>).map_err(map_menu_err)?;
+    let quit = MenuItem::with_id(app, ID_QUIT, lang.tray_quit(), true, None::<&str>).map_err(map_menu_err)?;
 
     Menu::with_items(
         app,

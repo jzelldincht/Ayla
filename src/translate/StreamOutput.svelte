@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../lib/i18n.svelte';
   // 译文区（design-spec 4.3 状态组件；D9/FR-10.4 增量追加不整绘；4.4 错误卡片原位）。
   //
   // 状态机（由 App 层持有并驱动本组件渲染）：
@@ -94,13 +95,13 @@
   });
 </script>
 
-<div class="stream-output" bind:this={outputEl} role="note" aria-label="译文">
+<div class="stream-output" bind:this={outputEl} role="note" aria-label={t('panel.ariaOutput')}>
   {#if status === 'idle'}
-    <div class="idle-hint">译文会在这里出现</div>
+    <div class="idle-hint">{t('panel.idleHint')}</div>
   {:else if status === 'waiting'}
     <div class="wait-block" aria-live="polite">
       {#if reducedMotion}
-        <span class="wait-static">翻译中…</span>
+        <span class="wait-static">{t('panel.waiting')}</span>
       {:else}
         <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
       {/if}
@@ -109,14 +110,14 @@
     <div class="block-wait" aria-live="polite">
       <span class="eta-badge">
         {#if etaSeconds !== null}
-          <span class="eta-strong">预估</span>剩余约 <span class="eta-num">{etaSeconds}</span> 秒
+          <span class="eta-strong">{t('panel.etaStrong')}</span>{t('panel.etaTail', { n: etaSeconds })}
         {:else}
-          <span class="eta-plain">正在翻译…</span>
+          <span class="eta-plain">{t('panel.waiting')}</span>
         {/if}
       </span>
       <div class="block-main">
         <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="block-text">正在翻译长文本…</span>
+        <span class="block-text">{t('panel.blockWaiting')}</span>
       </div>
     </div>
   {:else if status === 'streaming'}
@@ -215,10 +216,6 @@
   }
   .eta-strong {
     font-weight: var(--font-weight-medium);
-  }
-  .eta-num {
-    font-family: var(--font-mono-stack);
-    font-variant-numeric: tabular-nums;
   }
   .eta-plain {
     color: var(--fg-muted);

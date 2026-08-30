@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../lib/i18n.svelte';
   // 快捷键录制控件（T13；design-spec 7.2 状态机：展示态 → 录制态 → 校验 → 展示（成功/回退））。
   //
   // 状态机语义：
@@ -69,7 +70,7 @@
 
   function begin(): void {
     phase = 'recording';
-    hint = '请按下新的快捷键…（Esc 或点击其他位置取消）';
+    hint = t('settings.hotkeyRecording');
     // 点击控件外取消（design-spec 7.2）：mousedown 阶段拦截，防点击先夺焦
     window.addEventListener('mousedown', onGlobalMouseDown, true);
     window.addEventListener('keydown', onKeyDown, true);
@@ -130,8 +131,8 @@
       <button
         class="warn-icon"
         type="button"
-        title="注册失败，点击修改"
-        aria-label="注册失败，点击修改"
+        title={t('settings.hotkeyDegraded')}
+        aria-label={t('settings.hotkeyDegraded')}
         onclick={begin}
       >
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">

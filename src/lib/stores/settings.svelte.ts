@@ -39,6 +39,8 @@ export function mergeSettingsPatch(patch: SettingsPatch): void {
       settings.general.theme = patch.general.theme;
       applyThemeAppearance(patch.general.theme);
     }
+    // i18n-1：界面语言回流——t() 读镜像，设置页切换全窗实时生效。
+    if (patch.general.language !== undefined) settings.general.language = patch.general.language;
   }
   if (patch.ai) {
     if (patch.ai.baseUrl !== undefined) settings.ai.baseUrl = patch.ai.baseUrl;
@@ -52,6 +54,12 @@ export function mergeSettingsPatch(patch: SettingsPatch): void {
       settings.translation.presentation = patch.translation.presentation;
     if (patch.translation.longTextThresholdChars !== undefined)
       settings.translation.longTextThresholdChars = patch.translation.longTextThresholdChars;
+    if (patch.translation.autoTranslate) {
+      if (patch.translation.autoTranslate.enabled !== undefined)
+        settings.translation.autoTranslate.enabled = patch.translation.autoTranslate.enabled;
+      if (patch.translation.autoTranslate.delayMs !== undefined)
+        settings.translation.autoTranslate.delayMs = patch.translation.autoTranslate.delayMs;
+    }
   }
   if (patch.panel) {
     if (patch.panel.hideOnBlur !== undefined) settings.panel.hideOnBlur = patch.panel.hideOnBlur;
@@ -59,6 +67,9 @@ export function mergeSettingsPatch(patch: SettingsPatch): void {
       settings.panel.widthLogical = patch.panel.widthLogical;
     if (patch.panel.heightLogical !== undefined)
       settings.panel.heightLogical = patch.panel.heightLogical;
+    // 真机修复轮 13i：输入框高度记忆回流（面板编辑器拖动后经广播实时生效）。
+    if (patch.panel.editorHeight !== undefined)
+      settings.panel.editorHeightLogical = patch.panel.editorHeight;
   }
   if (patch.hotkeys) {
     if (patch.hotkeys.selection !== undefined) settings.hotkeys.selection = patch.hotkeys.selection;
@@ -79,8 +90,8 @@ export function mergeSettingsPatch(patch: SettingsPatch): void {
 export async function initSettingsMirror(): Promise<void> {
   try {
     applySettingsView(await getSettings());
-  } catch {
-    // 命令未注册（T13 之前）/运行时异常：保持 null，消费端按保守缺省渲染而非报错。
+  } catch (e) {
+    console.error('DEBUG initSettingsMirror:', e);
   }
 }
 

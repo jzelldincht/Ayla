@@ -2,14 +2,15 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import ErrorCard from './ErrorCard.svelte';
-import { ERROR_CARDS } from './lib/errors';
+import { errorCardFor } from './lib/errors';
 
 afterEach(cleanup);
 
 describe('ErrorCard 渲染与回调', () => {
-  it.each(Object.entries(ERROR_CARDS))(
+  it.each(['EX-1', 'EX-2', 'EX-3', 'EX-4', 'EX-5', 'EX-14'])(
     '%s：标题/说明/按钮文案逐字呈现',
-    (ex, card) => {
+    (ex) => {
+      const card = errorCardFor(ex);
       const onRetry = vi.fn();
       const onOpenSettings = vi.fn();
       render(ErrorCard, { props: { exCode: ex, onRetry, onOpenSettings } });

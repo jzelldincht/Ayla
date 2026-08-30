@@ -31,36 +31,44 @@
     applySettingsView,
   } from '../lib/stores';
   import { DIRECTED_TARGET_LANGS } from '../lib/types';
-  import type { HotkeyFunction, OcrLanguage, SettingsPatch, ThemeMode } from '../lib/types';
+  import { t } from '../lib/i18n.svelte';
+  import type {
+    HotkeyFunction,
+    LanguageSetting,
+    OcrLanguage,
+    SettingsPatch,
+    ThemeMode,
+  } from '../lib/types';
   import HotkeyRecorder from './HotkeyRecorder.svelte';
 
   type GroupId = 'ai' | 'translation' | 'panel' | 'hotkeys' | 'ocr' | 'general';
 
+  // i18n-1：label 存 i18n 键，渲染时 t()。
   const GROUPS: { id: GroupId; label: string }[] = [
-    { id: 'ai', label: 'AI 服务' },
-    { id: 'translation', label: '翻译' },
-    { id: 'panel', label: '面板' },
-    { id: 'hotkeys', label: '快捷键' },
-    { id: 'ocr', label: '截图' },
-    { id: 'general', label: '通用' },
+    { id: 'ai', label: 'settings.groupAi' },
+    { id: 'translation', label: 'settings.groupTranslation' },
+    { id: 'panel', label: 'settings.groupPanel' },
+    { id: 'hotkeys', label: 'settings.groupHotkeys' },
+    { id: 'ocr', label: 'settings.groupOcr' },
+    { id: 'general', label: 'settings.groupGeneral' },
   ];
 
   const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
-    { value: 'system', label: '跟随系统' },
-    { value: 'light', label: '亮色' },
-    { value: 'dark', label: '暗色' },
+    { value: 'system', label: 'settings.themeSystem' },
+    { value: 'light', label: 'settings.themeLight' },
+    { value: 'dark', label: 'settings.themeDark' },
   ];
 
   const HOTKEY_ROWS: { fn: HotkeyFunction; label: string }[] = [
-    { fn: 'selection', label: '划词翻译' },
-    { fn: 'input', label: '输入翻译' },
-    { fn: 'ocrRecognize', label: '截图识别' },
-    { fn: 'ocrTranslate', label: '截图翻译' },
-    { fn: 'toggleScene', label: '切换场景' },
+    { fn: 'selection', label: 'settings.hotkeySelection' },
+    { fn: 'input', label: 'settings.hotkeyInput' },
+    { fn: 'ocrRecognize', label: 'settings.hotkeyOcrRecognize' },
+    { fn: 'ocrTranslate', label: 'settings.hotkeyOcrTranslate' },
+    { fn: 'toggleScene', label: 'settings.hotkeyToggleScene' },
   ];
 
   /** design-spec 7.2 冲突/注册失败回退文案（外部占用；内部共键冲突显示后端点名消息）。 */
-  const CONFLICT_RESTORED = '该快捷键已被其他程序占用，已恢复原快捷键';
+  const conflictRestored = (): string => t('settings.hotkeyConflictRestored');
 
   let activeGroup = $state<GroupId>('ai');
   let rowErrors = $state<Record<string, string>>({});
@@ -84,7 +92,7 @@
     const current = settings?.ocr.language ?? 'auto';
     const list: { tag: string; label: string }[] = ocrLangs;
     if (current !== 'auto' && !list.some((l) => l.tag === current)) {
-      return [...list, { tag: current, label: `${current}（当前未安装）` }];
+      return [...list, { tag: current, label: `${current}${t('settings.ocrLangNotInstalled')}` }];
     }
     return list;
   });
@@ -188,7 +196,7 @@
     } catch (err) {
       const msg = String(err);
       // 内部共键冲突（后端点名占用方）→ 用后端消息；外部占用/注册失败 → design-spec 固定文案
-      rowErrors[key] = msg.includes('已被「') ? msg : CONFLICT_RESTORED;
+      rowErrors[key] = msg.includes('已被「') ? msg : conflictRestored();
     }
   }
 
@@ -220,7 +228,7 @@
   function onThresholdChange(e: Event): void {
     const value = Number((e.currentTarget as HTMLInputElement).value);
     if (!Number.isInteger(value) || value < 0) {
-      rowErrors['threshold'] = '请输入不小于 0 的整数（单位：字符，含空白与换行）';
+      rowErrors['threshold'] = t('settings.thresholdError');
       return;
     }
     void saveRow('threshold', { translation: { longTextThresholdChars: value } });
@@ -265,6 +273,11 @@
     void saveRow('theme', { general: { theme } });
   }
 
+  function onLanguageChange(e: Event): void {
+    const language = (e.currentTarget as HTMLSelectElement).value as LanguageSetting;
+    void saveRow('language', { general: { language } });
+  }
+
   // ---------------------------------------------------------------------------
   // API Key 修改流（7.3 / INV-1）
   // ---------------------------------------------------------------------------
@@ -291,11 +304,11 @@
 </script>
 
 <svelte:head>
-  <title>设置</title>
+  <title>{t('settings.title')}</title>
 </svelte:head>
 
 <div class="layout">
-  <nav class="side" aria-label="设置分组">
+  <nav class="side" aria-label={t('settings.title')}>
     {#each GROUPS as group (group.id)}
       <button
         type="button"
@@ -303,32 +316,32 @@
         aria-current={activeGroup === group.id ? 'page' : undefined}
         onclick={() => (activeGroup = group.id)}
       >
-        {group.label}
+        {t(group.label)}
       </button>
     {/each}
   </nav>
 
   <main class="content">
     {#if activeGroup === 'ai'}
-      <h2 class="group-title">AI 服务</h2>
+      <h2 class="group-title">{t('settings.groupAi')}</h2>
 
       <div class="row">
         <div class="row-label">
-          <span class="label">接口地址</span>
-          <span class="desc">OpenAI 兼容协议</span>
+          <span class="label">{t('settings.baseUrl')}</span>
+          <span class="desc">{t('settings.baseUrlDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['baseUrl']}
             <span class="row-error" role="alert">{rowErrors['baseUrl']}</span>
           {:else if savedState['baseUrl']}
             <span class="row-saved {savedState['baseUrl'].fading ? 'fading' : ''}" role="status"
-              >已保存</span
+              >{t('settings.saved')}</span
             >
           {/if}
           <input
             class="text-input input-wide"
             type="text"
-            aria-label="接口地址"
+            aria-label={t('settings.baseUrl')}
             value={settings?.ai.baseUrl ?? ''}
             spellcheck="false"
             onchange={onBaseUrlChange}
@@ -338,21 +351,21 @@
 
       <div class="row">
         <div class="row-label">
-          <span class="label">模型名</span>
-          <span class="desc">服务商模型标识</span>
+          <span class="label">{t('settings.model')}</span>
+          <span class="desc">{t('settings.modelDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['model']}
             <span class="row-error" role="alert">{rowErrors['model']}</span>
           {:else if savedState['model']}
             <span class="row-saved {savedState['model'].fading ? 'fading' : ''}" role="status"
-              >已保存</span
+              >{t('settings.saved')}</span
             >
           {/if}
           <input
             class="text-input input-wide"
             type="text"
-            aria-label="模型名"
+            aria-label={t('settings.model')}
             value={settings?.ai.model ?? ''}
             spellcheck="false"
             onchange={onModelChange}
@@ -362,30 +375,30 @@
 
       <div class="row">
         <div class="row-label">
-          <span class="label">API Key</span>
-          <span class="desc">本地加密存储，任何视图不回显明文（INV-1）</span>
+          <span class="label">{t('settings.apiKey')}</span>
+          <span class="desc">{t('settings.apiKeyDesc')}</span>
         </div>
         <div class="row-control key-control">
           {#if rowErrors['apiKey']}
             <span class="row-error" role="alert">{rowErrors['apiKey']}</span>
           {:else if savedState['apiKey']}
             <span class="row-saved {savedState['apiKey'].fading ? 'fading' : ''}" role="status"
-              >已保存</span
+              >{t('settings.saved')}</span
             >
           {/if}
           {#if !keyDraft.editing}
             <span class="key-mask" data-has-key={settings?.ai.hasKey ? '1' : '0'}>
-              {settings?.ai.hasKey ? '••••••••' : '未配置'}
+              {settings?.ai.hasKey ? '••••••••' : t('settings.notConfigured')}
             </span>
             <button class="btn" type="button" disabled={!settings} onclick={startKeyEdit}>
-              {settings?.ai.hasKey ? '修改' : '配置'}
+              {settings?.ai.hasKey ? t('settings.edit') : t('settings.setUp')}
             </button>
           {:else}
             <input
               class="text-input"
               type={keyDraft.reveal ? 'text' : 'password'}
               value={keyDraft.input}
-              placeholder="粘贴 API Key；留空保存即清除配置"
+              placeholder={t('settings.apiKeyPlaceholder')}
               aria-label="API Key"
               autocomplete="off"
               oninput={(e) => (keyDraft.input = (e.currentTarget as HTMLInputElement).value)}
@@ -393,13 +406,13 @@
             <button
               class="btn btn-plain"
               type="button"
-              aria-label={keyDraft.reveal ? '隐藏' : '显示'}
+              aria-label={keyDraft.reveal ? t('settings.hide') : t('settings.show')}
               onclick={() => (keyDraft.reveal = !keyDraft.reveal)}
             >
               {#if keyDraft.reveal}
-                隐藏
+                {t('settings.hide')}
               {:else}
-                显示
+                {t('settings.show')}
               {/if}
             </button>
             <button
@@ -408,9 +421,9 @@
               onclick={() => void saveKey()}
               disabled={keySaving}
             >
-              保存
+              {t('settings.save')}
             </button>
-            <button class="btn btn-plain" type="button" onclick={cancelKeyEdit}>取消</button>
+            <button class="btn btn-plain" type="button" onclick={cancelKeyEdit}>{t('settings.cancel')}</button>
           {/if}
         </div>
       </div>
@@ -418,15 +431,15 @@
       <!-- 常驻隐私提示块（requirements 第 7 章 / J3；design-spec 7.1） -->
       <div class="privacy-note" role="note">
         <span class="privacy-mark" aria-hidden="true">(!)</span>
-        <span>使用翻译功能时，原文将被发送至所配置的第三方云端服务；截图识别在本机完成。</span>
+        <span>{t('settings.privacyNote')}</span>
       </div>
     {:else if activeGroup === 'translation'}
-      <h2 class="group-title">翻译</h2>
+      <h2 class="group-title">{t('settings.groupTranslation')}</h2>
 
       <div class="row">
         <div class="row-label">
-          <span class="label">定向目标语言</span>
-          <span class="desc">翻译面板可临时切换，不回写默认值</span>
+          <span class="label">{t('settings.targetLang')}</span>
+          <span class="desc">{t('settings.targetLangDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['defaultTargetLang']}
@@ -434,12 +447,12 @@
           {:else if savedState['defaultTargetLang']}
             <span
               class="row-saved {savedState['defaultTargetLang'].fading ? 'fading' : ''}"
-              role="status">已保存</span
+              role="status">{t('settings.saved')}</span
             >
           {/if}
           <select
             class="select"
-            aria-label="定向目标语言"
+            aria-label={t('settings.targetLang')}
             value={settings?.translation.defaultTargetLang ?? '英文'}
             onchange={onTargetLangChange}
           >
@@ -452,8 +465,8 @@
 
       <div class="row">
         <div class="row-label">
-          <span class="label">译文呈现</span>
-          <span class="desc">分档呈现下长文等待后整段显示</span>
+          <span class="label">{t('settings.presentation')}</span>
+          <span class="desc">{t('settings.presentationDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['presentation']}
@@ -461,32 +474,32 @@
           {:else if savedState['presentation']}
             <span
               class="row-saved {savedState['presentation'].fading ? 'fading' : ''}"
-              role="status">已保存</span
+              role="status">{t('settings.saved')}</span
             >
           {/if}
           <select
             class="select"
-            aria-label="译文呈现"
+            aria-label={t('settings.presentation')}
             value={settings?.translation.presentation ?? 'stream_all'}
             onchange={onPresentationChange}
           >
-            <option value="stream_all">全部流式</option>
-            <option value="staged">分档呈现</option>
+            <option value="stream_all">{t('settings.presentationStream')}</option>
+            <option value="staged">{t('settings.presentationStaged')}</option>
           </select>
         </div>
       </div>
 
       <div class="row">
         <div class="row-label">
-          <span class="label">长文整段阈值</span>
-          <span class="desc">仅分档呈现下生效，单位字符，含空白与换行</span>
+          <span class="label">{t('settings.threshold')}</span>
+          <span class="desc">{t('settings.thresholdDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['threshold']}
             <span class="row-error" role="alert">{rowErrors['threshold']}</span>
           {:else if savedState['threshold']}
             <span class="row-saved {savedState['threshold'].fading ? 'fading' : ''}" role="status"
-              >已保存</span
+              >{t('settings.saved')}</span
             >
           {/if}
           <input
@@ -494,7 +507,7 @@
             type="number"
             min="0"
             step="1"
-            aria-label="长文整段阈值"
+            aria-label={t('settings.threshold')}
             value={settings?.translation.longTextThresholdChars ?? ''}
             onchange={onThresholdChange}
           />
@@ -503,8 +516,8 @@
 
       <div class="row">
         <div class="row-label">
-          <span class="label">自动翻译</span>
-          <span class="desc">原文输入或修改后自动翻译；关闭时按回车翻译</span>
+          <span class="label">{t('settings.autoTranslate')}</span>
+          <span class="desc">{t('settings.autoTranslateDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['autoTranslate']}
@@ -512,14 +525,14 @@
           {:else if savedState['autoTranslate']}
             <span
               class="row-saved {savedState['autoTranslate'].fading ? 'fading' : ''}"
-              role="status">已保存</span
+              role="status">{t('settings.saved')}</span
             >
           {/if}
           <button
             class="switch"
             type="button"
             role="switch"
-            aria-label="自动翻译"
+            aria-label={t('settings.autoTranslate')}
             aria-checked={settings?.translation.autoTranslate?.enabled ?? false}
             disabled={!settings}
             onclick={() =>
@@ -532,8 +545,8 @@
 
       <div class="row">
         <div class="row-label">
-          <span class="label">自动翻译延迟</span>
-          <span class="desc">打字停顿后等待多久触发；未开启自动翻译时不生效</span>
+          <span class="label">{t('settings.autoTranslateDelay')}</span>
+          <span class="desc">{t('settings.autoTranslateDelayDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['autoTranslateDelay']}
@@ -541,12 +554,12 @@
           {:else if savedState['autoTranslateDelay']}
             <span
               class="row-saved {savedState['autoTranslateDelay'].fading ? 'fading' : ''}"
-              role="status">已保存</span
+              role="status">{t('settings.saved')}</span
             >
           {/if}
           <select
             class="select"
-            aria-label="自动翻译延迟"
+            aria-label={t('settings.autoTranslateDelay')}
             disabled={!settings?.translation.autoTranslate?.enabled}
             value={settings?.translation.autoTranslate?.delayMs ?? 700}
             onchange={onAutoTranslateDelayChange}
@@ -558,26 +571,26 @@
         </div>
       </div>
     {:else if activeGroup === 'panel'}
-      <h2 class="group-title">面板</h2>
+      <h2 class="group-title">{t('settings.groupPanel')}</h2>
 
       <div class="row">
         <div class="row-label">
-          <span class="label">失焦即隐</span>
-          <span class="desc">面板失去焦点即隐藏；关闭后保留直至手动关闭</span>
+          <span class="label">{t('settings.hideOnBlur')}</span>
+          <span class="desc">{t('settings.hideOnBlurDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['hideOnBlur']}
             <span class="row-error" role="alert">{rowErrors['hideOnBlur']}</span>
           {:else if savedState['hideOnBlur']}
             <span class="row-saved {savedState['hideOnBlur'].fading ? 'fading' : ''}" role="status"
-              >已保存</span
+              >{t('settings.saved')}</span
             >
           {/if}
           <button
             class="switch"
             type="button"
             role="switch"
-            aria-label="失焦即隐"
+            aria-label={t('settings.hideOnBlur')}
             aria-checked={settings?.panel.hideOnBlur ?? true}
             disabled={!settings}
             onclick={() => onHideOnBlurChange(!(settings?.panel.hideOnBlur ?? true))}
@@ -589,8 +602,8 @@
 
       <div class="row">
         <div class="row-label">
-          <span class="label">剪贴板监听</span>
-          <span class="desc">与面板开关、托盘勾选三方实时同步</span>
+          <span class="label">{t('settings.clipboardMonitor')}</span>
+          <span class="desc">{t('settings.clipboardMonitorDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['clipboardMonitor']}
@@ -598,14 +611,14 @@
           {:else if savedState['clipboardMonitor']}
             <span
               class="row-saved {savedState['clipboardMonitor'].fading ? 'fading' : ''}"
-              role="status">已保存</span
+              role="status">{t('settings.saved')}</span
             >
           {/if}
           <button
             class="switch"
             type="button"
             role="switch"
-            aria-label="剪贴板监听"
+            aria-label={t('settings.clipboardMonitor')}
             aria-checked={settings?.clipboardMonitor ?? false}
             disabled={!settings}
             onclick={() => onClipboardMonitorChange(!(settings?.clipboardMonitor ?? false))}
@@ -615,21 +628,21 @@
         </div>
       </div>
     {:else if activeGroup === 'hotkeys'}
-      <h2 class="group-title">快捷键</h2>
+      <h2 class="group-title">{t('settings.groupHotkeys')}</h2>
 
       {#each HOTKEY_ROWS as row (row.fn)}
         {@const key = `hotkey-${row.fn}`}
         <div class="row">
           <div class="row-label">
-            <span class="label">{row.label}</span>
-            <span class="desc">录制式改键：冲突自动回退并通知</span>
+            <span class="label">{t(row.label)}</span>
+            <span class="desc">{t('settings.hotkeyDesc')}</span>
           </div>
           <div class="row-control">
             {#if rowErrors[key]}
               <span class="row-error" role="alert">{rowErrors[key]}</span>
             {:else if savedState[key]}
               <span class="row-saved {savedState[key].fading ? 'fading' : ''}" role="status"
-                >已保存</span
+                >{t('settings.saved')}</span
               >
             {/if}
             <HotkeyRecorder
@@ -641,28 +654,28 @@
         </div>
       {/each}
     {:else if activeGroup === 'ocr'}
-      <h2 class="group-title">截图</h2>
+      <h2 class="group-title">{t('settings.groupOcr')}</h2>
 
       <div class="row">
         <div class="row-label">
-          <span class="label">OCR 语种</span>
-          <span class="desc">自动＝跟随系统首选语言；固定语种需系统已装语言包</span>
+          <span class="label">{t('settings.ocrLang')}</span>
+          <span class="desc">{t('settings.ocrLangDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['ocrLang']}
             <span class="row-error" role="alert">{rowErrors['ocrLang']}</span>
           {:else if savedState['ocrLang']}
             <span class="row-saved {savedState['ocrLang'].fading ? 'fading' : ''}" role="status"
-              >已保存</span
+              >{t('settings.saved')}</span
             >
           {/if}
           <select
             class="select"
-            aria-label="OCR 语种"
+            aria-label={t('settings.ocrLang')}
             value={settings?.ocr.language ?? 'auto'}
             onchange={onOcrLangChange}
           >
-            <option value="auto">自动（跟随系统首选语言）</option>
+            <option value="auto">{t('settings.ocrLangAuto')}</option>
             {#each ocrOptions as lang (lang.tag)}
               <option value={lang.tag}>{lang.label}</option>
             {/each}
@@ -670,26 +683,26 @@
         </div>
       </div>
     {:else}
-      <h2 class="group-title">通用</h2>
+      <h2 class="group-title">{t('settings.groupGeneral')}</h2>
 
       <div class="row">
         <div class="row-label">
-          <span class="label">开机自启</span>
-          <span class="desc">开启后随系统启动驻留托盘</span>
+          <span class="label">{t('settings.autostart')}</span>
+          <span class="desc">{t('settings.autostartDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['autostart']}
             <span class="row-error" role="alert">{rowErrors['autostart']}</span>
           {:else if savedState['autostart']}
             <span class="row-saved {savedState['autostart'].fading ? 'fading' : ''}" role="status"
-              >已保存</span
+              >{t('settings.saved')}</span
             >
           {/if}
           <button
             class="switch"
             type="button"
             role="switch"
-            aria-label="开机自启"
+            aria-label={t('settings.autostart')}
             aria-checked={settings?.general.autostart ?? false}
             disabled={!settings}
             onclick={() => onAutostartChange(!(settings?.general.autostart ?? false))}
@@ -701,18 +714,52 @@
 
       <div class="row">
         <div class="row-label">
-          <span class="label">主题</span>
-          <span class="desc">变更即时全窗预览</span>
+          <span class="label">{t('settings.language')}</span>
+          <span class="desc">{t('settings.languageDesc')}</span>
+        </div>
+        <div class="row-control">
+          {#if rowErrors['language']}
+            <span class="row-error" role="alert">{rowErrors['language']}</span>
+          {:else if savedState['language']}
+            <span
+              class="row-saved {savedState['language'].fading ? 'fading' : ''}"
+              role="status">{t('settings.saved')}</span
+            >
+          {/if}
+          <select
+            class="select"
+            aria-label={t('settings.language')}
+            value={settings?.general.language ?? 'system'}
+            onchange={onLanguageChange}
+          >
+            <option value="system">{t('settings.langSystem')}</option>
+            <option value="zh-CN">{t('settings.langZhHans')}</option>
+            <option value="zh-TW">{t('settings.langZhHant')}</option>
+            <option value="en">{t('settings.langEn')}</option>
+            <option value="ja">{t('settings.langJa')}</option>
+            <option value="ko">{t('settings.langKo')}</option>
+            <option value="fr">{t('settings.langFr')}</option>
+            <option value="de">{t('settings.langDe')}</option>
+            <option value="es">{t('settings.langEs')}</option>
+            <option value="ru">{t('settings.langRu')}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          <span class="label">{t('settings.theme')}</span>
+          <span class="desc">{t('settings.themeDesc')}</span>
         </div>
         <div class="row-control">
           {#if rowErrors['theme']}
             <span class="row-error" role="alert">{rowErrors['theme']}</span>
           {:else if savedState['theme']}
             <span class="row-saved {savedState['theme'].fading ? 'fading' : ''}" role="status"
-              >已保存</span
+              >{t('settings.saved')}</span
             >
           {/if}
-          <div class="segmented" role="group" aria-label="主题">
+          <div class="segmented" role="group" aria-label={t('settings.theme')}>
             {#each THEME_OPTIONS as opt (opt.value)}
               <button
                 type="button"
@@ -720,7 +767,7 @@
                 aria-pressed={(settings?.general.theme ?? 'system') === opt.value}
                 onclick={() => onThemeChange(opt.value)}
               >
-                {opt.label}
+                {t(opt.label)}
               </button>
             {/each}
           </div>

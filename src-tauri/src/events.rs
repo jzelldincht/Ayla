@@ -225,6 +225,9 @@ pub struct PanelPatch {
     pub width_logical: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub height_logical: Option<u32>,
+    /// 原文输入框高度（真机修复轮 13i：用户拖动后记忆，逻辑像素；缺省＝未拖过 → 黄金分割）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub editor_height: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -263,6 +266,9 @@ pub struct GeneralPatch {
     pub autostart: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme: Option<ThemeMode>,
+    /// 界面语言（i18n-1）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub language: Option<crate::config::Language>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]

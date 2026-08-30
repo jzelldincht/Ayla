@@ -16,6 +16,8 @@ interface Props {
   variant?: 'bare' | 'boxed' | 'subtle';
   autofocus?: boolean;
   ariaLabel: string;
+  defaultHeight: string;
+  savedHeight?: number | null;
 }
 
 function defaults(overrides: Partial<Props>): Props {
@@ -27,6 +29,7 @@ function defaults(overrides: Partial<Props>): Props {
     buttonMode: 'whenModified',
     buttonLabel: '重译 ↵',
     ariaLabel: '原文',
+    defaultHeight: 'calc(38.2vh - 47px)',
     ...overrides,
   };
 }

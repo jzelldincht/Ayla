@@ -17,6 +17,7 @@ pub mod ocr;
 pub mod selection;
 pub mod translate;
 pub mod tray;
+pub mod ui_text;
 pub mod windows;
 
 /// 应用入口：装配插件并运行事件循环。
@@ -94,6 +95,7 @@ pub fn run() {
             action_router::send_ocr_to_translate, // T16：截图一键送翻（6.1/FR-6.5）
             windows::translate::panel_hide, // 真机修复轮 2：关闭=隐藏（窗口插件 API 被 ACL 拒绝）
             windows::translate::panel_start_drag, // 真机修复轮 2：顶栏拖拽
+            windows::translate::panel_resize_for_content, // 真机修复轮 13：译文内容自适应高度（不持久化）
         ])
         .setup(|app| {
             // 启动序列 1：配置加载（T2 模块；原子写/迁移桩在 config::load_from 内完成）。

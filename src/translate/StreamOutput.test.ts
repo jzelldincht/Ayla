@@ -80,7 +80,7 @@ describe('等待与整段模式', () => {
       props: defaults({ status: 'block', renderMode: 'block', etaSeconds: null, roundKey: 1 }),
     });
     const badge = container.querySelector('.eta-badge')!;
-    expect(badge.textContent).toContain('正在翻译…');
+    expect(badge.textContent).toContain('翻译中…'); // i18n 起复用 waiting 文案
     expect(badge.textContent).not.toContain('预估');
   });
 

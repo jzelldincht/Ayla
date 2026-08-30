@@ -20,13 +20,15 @@
   import { onMount } from 'svelte';
 
   import { setSettings, verifyConnection, finishOnboarding, onOnboardingBegin } from '../lib/ipc';
+  import { t } from '../lib/i18n.svelte';
   import {
+    settingsState,
     initSettingsMirror,
     watchSettingsChanged,
     watchSystemTheme,
     applyThemeAppearance,
   } from '../lib/stores';
-  import type { OnboardingMode } from '../lib/types';
+  import type { OnboardingMode, SettingsPatch } from '../lib/types';
 
   let { mode: propMode } = $props<{ mode?: OnboardingMode }>();
 
@@ -37,11 +39,13 @@
   const mode = $derived(eventMode ?? propMode ?? urlMode);
 
   /** 步骤序（guide 两步，first 四步）+ 当前步名（design-spec 6）。 */
-  const FIRST_STEPS = ['欢迎', '隐私告知', '配置 API Key', '完成'] as const;
-  const GUIDE_STEPS = ['隐私告知', '配置 API Key'] as const;
+  const FIRST_STEPS = ['onb.stepWelcome', 'onb.stepPrivacy', 'onb.stepAiService', 'onb.stepDone'] as const;
+  const GUIDE_STEPS = ['onb.stepPrivacy', 'onb.stepAiService'] as const;
   const stepNames = $derived(mode === 'guide' ? GUIDE_STEPS : FIRST_STEPS);
 
   let step = $state(0);
+  let baseUrlInput = $state('');
+  let modelInput = $state('');
   let keyInput = $state('');
   let keyReveal = $state(false);
   let verifying = $state(false);
@@ -51,8 +55,8 @@
   let inlineError = $state('');
 
   const isLastStep = $derived(step === stepNames.length - 1);
-  const isPrivacyStep = $derived(stepNames[step] === '隐私告知');
-  const isKeyStep = $derived(stepNames[step] === '配置 API Key');
+  const isPrivacyStep = $derived(stepNames[step] === 'onb.stepPrivacy');
+  const isKeyStep = $derived(stepNames[step] === 'onb.stepAiService');
 
   // ---------------------------------------------------------------------------
   // 挂载：主题 + 镜像 + 复位订阅（复用窗经 onboarding://begin 复位，见 windows/onboarding.rs）
@@ -74,6 +78,9 @@
         resetKeyStep();
       }),
     );
+    // 真机修复轮 13d：接口地址/模型名输入框以镜像当前值为预填（出厂默认 DeepSeek），
+    // 用户可直接改任意服务商（OpenAI 兼容协议）；镜像未达（异常）时保持空＝沿用已存值。
+    void initSettingsMirror().then(applyDefaultsToInputs);
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
@@ -89,7 +96,15 @@
     }
   }
 
+  /** 输入框预填镜像当前值（接口地址/模型名；出厂默认自后端 get_settings，权威源在 Rust）。 */
+  function applyDefaultsToInputs(): void {
+    baseUrlInput = settingsState.current?.ai.baseUrl ?? '';
+    modelInput = settingsState.current?.ai.model ?? '';
+  }
+
   function resetKeyStep(): void {
+    baseUrlInput = '';
+    modelInput = '';
     keyInput = '';
     keyReveal = false;
     verifying = false;
@@ -97,6 +112,7 @@
     verifyError = '';
     inlineError = '';
     busy = false;
+    applyDefaultsToInputs();
   }
 
   // ---------------------------------------------------------------------------
@@ -132,13 +148,26 @@
     void finish();
   }
 
-  /** Key 步前进：先保存录入的 Key（空则跳过保存），后进入完成步/结束。 */
+  /** Key 步前进：先保存录入的 AI 服务配置（接口地址/模型名有改动才写入；空 Key＝跳过保存），
+   *  后进入完成步/结束（真机修复轮 13d：首启即可配 OpenAI 兼容服务商，不必跳过后进设置）。 */
   async function advanceFromKey(): Promise<void> {
+    const patch: SettingsPatch = { ai: {} };
     if (keyInput.trim().length > 0) {
+      patch.ai!.apiKey = keyInput;
+    }
+    const base = baseUrlInput.trim();
+    if (base.length > 0 && base !== (settingsState.current?.ai.baseUrl ?? '')) {
+      patch.ai!.baseUrl = base;
+    }
+    const model = modelInput.trim();
+    if (model.length > 0 && model !== (settingsState.current?.ai.model ?? '')) {
+      patch.ai!.model = model;
+    }
+    if (Object.keys(patch.ai!).length > 0) {
       try {
-        await setSettings({ ai: { apiKey: keyInput } });
+        await setSettings(patch);
       } catch (err) {
-        inlineError = `API Key 保存失败：${String(err)}`;
+        inlineError = t('onb.aiSaveFailed', { msg: String(err) });
         return;
       }
     }
@@ -156,7 +185,7 @@
       await finishOnboarding();
       // 完成后窗体由后端隐藏（保留复用）；本页无后续动作
     } catch (err) {
-      inlineError = `保存失败：${String(err)}`;
+      inlineError = t('onb.saveFailed', { msg: String(err) });
       busy = false;
     }
   }
@@ -171,7 +200,14 @@
     verifyState = 'idle';
     verifyError = '';
     try {
-      await verifyConnection({ key: keyInput });
+      // 缺省字段＝沿用已存值（6.1 契约）：录入非空才传，验证的就是用户眼前这套配置。
+      const base = baseUrlInput.trim();
+      const model = modelInput.trim();
+      await verifyConnection({
+        base: base.length > 0 ? base : undefined,
+        model: model.length > 0 ? model : undefined,
+        key: keyInput,
+      });
       verifyState = 'ok';
     } catch (err) {
       verifyState = 'error';
@@ -183,7 +219,7 @@
 </script>
 
 <svelte:head>
-  <title>欢迎使用 Alya</title>
+  <title>{t('onb.title')}</title>
 </svelte:head>
 
 <div class="wizard">
@@ -193,68 +229,100 @@
         <span class="dot {i <= step ? 'active' : ''}" data-step={name}></span>
       {/each}
     </div>
-    <span class="step-name" role="status">{stepNames[step]}</span>
+    <span class="step-name" role="status">{t(stepNames[step])}</span>
   </header>
 
   <div class="step-body-anchor">
     {#key `${step}-${mode}`}
       <div class="step-body">
-        {#if stepNames[step] === '欢迎'}
+        {#if stepNames[step] === 'onb.stepWelcome'}
           <div class="welcome">
             <div class="logo" aria-hidden="true">A</div>
-            <h1 class="display">欢迎使用 Alya</h1>
-            <p>在任意软件里划词、输入、复制或截图，一键得到 AI 翻译。</p>
+            <h1 class="display">{t('onb.title')}</h1>
+            <p>{t('onb.welcomeLead')}</p>
             <div class="key-tour" aria-label="快捷键速览">
-              <span>Alt+Q 划词</span>
-              <span>Alt+E 输入</span>
-              <span>Alt+S/D 截图</span>
+              <span>{t('onb.tourSelection')}</span>
+              <span>{t('onb.tourInput')}</span>
+              <span>{t('onb.tourCapture')}</span>
             </div>
           </div>
         {:else if isPrivacyStep}
           <div class="privacy">
-            <h2 class="title">隐私告知</h2>
+            <h2 class="title">{t('onb.stepPrivacy')}</h2>
             <div class="privacy-block">
               <p>
                 <span class="mark" aria-hidden="true">(!)</span>
-                使用翻译功能时，你选取的原文将被发送至你所配置的第三方云端翻译服务（出厂为 DeepSeek）。
+                {t('onb.privacyP1')}
               </p>
               <p>
                 <span class="mark" aria-hidden="true">(?)</span>
-                截图识别的文字提取在本机完成，截图本身不会上传。
+                {t('onb.privacyP2')}
               </p>
             </div>
-            <p class="privacy-note-line">以上内容完整展示、不可折叠；阅读后才能继续。</p>
+            <p class="privacy-note-line">{t('onb.privacyNote')}</p>
           </div>
         {:else if isKeyStep}
           <div class="key-step">
-            <h2 class="title">配置 API Key（可跳过）</h2>
-            <p class="lead">前往 DeepSeek 开放平台创建 API Key 并粘贴：</p>
-            <div class="key-row">
+            <h2 class="title">{t('onb.aiTitle')}</h2>
+            <p class="lead">{t('onb.aiLead')}</p>
+            <div class="field">
+              <label class="field-label" for="onb-base-url">{t('onb.fieldBaseUrl')}</label>
               <input
+                id="onb-base-url"
                 class="key-input"
-                type={keyReveal ? 'text' : 'password'}
-                value={keyInput}
-                placeholder="sk-••••••••••••••••"
-                aria-label="API Key"
+                type="text"
+                value={baseUrlInput}
+                placeholder="https://api.deepseek.com"
+                aria-label="接口地址"
+                spellcheck="false"
                 autocomplete="off"
-                oninput={(e) => {
-                  keyInput = (e.currentTarget as HTMLInputElement).value;
-                  verifyState = 'idle';
-                  verifyError = '';
-                }}
+                oninput={(e) => (baseUrlInput = (e.currentTarget as HTMLInputElement).value)}
               />
-              <button
-                class="ghost"
-                type="button"
-                aria-label={keyReveal ? '隐藏' : '显示'}
-                onclick={() => (keyReveal = !keyReveal)}
-              >
-                {#if keyReveal}
-                  隐藏
-                {:else}
-                  显示
-                {/if}
-              </button>
+            </div>
+            <div class="field">
+              <label class="field-label" for="onb-model">{t('onb.fieldModel')}</label>
+              <input
+                id="onb-model"
+                class="key-input"
+                type="text"
+                value={modelInput}
+                placeholder="deepseek-chat"
+                aria-label="模型名"
+                spellcheck="false"
+                autocomplete="off"
+                oninput={(e) => (modelInput = (e.currentTarget as HTMLInputElement).value)}
+              />
+            </div>
+            <div class="field">
+              <label class="field-label" for="onb-key">{t('onb.fieldApiKey')}</label>
+              <div class="key-row">
+                <input
+                  id="onb-key"
+                  class="key-input"
+                  type={keyReveal ? 'text' : 'password'}
+                  value={keyInput}
+                  placeholder="sk-••••••••••••••••"
+                  aria-label="API Key"
+                  autocomplete="off"
+                  oninput={(e) => {
+                    keyInput = (e.currentTarget as HTMLInputElement).value;
+                    verifyState = 'idle';
+                    verifyError = '';
+                  }}
+                />
+                <button
+                  class="ghost"
+                  type="button"
+                  aria-label={keyReveal ? '隐藏' : '显示'}
+                  onclick={() => (keyReveal = !keyReveal)}
+                >
+                  {#if keyReveal}
+                    隐藏
+                  {:else}
+                    显示
+                  {/if}
+                </button>
+              </div>
             </div>
             <div class="verify-row">
               <button
@@ -263,12 +331,12 @@
                 onclick={() => void verify()}
                 disabled={verifying}
               >
-                {verifying ? '验证中…' : '验证连接'}
+                {verifying ? t('onb.verifying') : t('onb.verify')}
               </button>
               {#if verifyState === 'ok'}
-                <span class="verify-ok" role="status">✓ 验证成功</span>
+                <span class="verify-ok" role="status">{t('onb.verifyOk')}</span>
               {:else if verifyState === 'error'}
-                <span class="verify-err" role="alert">✕ 验证失败：{verifyError}</span>
+                <span class="verify-err" role="alert">{t('onb.verifyFail', { msg: verifyError })}</span>
               {/if}
             </div>
             {#if inlineError}
@@ -277,16 +345,16 @@
           </div>
         {:else}
           <div class="done">
-            <h2 class="title">一切就绪</h2>
-            <p>Alya 将常驻系统托盘。常用快捷键：</p>
+            <h2 class="title">{t('onb.doneTitle')}</h2>
+            <p>{t('onb.doneLead')}</p>
             <div class="key-list">
-              <span>划词翻译 Alt+Q</span>
-              <span>输入翻译 Alt+E</span>
-              <span>截图识别 Alt+S</span>
-              <span>截图翻译 Alt+D</span>
-              <span>切换场景 Alt+W</span>
+              <span>{t('onb.doneSelection')}</span>
+              <span>{t('onb.doneInput')}</span>
+              <span>{t('onb.doneOcrRecognize')}</span>
+              <span>{t('onb.doneOcrTranslate')}</span>
+              <span>{t('onb.doneToggleScene')}</span>
             </div>
-            <p class="muted">右键托盘图标可随时找到以上全部入口。</p>
+            <p class="muted">{t('onb.doneTrayHint')}</p>
           </div>
         {/if}
       </div>
@@ -296,9 +364,9 @@
   <footer class="foot">
     <!-- 辅助链接（左侧） -->
     {#if isPrivacyStep}
-      <button class="link-btn" type="button" onclick={skip}>暂不使用</button>
+      <button class="link-btn" type="button" onclick={skip}>{t('onb.btnNotNow')}</button>
     {:else if isKeyStep}
-      <button class="link-btn" type="button" onclick={skip}>暂时跳过，稍后在设置中配置</button>
+      <button class="link-btn" type="button" onclick={skip}>{t('onb.btnSkip')}</button>
     {:else}
       <span class="link-placeholder" aria-hidden="true"></span>
     {/if}
@@ -306,14 +374,14 @@
          welcome「开始使用」/ privacy「我已了解，继续」（唯一前进入口）/
          key「继续」（未验证也可继续）/ done「进入 Alya」 -->
     <button class="btn-primary" type="button" onclick={next} disabled={busy}>
-      {#if stepNames[step] === '欢迎'}
-        开始使用
+      {#if stepNames[step] === 'onb.stepWelcome'}
+        {t('onb.btnGetStarted')}
       {:else if isPrivacyStep}
-        我已了解，继续
+        {t('onb.btnGotIt')}
       {:else if isKeyStep}
-        继续
+        {t('onb.btnContinue')}
       {:else}
-        进入 Alya
+        {t('onb.btnStartAlya')}
       {/if}
     </button>
   </footer>
@@ -458,7 +526,7 @@
     color: var(--fg-muted);
     text-align: center;
   }
-  /* Key 配置步 */
+  /* AI 服务配置步（真机修复轮 13d：接口地址/模型名/API Key 三字段） */
   .key-step {
     width: 100%;
     display: flex;
@@ -469,7 +537,18 @@
   .lead {
     margin: 0;
     font-size: var(--font-size-secondary);
+    line-height: var(--line-height-secondary);
     color: var(--fg-muted);
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field-label {
+    font-size: var(--font-size-caption);
+    color: var(--fg-muted);
+    user-select: none;
   }
   .key-row {
     display: flex;

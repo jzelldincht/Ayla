@@ -39,5 +39,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
     testTimeout: 15000,
+    // i18n-1：锁定中文目录（jsdom navigator 为 en-US，否则既有中文断言失败）。
+    setupFiles: ['src/test-setup.ts'],
   },
 });

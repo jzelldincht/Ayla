@@ -55,7 +55,7 @@ function fakeSettings(overrides: Partial<SettingsView> = {}): SettingsView {
       toggleScene: 'Alt+W',
     },
     ocr: { language: 'auto' },
-    general: { autostart: false, theme: 'system' },
+    general: { autostart: false, theme: 'system', language: 'system' },
     meta: { onboardingCompleted: false },
     ...overrides,
   };

@@ -2,10 +2,13 @@
   // 原文编辑区（design-spec 3.3 四形态共用；用户裁决 A1：所有原文区可编辑）。
   // - 形态 A/D：裸文本/浅底框，修改后右下角浮现「重译 ↵」按钮（未修改不显示）；Enter 同效。
   // - 形态 B：输入框（bg/subtle），轮 12 起无按钮（Enter 提交、Shift+Enter 换行）。
-  // 高度自适应：随内容增高，上限约面板 40%（A/B）或 35%（D，由外层 class 控制），超出内部滚动。
+  // 高度（真机修复轮 13g/13i 用户裁决）：默认按窗口黄金分割（defaultHeight prop，App 计算）；
+  // 用户拖动底部 resizer 后以用户高度为准（固定 px），防抖 600ms 经 set_settings 记忆，
+  // 下次呼出自动恢复；不再用 flex 撑满（flex 会覆盖手动内联高度 → 拖不动的根因）。
 
   import { onMount } from 'svelte';
   import { retranslateVisible } from './lib/retranslate';
+  import { setSettings } from '../lib/ipc';
 
   let {
     value,
@@ -18,6 +21,8 @@
     variant = 'bare',
     autofocus = false,
     ariaLabel,
+    defaultHeight,
+    savedHeight = null,
   }: {
     value: string;
     /** 已提交版本（重译浮现判据）。 */
@@ -28,16 +33,26 @@
     buttonMode: 'always' | 'whenModified' | 'never';
     buttonLabel: string;
     placeholder?: string;
-    /** 'bare' 裸文本（A）| 'boxed' 输入框（B）| 'subtle' 浅底框（D）。 */
+    /** 'bare' 裸文本（A）| 'boxed' 输入框（B）| 'subtle' 浅底框（D/C）。 */
     variant?: 'bare' | 'boxed' | 'subtle';
     autofocus?: boolean;
     ariaLabel: string;
+    /** 默认高度（黄金分割，CSS 值；App 按形态计算 chrome 偏移）。 */
+    defaultHeight: string;
+    /** 用户拖动记忆高（逻辑 px；null＝未拖过 → 黄金分割）。 */
+    savedHeight?: number | null;
   } = $props();
 
   let textarea: HTMLTextAreaElement;
-  /** 用户手动拖拽过高度（真机修复轮 8）：置位后停止自动增高，尊重用户调整。 */
-  let userPinned = false;
-  let lastSetHeight = 0;
+  /** 当前生效高度：null＝黄金分割默认（跟随窗口），数字＝用户拖动定值。
+   *  初值由下方 $effect 自 savedHeight prop 同步（挂载即跑，含镜像到达后的回流）。 */
+  let userHeight = $state<number | null>(null);
+  let saveTimer: number | null = null;
+
+  // 镜像回流同步（本窗保存后广播回来值一致；它窗/重开镜像时同步恢复）。
+  $effect(() => {
+    userHeight = savedHeight ?? null;
+  });
 
   /** A1：重译按钮浮现 = 内容被修改（≠ 已提交）且非纯空白（FR-4.3 拦截空提交）。
       轮 12：'never' 模式无按钮（形态 B 去"翻译 ↵"，Enter 提交）。 */
@@ -49,34 +64,29 @@
         : retranslateVisible(submitted, value),
   );
 
-  // 高度自适应（≤40%（A/B 由 .limit-40 外层）/≤35%（D .limit-35），超出滚动）。
-  // 用户手动调高（resize: vertical）后 userPinned 置位，自动增高停用（真机修复轮 8）。
-  function autosize() {
-    if (!textarea || userPinned) return;
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 9999)}px`;
-    lastSetHeight = parseFloat(textarea.style.height) || 0;
-  }
-
-  /** 检测用户手动调整（浏览器拖拽 resizer 会改写 inline height）：与程序写入值偏差 >1px 即置位。 */
-  function detectManualResize() {
-    if (!textarea || userPinned) return;
-    const current = parseFloat(textarea.style.height);
-    if (!Number.isNaN(current) && Math.abs(current - lastSetHeight) > 1) {
-      userPinned = true;
-    }
-  }
-
-  $effect(() => {
-    autosize();
-  });
-
   onMount(() => {
-    autosize();
     if (autofocus) textarea?.focus();
+    return () => {
+      if (saveTimer !== null) window.clearTimeout(saveTimer);
+    };
   });
 
-  function onKeydown(e: KeyboardEvent) {
+  /** 拖动结束（mouseup/触摸松开）：浏览器 resizer 已写内联 height——采为用户定值并记忆。 */
+  function onResizeEnd(): void {
+    if (!textarea) return;
+    const h = Math.round(textarea.getBoundingClientRect().height);
+    if (h < 40) return; // resizer 拖到极限的异常读数不采信
+    userHeight = h;
+    if (saveTimer !== null) window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => {
+      saveTimer = null;
+      void setSettings({ panel: { editorHeight: h } }).catch((err) =>
+        console.warn('editorHeight 保存失败', err),
+      );
+    }, 600);
+  }
+
+  function onKeydown(e: KeyboardEvent): void {
     if (e.key !== 'Enter' || e.shiftKey) return; // Shift+Enter 换行（原生行为）
     // 轮 12：never（无按钮纯 Enter 提交）与 always 同语义；空白回车不发起、无错误（FR-4.3）。
     if (buttonMode === 'never' || buttonMode === 'always') {
@@ -91,18 +101,19 @@
   }
 </script>
 
-<div class="editor" class:limit-40={variant !== 'subtle'} class:limit-35={variant === 'subtle'}>
+<div class="editor">
+  <!-- eslint-disable-next-line svelte/no-static-interactive-events -- mouseup 仅作拖动结束采样 -->
   <textarea
     bind:this={textarea}
     class:boxed={variant === 'boxed'}
     class:subtle={variant === 'subtle'}
-    class:resizable={variant === 'boxed'}
     value={value}
     placeholder={placeholder}
     aria-label={ariaLabel}
+    style:height={userHeight !== null ? `${userHeight}px` : defaultHeight}
     oninput={(e) => oninput((e.currentTarget as HTMLTextAreaElement).value)}
     onkeydown={onKeydown}
-    onmouseup={detectManualResize}
+    onmouseup={onResizeEnd}
   ></textarea>
   {#if showAction}
     <button class="action" type="button" onclick={onaction}>{buttonLabel}</button>
@@ -116,19 +127,9 @@
     flex-direction: column;
     min-height: 0;
   }
-  /* 面板高度 40%/35% 上限（Webview 铺满窗口 ⇒ 100vh = 窗口高度；
-     % 高在 auto 高度父容器中不成立，故用 vh——与"面板高度"语义一致） */
-  .limit-40 {
-    max-height: 40vh;
-  }
-  .limit-35 {
-    max-height: 35vh;
-  }
   textarea {
     width: 100%;
-    min-height: 2.6em;
-    max-height: 100%;
-    resize: none;
+    resize: vertical; /* 四形态统一可拖（真机修复轮 13i 用户需求） */
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-control);
     background: transparent;
@@ -147,9 +148,6 @@
   textarea.boxed {
     background: var(--bg-subtle);
     min-height: 56px;
-    /* 真机修复轮 8（用户反馈）：输入框可纵向手动拉伸（仅上下方向），拖过一次后
-       自动增高停用（userPinned），尊重用户调整；新会话不重置该高度。 */
-    resize: vertical;
   }
   textarea.subtle {
     background: var(--bg-subtle);

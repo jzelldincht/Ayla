@@ -224,6 +224,17 @@ pub struct PanelSettings {
     /// 面板逻辑高度（spec v0.2 对齐 design-spec 340）。
     #[serde(default = "panel_height_default")]
     pub height_logical: u32,
+    /// 面板上次位置（逻辑像素；真机修复轮 13g 用户需求：Alt+E 记住最后位置；
+    /// `None`＝从未拖动过 → 显示时默认贴屏幕右侧垂直居中）。仅尺寸/位置持久化路径写入。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pos_x_logical: Option<i32>,
+    /// 同上（纵坐标；负值副屏合法）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pos_y_logical: Option<i32>,
+    /// 原文输入框高度（逻辑像素；真机修复轮 13i：用户拖动后记忆，四形态共用；
+    /// `None`＝未拖过 → 编辑器高度按窗口黄金分割自动计算）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub editor_height_logical: Option<u32>,
     /// 未知字段保留透传。
     #[serde(flatten)]
     pub extra: serde_json::Map<String, serde_json::Value>,
@@ -288,6 +299,9 @@ pub struct GeneralSettings {
     /// 主题（FR-1.2：亮 / 暗 / 跟随系统，出厂默认跟随系统）。
     #[serde(default)]
     pub theme: ThemeMode,
+    /// 界面语言（i18n-1：system 按系统语言探测 zh→中文其余英文；出厂默认跟随系统）。
+    #[serde(default)]
+    pub language: Language,
     /// 未知字段保留透传。
     #[serde(flatten)]
     pub extra: serde_json::Map<String, serde_json::Value>,
@@ -300,6 +314,33 @@ pub enum ThemeMode {
     Dark,
     #[default]
     System,
+}
+
+/// 界面语言（i18n-2 扩展九语种，与定向目标语言清单一致）。
+/// 序列化值与前端 LanguageSetting 契约一致：system / zh-CN / zh-TW / en / ja / ko / fr / de / es / ru。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum Language {
+    #[default]
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "zh-CN")]
+    ZhCn,
+    #[serde(rename = "zh-TW")]
+    ZhTw,
+    #[serde(rename = "en")]
+    En,
+    #[serde(rename = "ja")]
+    Ja,
+    #[serde(rename = "ko")]
+    Ko,
+    #[serde(rename = "fr")]
+    Fr,
+    #[serde(rename = "de")]
+    De,
+    #[serde(rename = "es")]
+    Es,
+    #[serde(rename = "ru")]
+    Ru,
 }
 
 /// 首次运行引导状态（FR-11.1/11.5）。
@@ -395,6 +436,9 @@ impl Default for PanelSettings {
             hide_on_blur: true,
             width_logical: 460,
             height_logical: 340,
+            pos_x_logical: None,
+            pos_y_logical: None,
+            editor_height_logical: None,
             extra: serde_json::Map::new(),
         }
     }
@@ -436,6 +480,7 @@ impl Default for GeneralSettings {
         GeneralSettings {
             autostart: false,
             theme: ThemeMode::System,
+            language: Language::System,
             extra: serde_json::Map::new(),
         }
     }

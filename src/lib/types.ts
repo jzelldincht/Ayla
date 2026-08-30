@@ -52,6 +52,11 @@ export type PresentationMode = 'stream_all' | 'staged';
 /** 主题（6.3 general.theme）。 */
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+/** 已解析的具体界面语言（目录键；九语种与定向目标语言清单一致）。 */
+export type Locale = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'ko' | 'fr' | 'de' | 'es' | 'ru';
+/** 界面语言设置（i18n-2，general.language）。'system' 按 navigator.language 探测。 */
+export type LanguageSetting = 'system' | Locale;
+
 /** 引导窗模式（T14：`onboarding://begin.mode` + 窗口 URL `?mode=guide`）。 */
 export type OnboardingMode = 'first' | 'guide';
 
@@ -97,6 +102,11 @@ export interface PanelSettings {
   hideOnBlur: boolean;
   widthLogical: number;
   heightLogical: number;
+  /** 上次窗口位置（逻辑像素；真机修复轮 13g 位置记忆。缺省＝从未拖动过 → 默认贴屏幕右侧）。 */
+  posXLogical?: number | null;
+  posYLogical?: number | null;
+  /** 原文输入框高度（逻辑像素；真机修复轮 13i。缺省/null＝未拖过 → 黄金分割自动计算）。 */
+  editorHeightLogical?: number | null;
 }
 
 export interface SceneSettings {
@@ -118,6 +128,8 @@ export interface OcrSettings {
 export interface GeneralSettings {
   autostart: boolean;
   theme: ThemeMode;
+  /** 界面语言（i18n-1；'system' 按系统语言探测 zh→中文其余英文）。 */
+  language: LanguageSetting;
 }
 
 export interface MetaSettings {
@@ -160,6 +172,8 @@ export interface PanelPatch {
   hideOnBlur?: boolean;
   widthLogical?: number;
   heightLogical?: number;
+  /** 原文输入框高度（真机修复轮 13i；后端校验 56~5000，越界忽略）。 */
+  editorHeight?: number;
 }
 
 export interface ScenePatch {
@@ -181,6 +195,7 @@ export interface OcrPatch {
 export interface GeneralPatch {
   autostart?: boolean;
   theme?: ThemeMode;
+  language?: LanguageSetting;
 }
 
 export interface MetaPatch {

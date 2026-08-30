@@ -111,6 +111,13 @@ pub fn apply_settings_patch(
         if let Some(height) = panel.height_logical {
             settings.panel.height_logical = height;
         }
+        // 原文输入框高度记忆（真机修复轮 13i）：合法范围 56~5000 逻辑像素，
+        // 越界值忽略（保留现值）——防误写入异常值把编辑器压没或撑爆。
+        if let Some(editor_height) = panel.editor_height {
+            if (56..=5000).contains(&editor_height) {
+                settings.panel.editor_height_logical = Some(editor_height);
+            }
+        }
     }
     if let Some(scene) = &patch.scene {
         if let Some(active) = scene.active {
@@ -128,6 +135,10 @@ pub fn apply_settings_patch(
         }
         if let Some(theme) = general.theme {
             settings.general.theme = theme;
+        }
+        // 界面语言（i18n-1）。
+        if let Some(language) = general.language {
+            settings.general.language = language;
         }
     }
     if let Some(meta) = &patch.meta {
@@ -193,6 +204,16 @@ pub fn set_settings(app: AppHandle, patch: SettingsPatch) -> Result<(), AppError
     let settings = config::read_global()?;
     config::save_to(&dir, &settings)?;
 
+    // 真机修复轮 14b：主题变更 → 原生标题栏（设置窗/引导窗）即时跟随。
+    if patch.general.as_ref().and_then(|g| g.theme).is_some() {
+        let theme = config::read_global().map(|s| s.general.theme).unwrap_or(config::ThemeMode::System);
+        for label in [WINDOW_SETTINGS_LABEL, crate::windows::onboarding::WINDOW_ONBOARDING_LABEL] {
+            if let Some(w) = app.get_webview_window(label) {
+                crate::ui_text::apply_titlebar_theme(&w, theme);
+            }
+        }
+    }
+
     let broadcast = broadcast_patch(&patch);
     if let Err(err) = app.emit(EVENT_SETTINGS_CHANGED, broadcast) {
         log::error!("settings: settings://changed 广播失败: {err}");
@@ -204,7 +225,7 @@ pub fn set_settings(app: AppHandle, patch: SettingsPatch) -> Result<(), AppError
 #[tauri::command]
 pub fn open_settings(app: AppHandle) -> Result<(), AppError> {
     let window = ensure_window(&app)?;
-    show_and_focus(&window)?;
+    show_and_focus(&app, &window)?;
     Ok(())
 }
 
@@ -218,37 +239,136 @@ pub fn ensure_window(app: &AppHandle) -> Result<WebviewWindow, AppError> {
         return Ok(window);
     }
     let app_clone = app.clone();
-    WebviewWindowBuilder::new(
+    // 尺寸上限＝主屏工作区（真机修复轮 13c：贴边/手动拉伸不得超过屏幕高度——
+    // 此前无可调上限，用户拖拽/贴靠后窗口底边越出屏幕）。宽高不减边距：Win 贴边
+    // 恰为工作区整幅，需允许贴满。取不到显示器时不设上限（保守不阻断建窗）。
+    let mut builder = WebviewWindowBuilder::new(
         app,
         WINDOW_SETTINGS_LABEL,
         WebviewUrl::App(PathBuf::from("src/settings/index.html")),
     )
-    .title("设置")
+    .title(crate::ui_text::resolve_global().settings_window_title())
     .inner_size(
         SETTINGS_DEFAULT_SIZE_LOGICAL.0,
         SETTINGS_DEFAULT_SIZE_LOGICAL.1,
     )
     .min_inner_size(SETTINGS_MIN_SIZE_LOGICAL.0, SETTINGS_MIN_SIZE_LOGICAL.1)
     .resizable(true)
-    .visible(false)
-    .build()
-    .map_err(|e| AppError::Window(format!("settings 窗创建失败: {e}")))
-    .inspect(|window| {
+    .visible(false);
+    if let Some(monitor) = app.primary_monitor().ok().flatten() {
+        let wa = monitor.work_area();
+        let scale = monitor.scale_factor();
+        builder = builder.max_inner_size(
+            (wa.size.width as f64) / scale,
+            (wa.size.height as f64) / scale,
+        );
+    }
+    builder
+        .build()
+        .map_err(|e| AppError::Window(format!("settings 窗创建失败: {e}")))
+        .inspect(|window| {
         // 居中失败不阻断（仅位置差异；默认 760×540 有边框常规窗体）。
         let _ = window.center();
         // 关闭=隐藏（FR-1.3：设置窗关闭仅隐藏，应用驻留托盘）。
-        window.on_window_event(move |event| {
-            if let WindowEvent::CloseRequested { api, .. } = event {
+        window.on_window_event(move |event| match event {
+            WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
                 if let Some(single) = app_clone.get_webview_window(WINDOW_SETTINGS_LABEL) {
                     let _ = single.hide();
                 }
             }
+            // 兜底钳制（真机修复轮 13e）：builder max_inner_size 之外的保险——松手后若内尺寸
+            // 超过所在显示器工作区（贴边/拖拽异常态），压回工作区，绝不越出屏幕。
+            WindowEvent::Resized(size) => clamp_settings_window(&app_clone, *size),
+            _ => {}
         });
+        // 真机修复轮 13f：强制 DWM 圆角——Win11 对贴边磁吸窗口会把贴边侧取直（底边贴任务栏
+        // → 底部直角），用户实测被误读为"窗口被截断"。设 DWMWCP_ROUND 覆盖该自动行为。
+        force_rounded_corners(window);
+        // 真机修复轮 14b：原生标题栏随主题（深/浅）。
+        crate::ui_text::apply_titlebar_theme(
+            window,
+            config::read_global().map(|s| s.general.theme).unwrap_or(config::ThemeMode::System),
+        );
     })
 }
 
-fn show_and_focus(window: &WebviewWindow) -> Result<(), AppError> {
+/// 设 DWMWA_WINDOW_CORNER_PREFERENCE = DWMWCP_ROUND（失败仅记录；Win10 无此属性时为 no-op）。
+fn force_rounded_corners(window: &WebviewWindow) {
+    use windows::Win32::Graphics::Dwm::{
+        DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND,
+    };
+    let Ok(hwnd) = window.hwnd() else {
+        return;
+    };
+    let preference: i32 = DWMWCP_ROUND.0;
+    // SAFETY：hwnd 取自 Tauri 窗口句柄（本应用自有窗口）；调用仅设置角落偏好，无内存写入。
+    // 依赖图存在多个 windows crate 版本（tauri 内联一份），经裸指针转换到本 crate 的 HWND。
+    let hr = unsafe {
+        DwmSetWindowAttribute(
+            windows::Win32::Foundation::HWND(hwnd.0),
+            DWMWA_WINDOW_CORNER_PREFERENCE,
+            &preference as *const _ as *const core::ffi::c_void,
+            std::mem::size_of::<i32>() as u32,
+        )
+    };
+    if hr.is_err() {
+        log::debug!("settings: 强制圆角失败（Win10 等无此属性，忽略）: {hr:?}");
+    }
+}
+
+/// 设置窗尺寸防抖代次（与 translate 窗 RESIZE_GENERATION 同式：松手判定）。
+static SETTINGS_RESIZE_GENERATION: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
+/// 松手（300ms 静默）后复核内尺寸：超过所在屏工作区（逻辑）→ set_size 压回。失败仅记录。
+pub fn clamp_settings_window(app: &AppHandle, _size: tauri::PhysicalSize<u32>) {
+    use std::sync::atomic::Ordering;
+
+    let generation = SETTINGS_RESIZE_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        if SETTINGS_RESIZE_GENERATION.load(Ordering::Relaxed) != generation {
+            return; // 仍在拖拽
+        }
+        let Some(window) = app.get_webview_window(WINDOW_SETTINGS_LABEL) else {
+            return;
+        };
+        if !window.is_visible().unwrap_or(false) {
+            return;
+        }
+        let (Ok(scale), Ok(inner)) = (window.scale_factor(), window.inner_size()) else {
+            return;
+        };
+        let Ok(Some(monitor)) = window.current_monitor() else {
+            return;
+        };
+        let wa = monitor.work_area();
+        let max_w = (wa.size.width as f64) / scale;
+        let max_h = (wa.size.height as f64) / scale;
+        let w = (inner.width as f64) / scale;
+        let h = (inner.height as f64) / scale;
+        if w <= max_w && h <= max_h {
+            return; // 在界内：无需动作
+        }
+        let clamped_w = w.min(max_w);
+        let clamped_h = h.min(max_h);
+        log::warn!(
+            "settings: 尺寸越界已压回（{w}x{h} → {clamped_w}x{clamped_h} 逻辑，工作区 {max_w}x{max_h}）"
+        );
+        let _ = window.set_size(tauri::LogicalSize::new(clamped_w, clamped_h));
+    });
+}
+
+fn show_and_focus(_app: &AppHandle, window: &WebviewWindow) -> Result<(), AppError> {
+    // i18n-1：标题按当前语言刷新（建窗后语言可能已切换）。
+    let _ = window.set_title(crate::ui_text::resolve_global().settings_window_title());
+    // 真机修复轮 14b：显示前按当前主题刷新标题栏深浅。
+    crate::ui_text::apply_titlebar_theme(
+        window,
+        config::read_global().map(|s| s.general.theme).unwrap_or(config::ThemeMode::System),
+    );
     window
         .show()
         .map_err(|e| AppError::Window(format!("settings 窗显示失败: {e}")))?;
@@ -296,6 +416,7 @@ mod tests {
                     hide_on_blur: Some(false),
                     width_logical: Some(500),
                     height_logical: Some(400),
+                    editor_height: Some(200),
                 }),
                 scene: Some(ScenePatch {
                     active: Some(config::SceneMode::Directed),
@@ -306,6 +427,7 @@ mod tests {
                 general: Some(GeneralPatch {
                     autostart: Some(true),
                     theme: Some(config::ThemeMode::Dark),
+                    language: Some(config::Language::En),
                 }),
                 ..Default::default()
             },
@@ -316,6 +438,7 @@ mod tests {
         assert!(!s.panel.hide_on_blur);
         assert_eq!(s.panel.width_logical, 500);
         assert_eq!(s.panel.height_logical, 400);
+        assert_eq!(s.panel.editor_height_logical, Some(200), "13i 输入框高度记忆");
         assert_eq!(s.scene.active, config::SceneMode::Directed);
         assert_eq!(s.ocr.language, "ja");
         assert!(s.general.autostart);
@@ -361,6 +484,34 @@ mod tests {
             },
         ));
         assert_eq!(s.translation.auto_translate.delay_ms, 700);
+    }
+
+    #[test]
+    fn apply_patch_editor_height_out_of_range_ignored() {
+        // 真机修复轮 13i：编辑器高度越界（<56 / >5000）忽略，保留现值。
+        let mut s = config::Settings::default();
+        ok_of(apply_settings_patch(
+            &mut s,
+            &SettingsPatch {
+                panel: Some(PanelPatch {
+                    editor_height: Some(10),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        ));
+        assert!(s.panel.editor_height_logical.is_none(), "过小值应被忽略");
+        ok_of(apply_settings_patch(
+            &mut s,
+            &SettingsPatch {
+                panel: Some(PanelPatch {
+                    editor_height: Some(9999),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        ));
+        assert!(s.panel.editor_height_logical.is_none(), "过大值应被忽略");
     }
 
     #[test]

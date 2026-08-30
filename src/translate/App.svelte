@@ -33,6 +33,7 @@
     onSelectionClosed,
     panelHide,
     panelStartDrag,
+    panelResizeForContent,
   } from '../lib/ipc';
   import {
     settingsState,
@@ -50,7 +51,9 @@
     TranslationErrorPayload,
   } from '../lib/types';
   import { computeEtaSeconds, ETA_RATE_WINDOW_MS } from './lib/estimate';
-  import { OCR_LANGPACK_TITLE, ocrLangpackDescription, MICROSOFT_GUIDE_URL } from './lib/errors';
+  import { computeFitViewportHeight, measureContentHeight } from './lib/panelFit';
+  import { ocrLangpackTitle, ocrLangpackDescription, MICROSOFT_GUIDE_URL } from './lib/errors';
+  import { t } from '../lib/i18n.svelte';
   import { AutoTranslateScheduler } from './lib/autoTranslate';
   import TopBar from './TopBar.svelte';
   import OriginalEditor from './OriginalEditor.svelte';
@@ -87,7 +90,19 @@
   const targetLabel = $derived(
     tempTarget ?? settingsState.current?.translation.defaultTargetLang ?? '英文',
   );
-  const translationLabel = $derived(currentScene() === 'directed' ? `译文 · ${targetLabel}` : '译文');
+  const translationLabel = $derived(
+    currentScene() === 'directed'
+      ? t('panel.destLabelWithLang', { lang: targetLabel })
+      : t('panel.destLabel'),
+  );
+
+  // 原文编辑器高度（真机修复轮 13i）：默认黄金分割——38.2% 窗口高减编辑器上方固定 chrome
+  // （1px 描边 + 2px 内环 + 44px 顶栏 = 47px；形态 C 另有功能行 44px，共 91px），
+  // 用户拖动后以记忆高度为准（panel.editorHeightLogical，set_settings 持久化 + 广播回流）。
+  const editorDefaultHeight = $derived(
+    form === 'C' ? 'calc(38.2vh - 91px)' : 'calc(38.2vh - 47px)',
+  );
+  const editorSavedHeight = $derived(settingsState.current?.panel.editorHeightLogical ?? null);
 
   // ---------------------------------------------------------------------------
   // 事件接线
@@ -120,6 +135,7 @@
     return () => {
       window.removeEventListener('keydown', onWindowKeydown);
       autoTranslate.cancel();
+      if (panelFitTimer !== null) window.clearTimeout(panelFitTimer);
       for (const u of unlisteners) u();
     };
   });
@@ -130,12 +146,18 @@
 
   function handlePanelShow(mode: PanelMode, p: { text?: string; sessionId?: string }) {
     panelMode = mode;
+    // 真机修复轮 13：呼出后按保留内容重测高度（输入形态隐藏≠清空，长译文再次呼出即恢复展开）。
+    schedulePanelFit();
 
     // 真机修复轮 7：隐藏≠清空（FR-1.3 精神——面板隐藏只是不可见，内容保留）。
     // 输入模式重呼出不再无条件清空原文/译文（用户实测：调尺寸误触发隐藏后长译文丢失）。
     // 仅携带新内容的入口（划词/剪贴板/OCR）才重置翻译态并覆盖。
     if (mode === 'input') {
       form = 'B';
+      // 真机修复轮 13h 兜底：残留的 waiting（无在途事件的空转轮）在原文为空时收回空态。
+      if (original.trim().length === 0 && (outStatus === 'waiting' || outStatus === 'block')) {
+        resetOutput();
+      }
       return;
     }
 
@@ -185,8 +207,49 @@
   // resolveSource 在触发时求值——形态 A 的 source 跟随触发瞬间的面板模式。
   const autoTranslate = new AutoTranslateScheduler();
 
+  /** 定向目标语言切换（真机修复轮 14c 用户需求）：原文有内容 → 立即按新目标语言重译；
+   *  无内容则仅记录选择（下次翻译生效）。来源按当前形态解析，与各形态提交语义一致。 */
+  function onTargetLangChange(lang: string): void {
+    tempTarget = lang;
+    if (original.trim().length === 0) return;
+    const source: TranslateSource =
+      form === 'B'
+        ? 'input'
+        : form === 'C' || form === 'D'
+          ? 'ocr'
+          : panelMode === 'clipboard'
+            ? 'clipboard'
+            : 'selection';
+    void startTranslation(original, source);
+  }
+
+  /** 复位译文区到空态（idle 占位）。真机修复轮 13h：原文清空/Esc 中止后不得残留
+   *  "翻译中"（在途轮被取消后不再有 done/error 事件，waiting 会永久卡死）。 */
+  function resetOutput(): void {
+    autoTranslate.cancel();
+    if (currentRound) {
+      const roundId = currentRound;
+      void cancelTranslation({ roundId }).catch(() => {
+        // 已结束/竞态：后端幂等
+      });
+    }
+    currentRound = null;
+    outputText = '';
+    errorPayload = null;
+    etaSeconds = null;
+    renderMode = 'stream';
+    outStatus = 'idle';
+    roundKey += 1; // StreamOutput 清空（新一轮标识）
+  }
+
   function onOriginalInput(v: string, resolveSource: () => TranslateSource) {
     original = v;
+    // 真机修复轮 13h 用户裁决：原文空 ⇒ 无翻译活动——取消在途轮并把译文区收回空态
+    // （"原文空内容但译文区一直翻译中"的根因：waiting 等待一个已被取消/不会再有事件的轮）。
+    if (v.trim().length === 0) {
+      resetOutput();
+      return;
+    }
     const auto = settingsState.current?.translation.autoTranslate;
     if (!auto?.enabled) return;
     autoTranslate.input(v, submitted, auto.delayMs, () =>
@@ -338,12 +401,10 @@
   function onWindowKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       e.preventDefault();
-      // 进行中的翻译随之中止（design-spec 3.5；其后 hide）
-      if (currentRound) {
-        void cancelTranslation({ roundId: currentRound }).catch(() => {
-          // 已结束/竞态：后端幂等，无需前端动作
-        });
-      }
+      // 进行中的翻译随之中止（design-spec 3.5；其后 hide）。
+      // 真机修复轮 13h：中止即复位译文区——被取消的轮不会再有 done/error 事件，
+      // waiting 若保留会在下次呼出时永久卡"翻译中"。
+      if (currentRound) resetOutput();
       void hideWindow();
     }
   }
@@ -390,12 +451,75 @@
     }, 1000);
     return () => window.clearInterval(timer);
   });
+
+  // ---------------------------------------------------------------------------
+  // 译文内容自适应高度（真机修复轮 13）：译文随内容自动展开，超出"当前屏幕位置上限"回落滚动。
+  // 前端只测量（lib/panelFit 纯函数）；上限推导与应用（max(用户偏好, 内容所需) 钳工作区余量）、
+  // 不持久化豁免均在后端 panel_resize_for_content。流式期间防抖合并，完成后收敛到最终高度。
+  // ---------------------------------------------------------------------------
+
+  const PANEL_FIT_DEBOUNCE_MS = 120;
+  let panelFitTimer: number | null = null;
+
+  // ---------------------------------------------------------------------------
+  // 贴底 dock 态（真机修复轮 13c）：窗口底边贴住工作区底边（任务栏上沿）时去掉底部
+  // 2px 阴影内环——卡片直接压在任务栏上沿，磁吸边界零空带；浮动态保留内环供阴影绘制。
+  // screenY/innerHeight/availHeight 均为 CSS 像素（DIP），与后端逻辑尺寸同口径。
+  // ---------------------------------------------------------------------------
+
+  let dockedBottom = $state(false);
+
+  function updateDockedBottom(): void {
+    const avail = window.screen?.availHeight ?? 0;
+    dockedBottom = avail > 0 && window.screenY + window.innerHeight >= avail - 2;
+  }
+
+  $effect(() => {
+    document.body.classList.toggle('dock-bottom', dockedBottom);
+  });
+
+  // 组件初始化即判定一次（呼出/恢复时 resize 事件之外的兜底）。
+  updateDockedBottom();
+
+  function schedulePanelFit(): void {
+    if (panelFitTimer !== null) window.clearTimeout(panelFitTimer);
+    panelFitTimer = window.setTimeout(() => {
+      panelFitTimer = null;
+      void applyPanelFit();
+    }, PANEL_FIT_DEBOUNCE_MS);
+  }
+
+  async function applyPanelFit(): Promise<void> {
+    const el = document.querySelector<HTMLElement>('.stream-output');
+    if (!el || el.clientHeight === 0) return; // 空态分支无译文区 / 未就绪
+    const needed = computeFitViewportHeight({
+      viewportHeight: window.innerHeight,
+      clientHeight: el.clientHeight,
+      contentHeight: measureContentHeight(el),
+    });
+    if (Math.abs(needed - window.innerHeight) < 1) return; // 已贴合：不再请求
+    try {
+      await panelResizeForContent(needed);
+    } catch (err) {
+      console.warn('panel_resize_for_content 失败', err);
+    }
+  }
+
+  $effect(() => {
+    // 依赖收集：内容/状态/形态任一变化即重新测量（applyPanelFit 读取 .stream-output 实时布局）。
+    void outputText;
+    void outStatus;
+    void renderMode;
+    void errorPayload;
+    void form;
+    schedulePanelFit();
+  });
 </script>
 
-<svelte:window onmousedown={onRingMousedown} />
+<svelte:window onmousedown={onRingMousedown} onresize={updateDockedBottom} />
 
 <div class="panel-container">
-  <TopBar {tempTarget} onTargetChange={(v) => (tempTarget = v)} onClose={hideWindow} />
+  <TopBar {tempTarget} onTargetChange={onTargetLangChange} onClose={hideWindow} />
 
   {#if outStatus === 'waiting' && renderMode === 'stream'}
     <!-- 2px 高不确定细进度条（accent，往复滑动），首字到达即移除（design-spec 4.3） -->
@@ -403,19 +527,22 @@
   {/if}
 
   <main class="body">
-    <!-- 形态 A：翻译（划词 / 剪贴板监听结果互译·定向共用） -->
+    <!-- 形态 A：翻译（划词 / 剪贴板监听结果互译·定向共用）。
+         真机修复轮 13h：去「原文」标题（形态间时有时无像 bug，用户裁决），占位提示替代。 -->
     {#if form === 'A'}
       <section class="src-block">
-        <div class="label">原文</div>
         <OriginalEditor
           value={original}
           submitted={submitted}
           oninput={(v) => onOriginalInput(v, () => (panelMode === 'clipboard' ? 'clipboard' : 'selection'))}
           onaction={() => void startTranslation(original, panelMode === 'clipboard' ? 'clipboard' : 'selection')}
           buttonMode="whenModified"
-          buttonLabel="重译 ↵"
+          buttonLabel={t('panel.retranslate')}
+          placeholder={t('panel.placeholder')}
           variant="bare"
           ariaLabel="原文"
+          defaultHeight={editorDefaultHeight}
+          savedHeight={editorSavedHeight}
         />
       </section>
       <div class="divider" aria-hidden="true"></div>
@@ -445,17 +572,19 @@
           onaction={() => void startTranslation(original, 'input')}
           buttonMode="never"
           buttonLabel="翻译 ↵"
-          placeholder="输入要翻译的文本…"
+          placeholder={t('panel.placeholder')}
           variant="boxed"
           autofocus
           ariaLabel="输入要翻译的文本"
+          defaultHeight={editorDefaultHeight}
+          savedHeight={editorSavedHeight}
         />
       </section>
       <!-- 真机修复轮 1：形态 B 也保留分隔线（与形态 A 一致），并留出 12px 呼吸间距——
            消除"翻译后/首次进入横线时有时无、译文与原文挤在一起"的不一致。 -->
       <div class="divider" aria-hidden="true"></div>
       <section class="dest-block">
-        <div class="label">译文</div>
+        <div class="label">{t('panel.destLabel')}</div>
         <div class="dest-card" class:filled={outStatus !== 'idle'}>
           <StreamOutput
             status={outStatus}
@@ -468,20 +597,19 @@
             onOpenSettings={openSettingsClick}
           />
         </div>
-        <div class="caption">Enter 翻译 · Shift+Enter 换行</div>
       </section>
 
     {:else if form === 'C'}
       <!-- 形态 C：截图识别结果（不需要 API Key；FR-6.2/6.5） -->
       <section class="func-row">
-        <span class="func-title">识别结果</span>
+        <span class="func-title">{t('panel.ocrResultTitle')}</span>
         <select
           class="lang-select"
-          aria-label="OCR 语种"
+          aria-label={t('settings.ocrLang')}
           value={ocrLang}
           onchange={(e) => void onOcrLangChange((e.currentTarget as HTMLSelectElement).value)}
         >
-          <option value="auto">自动</option>
+          <option value="auto">{t('panel.langAuto')}</option>
           {#each ocrLangs as lang (lang.tag)}
             <option value={lang.tag}>{lang.label}</option>
           {/each}
@@ -492,62 +620,70 @@
           onclick={() => void sendOcrToTranslation()}
           disabled={ocrEmpty || original.trim().length === 0}
         >
-          送翻译
+          {t('panel.sendToTranslate')}
         </button>
       </section>
 
       {#if ocrError === 'ex6' || ocrError === 'ocr'}
         <div class="ocr-error-bar" role="alert">
-          <span class="ocr-error-title">{OCR_LANGPACK_TITLE}</span>
+          <span class="ocr-error-title">{ocrLangpackTitle()}</span>
           <span class="ocr-error-desc">
             {ocrError === 'ex6' ? ocrLangpackDescription(ocrLang === 'auto' ? null : ocrLang) : '识别失败，请重试。'}
           </span>
           {#if ocrError === 'ex6'}
-            <a class="guide-link" href={MICROSOFT_GUIDE_URL} target="_blank" rel="noreferrer">查看微软官方指引</a>
+            <a class="guide-link" href={MICROSOFT_GUIDE_URL} target="_blank" rel="noreferrer">{t('panel.ocrLangpackGuide')}</a>
           {/if}
         </div>
       {/if}
 
       {#if ocrEmpty}
         <div class="empty-ocr" role="status">
-          <div>未识别到文字</div>
-          <div class="empty-sub">请调整选区后重试</div>
+          <div>{t('panel.ocrEmptyTitle')}</div>
+          <div class="empty-sub">{t('panel.ocrEmptySub')}</div>
         </div>
       {:else}
         {#if original.trim().length === 0 && ocrBusy}
-          <div class="ocr-loading" role="status">识别中…</div>
+          <div class="ocr-loading" role="status">{t('panel.ocrLoading')}</div>
         {/if}
-        <OriginalEditor
-          value={original}
-          submitted={submitted}
-          oninput={(v) => onOriginalInput(v, () => 'ocr')}
-          onaction={() => void startTranslation(original, 'ocr')}
-          buttonMode="whenModified"
-          buttonLabel="重译 ↵"
-          variant="subtle"
-          ariaLabel="识别结果"
-        />
-      {/if}
-
-    {:else}
-      <!-- 形态 D：截图翻译结果（识别原文可编辑 + 译文区；4.2 空态不渲染译文区） -->
-      {#if ocrEmpty}
-        <div class="empty-ocr" role="status">
-          <div>未识别到文字</div>
-          <div class="empty-sub">请调整选区后重试</div>
-        </div>
-      {:else}
-        <section class="src-block">
-          <div class="label">识别原文</div>
+        <!-- 真机修复轮 13h：占位提示与统一黄金分割（高度 prop 由 App 计算）。 -->
+        <section class="src-block below-func-row">
           <OriginalEditor
             value={original}
             submitted={submitted}
             oninput={(v) => onOriginalInput(v, () => 'ocr')}
             onaction={() => void startTranslation(original, 'ocr')}
             buttonMode="whenModified"
-            buttonLabel="重译 ↵"
+            buttonLabel={t('panel.retranslate')}
+            placeholder={t('panel.placeholder')}
+            variant="subtle"
+            ariaLabel="识别结果"
+            defaultHeight={editorDefaultHeight}
+            savedHeight={editorSavedHeight}
+          />
+        </section>
+      {/if}
+
+    {:else}
+      <!-- 形态 D：截图翻译结果（识别原文可编辑 + 译文区；4.2 空态不渲染译文区） -->
+      {#if ocrEmpty}
+        <div class="empty-ocr" role="status">
+          <div>{t('panel.ocrEmptyTitle')}</div>
+          <div class="empty-sub">{t('panel.ocrEmptySub')}</div>
+        </div>
+      {:else}
+        <section class="src-block">
+          <OriginalEditor
+            value={original}
+            submitted={submitted}
+            oninput={(v) => onOriginalInput(v, () => 'ocr')}
+            onaction={() => void startTranslation(original, 'ocr')}
+            buttonMode="whenModified"
+            buttonLabel={t('panel.retranslate')}
+            placeholder={t('panel.placeholder')}
             variant="subtle"
             ariaLabel="识别原文"
+            defaultHeight={editorDefaultHeight}
+            savedHeight={editorSavedHeight}
           />
         </section>
         <div class="divider" aria-hidden="true"></div>
@@ -567,6 +703,11 @@
           </div>
         </section>
       {/if}
+    {/if}
+
+    {#if !((form === 'C' || form === 'D') && ocrEmpty)}
+      <!-- 快捷键常驻提示：所有形态恒显（用户需求）；仅 C/D「未识别到文字」空态无编辑器时隐藏 -->
+      <div class="caption">{t('panel.caption')}</div>
     {/if}
   </main>
 </div>
@@ -589,6 +730,11 @@
     height: 100vh;
     padding: var(--panel-inset);
     display: flex;
+  }
+  /* 贴底 dock 态（真机修复轮 13c/13f）：仅去掉底部 2px 内环让卡片贴实任务栏上沿；
+     **圆角保留**（真机修复轮 13f 用户反馈：取直被误读为"截断"，圆角卡片贴在任务栏上更自然）。 */
+  :global(body.dock-bottom) {
+    padding-bottom: 0;
   }
   .panel-container {
     flex: 1 1 auto;

@@ -233,3 +233,12 @@ export function panelHide(): Promise<void> {
 export function panelStartDrag(): Promise<void> {
   return invoke('panel_start_drag');
 }
+
+/**
+ * 译文内容自适应高度（真机修复轮 13）：传入"译文不滚动所需的窗口总高"（CSS 逻辑像素，
+ * 即 innerHeight − 译文可视高 + 译文内容自然高）。后端按 max(用户偏好, 内容所需) 钳上限应用，
+ * 不持久化（临时生长不覆盖用户拖拽的偏好尺寸）。
+ */
+export function panelResizeForContent(contentHeight: number): Promise<void> {
+  return invoke('panel_resize_for_content', { contentHeight });
+}

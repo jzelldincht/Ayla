@@ -49,8 +49,8 @@ describe('first 模式四步流转', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '我已了解，继续' }));
     await tick();
-    expect(screen.getByRole('heading', { name: '配置 API Key（可跳过）' })).toBeTruthy();
-    expect(stepName()).toContain('配置 API Key');
+    expect(screen.getByRole('heading', { name: '配置 AI 服务（可跳过）' })).toBeTruthy();
+    expect(stepName()).toContain('配置 AI 服务');
 
     fireEvent.click(screen.getByRole('button', { name: '继续' }));
     await tick();
@@ -150,6 +150,30 @@ describe('验证连接行内反馈（FR-11.1(c)）', () => {
     await tick();
     expect(stepName()).toContain('完成');
   });
+
+  it('真机修复轮 13d：三字段（接口地址/模型名/API Key）一并保存；验证连接携带 base/model', async () => {
+    await gotoKeyStep();
+    fireEvent.input(screen.getByLabelText('接口地址'), {
+      target: { value: 'https://api.openai.com/v1' },
+    });
+    fireEvent.input(screen.getByLabelText('模型名'), { target: { value: 'gpt-4o-mini' } });
+    fireEvent.input(screen.getByLabelText('API Key'), { target: { value: 'sk-fake-test' } });
+    fireEvent.click(screen.getByRole('button', { name: '验证连接' }));
+    expect(mocks.verifyConnection).toHaveBeenCalledWith({
+      base: 'https://api.openai.com/v1',
+      model: 'gpt-4o-mini',
+      key: 'sk-fake-test',
+    });
+    fireEvent.click(screen.getByRole('button', { name: '继续' }));
+    expect(mocks.setSettings).toHaveBeenCalledWith({
+      ai: { apiKey: 'sk-fake-test', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+    });
+  });
+
+  it('OpenAI 兼容提示语在服务配置步展示', async () => {
+    await gotoKeyStep();
+    expect(screen.getByText(/支持 OpenAI 兼容协议的 API 服务（默认 DeepSeek）/)).toBeTruthy();
+  });
 });
 
 describe('guide 模式（FR-11.4 补配引导直达）', () => {
@@ -160,7 +184,7 @@ describe('guide 模式（FR-11.4 补配引导直达）', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '我已了解，继续' }));
     await tick();
-    expect(stepName()).toContain('配置 API Key');
+    expect(stepName()).toContain('配置 AI 服务');
 
     fireEvent.input(screen.getByLabelText('API Key'), { target: { value: 'sk-fake-guide' } });
     fireEvent.click(screen.getByRole('button', { name: '继续' }));

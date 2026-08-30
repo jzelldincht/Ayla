@@ -65,6 +65,9 @@ windows = { version = "0.62", features = [
     "Win32_System_DataExchange",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_System_Threading",
+    "Win32_Globalization",
+    "Win32_System_Registry",
+    "Win32_Graphics_Dwm",
 ] }
 
 # 集成测试用 mock HTTP 服务（spec 验收标准 2：wiremock 模拟 OpenAI 兼容服务）

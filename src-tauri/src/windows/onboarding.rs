@@ -33,8 +33,9 @@ use crate::events::{
 /// 引导窗 label（spec 5.5 窗口清单；translate.rs 失焦隐藏/判定亦引用）。
 pub const WINDOW_ONBOARDING_LABEL: &str = "onboarding";
 
-/// 固定尺寸 560×430 逻辑像素、有边框、居中（design-spec 6 窗体规格）。
-pub const ONBOARDING_SIZE_LOGICAL: (f64, f64) = (560.0, 430.0);
+/// 固定尺寸 560×480 逻辑像素、有边框、居中（design-spec 6 窗体规格；真机修复轮 13d
+/// 自 430 上调——AI 服务步扩为接口地址/模型名/API Key 三字段）。
+pub const ONBOARDING_SIZE_LOGICAL: (f64, f64) = (560.0, 480.0);
 
 // ---------------------------------------------------------------------------
 // 首启检测（FR-11.1/11.5 纯判定）
@@ -167,7 +168,7 @@ pub fn ensure_window(app: &AppHandle, mode: OnboardingMode) -> Result<WebviewWin
             query_of(mode)
         ))),
     )
-    .title("欢迎使用 Alya")
+    .title(crate::ui_text::resolve_global().onboarding_window_title())
     .inner_size(ONBOARDING_SIZE_LOGICAL.0, ONBOARDING_SIZE_LOGICAL.1)
     .min_inner_size(ONBOARDING_SIZE_LOGICAL.0, ONBOARDING_SIZE_LOGICAL.1)
     .resizable(false)
@@ -178,6 +179,11 @@ pub fn ensure_window(app: &AppHandle, mode: OnboardingMode) -> Result<WebviewWin
         // 居中失败不阻断（仅位置差异）。固定尺寸向导：不支持 Esc（前端忽略）；
         // 原生关闭按钮＝隐藏（完成/跳过由命令写 meta 后隐藏；未完成时下次启动重新弹出）。
         let _ = window.center();
+        // 真机修复轮 14b：原生标题栏随主题（深/浅）。
+        crate::ui_text::apply_titlebar_theme(
+            window,
+            config::read_global().map(|s| s.general.theme).unwrap_or(config::ThemeMode::System),
+        );
         window.on_window_event(move |event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
