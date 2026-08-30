@@ -52,14 +52,14 @@ pub fn apply(app: &AppHandle, target_on: bool) -> Result<(), AppError> {
     let manager = app.autolaunch();
     let currently_enabled = manager
         .is_enabled()
-        .map_err(|err| AppError::Config(format!("开机自启状态查询失败: {err}")))?;
+        .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_query_failed(&err.to_string())))?;
     match decide_action(target_on, currently_enabled) {
         AutostartAction::Enable => manager
             .enable()
-            .map_err(|err| AppError::Config(format!("开机自启写入失败: {err}")))?,
+            .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_write_failed(&err.to_string())))?,
         AutostartAction::Disable => manager
             .disable()
-            .map_err(|err| AppError::Config(format!("开机自启移除失败: {err}")))?,
+            .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_remove_failed(&err.to_string())))?,
         AutostartAction::Idle => {
             log::debug!("autostart: 目标关闭且当前未启用（HKCU Run 无此项，无需移除）");
             return Ok(());

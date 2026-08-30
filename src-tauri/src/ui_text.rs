@@ -214,7 +214,7 @@ impl Language {
             Self::En => "The panel is visible but could not take focus; click its taskbar icon or press Alt+E.".to_string(),
             Self::Ja => "パネルは表示されていますが、フォーカスを取得できませんでした。タスクバーアイコンをクリックするか Alt+E で再表示してください。".to_string(),
             Self::Ko => "패널이 표시되었지만 포커스를 받지 못했습니다. 작업 표시줄 아이콘을 클릭하거나 Alt+E를 누르세요.".to_string(),
-            Self::Fr => "Le panneau est visible mais n a pas pu prendre le focus ; cliquez sur son icône ou appuyez sur Alt+E.".to_string(),
+            Self::Fr => "Le panneau est visible mais n'a pas pu prendre le focus ; cliquez sur son icône ou appuyez sur Alt+E.".to_string(),
             Self::De => "Das Panel ist sichtbar, konnte aber keinen Fokus erhalten; klicken Sie auf das Tray-Symbol oder drücken Sie Alt+E.".to_string(),
             Self::Es => "El panel es visible pero no pudo tomar el foco; haz clic en su icono o pulsa Alt+E.".to_string(),
             Self::Ru => "Панель видна, но не смогла получить фокус; щёлкните значок на панели задач или нажмите Alt+E.".to_string(),

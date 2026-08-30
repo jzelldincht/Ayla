@@ -229,16 +229,15 @@ pub fn init(app: &AppHandle) -> Result<RegisterSummary, AppError> {
 
 /// EX-7 聚合通知（一则）：列出全部注册失败的功能名。
 fn notify_registration_failures(app: &AppHandle, failed: &[HotkeyFunction]) {
+    let lang = crate::ui_text::resolve_global();
     let names = failed
         .iter()
-        .map(|function| function_display_name(*function))
+        .map(|function| function_display_name(*function, lang))
         .collect::<Vec<_>>()
-        .join("、");
-    let mut body = format!(
-        "以下功能的快捷键注册失败（可能已被系统或其他程序占用），可在设置中重新指定后立即恢复：{names}。"
-    );
+        .join(lang.list_separator());
+    let mut body = lang.hotkey_startup_fail_notify(&names);
     if failed.contains(&HotkeyFunction::Selection) {
-        body.push_str("划词翻译需改键后方可触发；其余功能仍可经托盘菜单使用（FR-14.3）。");
+        body.push_str(&lang.hotkey_selection_hint());
     }
     notify_hotkey_error(app, body);
 }
@@ -294,11 +293,14 @@ pub fn rebind_hotkey(
     function: HotkeyFunction,
     combo: String,
 ) -> Result<(), AppError> {
+    // i18n-3：错误消息按当前界面语言解析（config general.language）。
+    let lang = crate::ui_text::resolve_global();
     if combo.trim().is_empty() {
         return Err(conflict_error(
+            lang,
             function,
             &combo,
-            "快捷键不能为空（至少一个修饰键 + 主键）",
+            lang.hotkey_empty_reason(),
         ));
     }
 
@@ -307,12 +309,10 @@ pub fn rebind_hotkey(
     // 1) 与其余四项查重（内部冲突拒绝，EX-7）
     if let Some(owner) = dup_check(&guard.registered, function, &combo) {
         let err = conflict_error(
+            lang,
             function,
             &combo,
-            &format!(
-                "已被「{}」占用，请先解除或另选组合",
-                function_display_name(owner)
-            ),
+            &lang.hotkey_taken_reason(function_display_name(owner, lang)),
         );
         notify_hotkey_error(&app, err.to_string());
         return Err(err);
@@ -322,9 +322,9 @@ pub fn rebind_hotkey(
     let old_combo = match guard.registered.get(&function) {
         Some(old) => old.clone(),
         None => {
-            return Err(AppError::Config(format!(
-                "hotkey: {function:?} 未处于注册态（启动注册失败），请先改键恢复"
-            )))
+            return Err(AppError::Config(lang.hotkey_not_registered(&format!(
+                "{function:?}"
+            ))))
         }
     };
 
@@ -332,9 +332,9 @@ pub fn rebind_hotkey(
     app.global_shortcut()
         .unregister(old_combo.as_str())
         .map_err(|err| {
-            AppError::HotkeyConflict(format!(
-                "解注旧快捷键 {old_combo} 失败：{err}（状态未变更）"
-            ))
+            AppError::HotkeyConflict(
+                lang.hotkey_unregister_failed(&old_combo, &err.to_string()),
+            )
         })?;
 
     // 4) 注新键并按纯决策分支（Revert＝回退注册旧键、不改配置；Commit＝成功才写 config）
@@ -362,9 +362,10 @@ pub fn rebind_hotkey(
                 guard.degraded.push(function);
             }
             let err = conflict_error(
+                lang,
                 function,
                 &combo,
-                "注册失败（可能已被系统或其他程序占用），已回退为原快捷键",
+                lang.hotkey_register_fail_rollback(),
             );
             notify_hotkey_error(&app, err.to_string());
             Err(err)
@@ -386,11 +387,16 @@ pub fn rebind_hotkey(
     }
 }
 
-fn conflict_error(function: HotkeyFunction, combo: &str, reason: &str) -> AppError {
-    AppError::HotkeyConflict(format!(
-        "快捷键「{combo}」绑定失败：{}（{}）",
-        function_display_name(function),
-        reason
+fn conflict_error(
+    lang: crate::config::Language,
+    function: HotkeyFunction,
+    combo: &str,
+    reason: &str,
+) -> AppError {
+    AppError::HotkeyConflict(lang.hotkey_conflict_wrapper(
+        combo,
+        function_display_name(function, lang),
+        reason,
     ))
 }
 
@@ -410,13 +416,17 @@ pub fn action_of(function: HotkeyFunction) -> HotkeyAction {
 }
 
 /// 功能呈现名（简体中文；通知列名与设置页共用一份文案）。
-pub fn function_display_name(function: HotkeyFunction) -> &'static str {
+/// 功能显示名（i18n-3：按界面语言；目录在 error_text）。
+pub fn function_display_name(
+    function: HotkeyFunction,
+    lang: crate::config::Language,
+) -> &'static str {
     match function {
-        HotkeyFunction::Selection => "划词翻译",
-        HotkeyFunction::Input => "输入翻译",
-        HotkeyFunction::OcrRecognize => "截图识别",
-        HotkeyFunction::OcrTranslate => "截图翻译",
-        HotkeyFunction::ToggleScene => "切换场景",
+        HotkeyFunction::Selection => lang.func_selection(),
+        HotkeyFunction::Input => lang.func_input(),
+        HotkeyFunction::OcrRecognize => lang.func_ocr_recognize(),
+        HotkeyFunction::OcrTranslate => lang.func_ocr_translate(),
+        HotkeyFunction::ToggleScene => lang.func_toggle_scene(),
     }
 }
 
@@ -560,18 +570,18 @@ mod tests {
 
     #[test]
     fn display_names_and_actions_cover_five_functions() {
-        assert_eq!(function_display_name(HotkeyFunction::Selection), "划词翻译");
-        assert_eq!(function_display_name(HotkeyFunction::Input), "输入翻译");
+        assert_eq!(function_display_name(HotkeyFunction::Selection, crate::config::Language::ZhCn), "划词翻译");
+        assert_eq!(function_display_name(HotkeyFunction::Input, crate::config::Language::ZhCn), "输入翻译");
         assert_eq!(
-            function_display_name(HotkeyFunction::OcrRecognize),
+            function_display_name(HotkeyFunction::OcrRecognize, crate::config::Language::ZhCn),
             "截图识别"
         );
         assert_eq!(
-            function_display_name(HotkeyFunction::OcrTranslate),
+            function_display_name(HotkeyFunction::OcrTranslate, crate::config::Language::ZhCn),
             "截图翻译"
         );
         assert_eq!(
-            function_display_name(HotkeyFunction::ToggleScene),
+            function_display_name(HotkeyFunction::ToggleScene, crate::config::Language::ZhCn),
             "切换场景"
         );
         assert_eq!(
@@ -602,7 +612,12 @@ mod tests {
 
     #[test]
     fn conflict_error_carries_ex7_code_and_function_name() {
-        let err = conflict_error(HotkeyFunction::Selection, "Ctrl+D", "已被「截图识别」占用");
+        let err = conflict_error(
+            crate::config::Language::ZhCn,
+            HotkeyFunction::Selection,
+            "Ctrl+D",
+            "已被「截图识别」占用",
+        );
         assert_eq!(err.ex_code(), "EX-7");
         let msg = err.to_string();
         assert!(msg.contains("划词翻译"), "EX-7 通知须指明功能名");

@@ -67,9 +67,6 @@
     { fn: 'toggleScene', label: 'settings.hotkeyToggleScene' },
   ];
 
-  /** design-spec 7.2 冲突/注册失败回退文案（外部占用；内部共键冲突显示后端点名消息）。 */
-  const conflictRestored = (): string => t('settings.hotkeyConflictRestored');
-
   let activeGroup = $state<GroupId>('ai');
   let rowErrors = $state<Record<string, string>>({});
   let savedState = $state<Record<string, { shown: boolean; fading: boolean }>>({});
@@ -194,9 +191,7 @@
       await refreshDegraded();
       flashSaved(key);
     } catch (err) {
-      const msg = String(err);
-      // 内部共键冲突（后端点名占用方）→ 用后端消息；外部占用/注册失败 → design-spec 固定文案
-      rowErrors[key] = msg.includes('已被「') ? msg : conflictRestored();
+      rowErrors[key] = String(err); // i18n-3：后端已按界面语言本地化，原样呈现
     }
   }
 

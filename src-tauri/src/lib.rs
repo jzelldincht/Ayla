@@ -10,6 +10,7 @@ pub mod capture;
 pub mod clipboard_monitor;
 pub mod config;
 pub mod error;
+pub mod error_text;
 pub mod events;
 pub mod hotkey;
 pub mod instance;

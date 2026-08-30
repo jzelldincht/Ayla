@@ -283,7 +283,7 @@ describe('快捷键录制控件状态机（design-spec 7.2 三分支）', () => 
       combo: 'Ctrl+Shift+X',
     });
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('该快捷键已被其他程序占用，已恢复原快捷键');
+    expect(alert.textContent).toContain('已回退为原快捷键'); // i18n-3：原样呈现后端本地化消息
     await tick(); // 等 recorder 回展示态（onRebind 失败链 flush）
     expect(await screen.findByText('Alt+Q')).toBeTruthy(); // 回退：键帽未变
     expect(screen.queryByText('已保存')).toBeNull();

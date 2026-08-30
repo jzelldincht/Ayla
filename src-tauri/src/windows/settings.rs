@@ -47,13 +47,12 @@ pub fn apply_settings_patch(
 ) -> Result<(), AppError> {
     if patch.hotkeys.is_some() {
         return Err(AppError::Config(
-            "热键变更不走 set_settings：请用 rebind_hotkey 专用命令（spec 6.1）".to_string(),
+            crate::ui_text::resolve_global().settings_reject_hotkey_channel(),
         ));
     }
     if patch.clipboard_monitor.is_some() {
         return Err(AppError::Config(
-            "剪贴板监听开关不走 set_settings：请用 set_clipboard_monitor 三方统一入口（spec 6.1）"
-                .to_string(),
+            crate::ui_text::resolve_global().settings_reject_clipboard_channel(),
         ));
     }
 
