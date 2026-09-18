@@ -8,7 +8,7 @@ export const ru: typeof zh = {
     sceneMutual: "Взаимная",
     sceneDirected: "Направленная",
     clipboardToggle: "Монитор буфера обмена",
-    clipboardToggleHint: "Автоматически переводит новый скопированный текст",
+    clipboardToggleHint: "Автоперевод нового скопированного текста",
     targetLang: "Целевой язык",
     close: "Закрыть панель",
     destLabel: "Перевод",
@@ -103,6 +103,8 @@ export const ru: typeof zh = {
     langDe: "Deutsch",
     langEs: "Español",
     langRu: "Русский",
+    restoreDefaults: "Сбросить настройки",
+    restoreDefaultsConfirm: "Сбросить все настройки к заводским? (API-ключ, язык интерфейса и состояние первичной настройки будут сохранены.)",
   },
   onb: {
     title: "Добро пожаловать в Alya",
@@ -122,6 +124,7 @@ export const ru: typeof zh = {
     fieldBaseUrl: "Базовый URL",
     fieldModel: "Имя модели",
     fieldApiKey: "API-ключ",
+    keyPlaceholder: "Вставьте API-ключ",
     verify: "Проверить соединение",
     verifying: "Проверка…",
     verifyOk: "✓ Соединение установлено",
@@ -163,5 +166,20 @@ export const ru: typeof zh = {
     ocrLangpackTitle: "Отсутствует языковой пакет OCR",
     ocrLangpackNamed: "Языковой пакет «{tag}» не установлен, этот язык не распознаётся.",
     ocrLangpackNone: "Не найден подходящий языковой пакет OCR. Установите его и повторите.",
+  },
+
+  mask: {
+    dragHint: "Выделите область мышью · Esc — отмена",
+  },
+  langs: {
+    targetZhHans: "Китайский (упрощённый)",
+    targetZhHant: "Китайский (традиционный)",
+    targetEn: "Английский",
+    targetJa: "Японский",
+    targetKo: "Корейский",
+    targetFr: "Французский",
+    targetDe: "Немецкий",
+    targetEs: "Испанский",
+    targetRu: "Русский",
   },
 };

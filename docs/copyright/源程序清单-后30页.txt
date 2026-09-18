@@ -1,0 +1,1592 @@
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 301 页（共 330 页）
+==============================================================================
+ 15001      padding: var(--space-5);
+ 15002    }
+ 15003    .group-title {
+ 15004      margin: 0 0 var(--space-4);
+ 15005      font-size: var(--font-size-title);
+ 15006      line-height: var(--line-height-title);
+ 15007      color: var(--fg-title);
+ 15008      font-weight: var(--font-weight-medium);
+ 15009    }
+ 15010    .row {
+ 15011      display: flex;
+ 15012      align-items: center;
+ 15013      justify-content: space-between;
+ 15014      gap: var(--space-4);
+ 15015      min-height: var(--setting-row-height);
+ 15016      padding: var(--space-2) 0;
+ 15017      border-bottom: 1px solid var(--border-subtle);
+ 15018    }
+ 15019    .row:last-child {
+ 15020      border-bottom: none;
+ 15021    }
+ 15022    .row-label {
+ 15023      display: flex;
+ 15024      flex-direction: column;
+ 15025      gap: 2px;
+ 15026      min-width: 0;
+ 15027    }
+ 15028    .label {
+ 15029      font-size: var(--font-size-body);
+ 15030      color: var(--fg-title);
+ 15031    }
+ 15032    .desc {
+ 15033      font-size: var(--font-size-secondary);
+ 15034      line-height: var(--line-height-secondary);
+ 15035      color: var(--fg-muted);
+ 15036    }
+ 15037    .row-control {
+ 15038      display: flex;
+ 15039      align-items: center;
+ 15040      justify-content: flex-end;
+ 15041      gap: var(--space-2);
+ 15042      min-width: 0;
+ 15043      flex: none;
+ 15044      max-width: 60%;
+ 15045    }
+ 15046    /* 行尾反馈位（7.4）：success「已保存」1.5s 后 300ms 淡出；error 常驻 */
+ 15047    .row-saved {
+ 15048      font-size: var(--font-size-caption);
+ 15049      color: var(--success);
+ 15050      transition: opacity 300ms ease;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 302 页（共 330 页）
+==============================================================================
+ 15051      opacity: 1;
+ 15052      white-space: nowrap;
+ 15053    }
+ 15054    .row-saved.fading {
+ 15055      opacity: 0;
+ 15056    }
+ 15057    .row-error {
+ 15058      font-size: var(--font-size-secondary);
+ 15059      line-height: var(--line-height-secondary);
+ 15060      color: var(--error);
+ 15061      max-width: 260px;
+ 15062      text-align: right;
+ 15063      white-space: normal;
+ 15064    }
+ 15065    .text-input {
+ 15066      height: 32px;
+ 15067      padding: 0 var(--space-2);
+ 15068      border: 1px solid var(--border-subtle);
+ 15069      border-radius: var(--radius-control);
+ 15070      background: var(--bg-subtle);
+ 15071      color: var(--fg-body);
+ 15072      font-size: var(--font-size-secondary);
+ 15073    }
+ 15074    .input-wide {
+ 15075      width: 240px;
+ 15076    }
+ 15077    .num-input {
+ 15078      width: 96px;
+ 15079      height: 32px;
+ 15080      padding: 0 var(--space-2);
+ 15081      border: 1px solid var(--border-subtle);
+ 15082      border-radius: var(--radius-control);
+ 15083      background: var(--bg-subtle);
+ 15084      color: var(--fg-body);
+ 15085      font-size: var(--font-size-secondary);
+ 15086    }
+ 15087    .select {
+ 15088      height: 32px;
+ 15089      padding: 0 var(--space-2);
+ 15090      border: 1px solid var(--border-subtle);
+ 15091      border-radius: var(--radius-control);
+ 15092      background: var(--bg-base);
+ 15093      color: var(--fg-body);
+ 15094      font-size: var(--font-size-secondary);
+ 15095      cursor: pointer;
+ 15096      max-width: 220px;
+ 15097    }
+ 15098    .key-mask {
+ 15099      font-size: var(--font-size-body);
+ 15100      letter-spacing: 2px;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 303 页（共 330 页）
+==============================================================================
+ 15101      color: var(--fg-muted);
+ 15102    }
+ 15103    .key-control {
+ 15104      flex-wrap: wrap;
+ 15105    }
+ 15106    .btn {
+ 15107      height: 32px;
+ 15108      padding: 0 var(--space-3);
+ 15109      border: 1px solid var(--border-strong);
+ 15110      border-radius: var(--radius-control);
+ 15111      background: var(--bg-base);
+ 15112      color: var(--fg-body);
+ 15113      font-size: var(--font-size-secondary);
+ 15114      cursor: pointer;
+ 15115    }
+ 15116    .btn:hover:not(:disabled) {
+ 15117      background: var(--bg-hover);
+ 15118    }
+ 15119    .btn:disabled {
+ 15120      color: var(--fg-disabled);
+ 15121      border-color: var(--border-subtle);
+ 15122      cursor: default;
+ 15123    }
+ 15124    .btn-primary {
+ 15125      background: var(--accent-primary);
+ 15126      border-color: var(--accent-primary);
+ 15127      color: var(--accent-on-primary);
+ 15128    }
+ 15129    .btn-primary:hover:not(:disabled) {
+ 15130      background: var(--accent-primary-hover);
+ 15131      border-color: var(--accent-primary-hover);
+ 15132    }
+ 15133    .btn-plain {
+ 15134      border: none;
+ 15135      background: transparent;
+ 15136      color: var(--fg-muted);
+ 15137    }
+ 15138    .btn-plain:hover:not(:disabled) {
+ 15139      background: var(--bg-hover);
+ 15140      color: var(--fg-body);
+ 15141    }
+ 15142    /* 开关（图标式切换；关=中性，开=accent 填充） */
+ 15143    .switch {
+ 15144      position: relative;
+ 15145      width: 40px;
+ 15146      height: 22px;
+ 15147      padding: 0;
+ 15148      border: 1px solid var(--border-strong);
+ 15149      border-radius: var(--radius-pill);
+ 15150      background: var(--bg-subtle);
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 304 页（共 330 页）
+==============================================================================
+ 15151      cursor: pointer;
+ 15152      transition:
+ 15153        background 120ms var(--ease-in),
+ 15154        border-color 120ms var(--ease-in);
+ 15155    }
+ 15156    .switch-knob {
+ 15157      position: absolute;
+ 15158      top: 2px;
+ 15159      left: 3px;
+ 15160      width: 16px;
+ 15161      height: 16px;
+ 15162      border-radius: 50%;
+ 15163      background: var(--fg-disabled);
+ 15164      transition:
+ 15165        transform 120ms var(--ease-in),
+ 15166        background 120ms var(--ease-in);
+ 15167    }
+ 15168    .switch[aria-checked='true'] {
+ 15169      background: var(--accent-primary);
+ 15170      border-color: var(--accent-primary);
+ 15171    }
+ 15172    .switch[aria-checked='true'] .switch-knob {
+ 15173      transform: translateX(17px);
+ 15174      background: #ffffff;
+ 15175    }
+ 15176    .switch:disabled {
+ 15177      opacity: 0.5;
+ 15178      cursor: default;
+ 15179    }
+ 15180    /* 主题三段控件（120ms 选中语义：选中段 accent 底） */
+ 15181    .segmented {
+ 15182      display: inline-flex;
+ 15183      border: 1px solid var(--border-subtle);
+ 15184      border-radius: var(--radius-control);
+ 15185      overflow: hidden;
+ 15186    }
+ 15187    .seg-btn {
+ 15188      height: 32px;
+ 15189      padding: 0 var(--space-3);
+ 15190      border: none;
+ 15191      background: transparent;
+ 15192      color: var(--fg-body);
+ 15193      font-size: var(--font-size-secondary);
+ 15194      cursor: pointer;
+ 15195      transition:
+ 15196        background 120ms var(--ease-in),
+ 15197        color 120ms var(--ease-in);
+ 15198    }
+ 15199    .seg-btn + .seg-btn {
+ 15200      border-left: 1px solid var(--border-subtle);
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 305 页（共 330 页）
+==============================================================================
+ 15201    }
+ 15202    .seg-btn:hover {
+ 15203      background: var(--bg-hover);
+ 15204    }
+ 15205    .seg-btn[aria-pressed='true'] {
+ 15206      background: var(--accent-primary);
+ 15207      color: var(--accent-on-primary);
+ 15208    }
+ 15209    /* 常驻隐私提示块（requirements 第 7 章 / J3；warning-mark 强调底 + radius-card） */
+ 15210    .privacy-note {
+ 15211      display: flex;
+ 15212      gap: var(--space-2);
+ 15213      align-items: flex-start;
+ 15214      margin-top: var(--space-5);
+ 15215      padding: var(--space-3) var(--space-4);
+ 15216      background: var(--bg-subtle);
+ 15217      border-left: 3px solid var(--warning);
+ 15218      border-radius: var(--radius-card);
+ 15219      font-size: var(--font-size-secondary);
+ 15220      line-height: var(--line-height-secondary);
+ 15221      color: var(--fg-body);
+ 15222    }
+ 15223    .privacy-mark {
+ 15224      flex: none;
+ 15225      font-weight: var(--font-weight-medium);
+ 15226      color: var(--warning);
+ 15227    }
+ 15228  </style>
+ 15229  // ==================== src/settings/HotkeyRecorder.svelte ====================
+ 15230  <script lang="ts">
+ 15231    import { t } from '../lib/i18n.svelte';
+ 15232    // 快捷键录制控件（T13；design-spec 7.2 状态机：展示态 → 录制态 → 校验 → 展示（成功/回退））。
+ 15233    //
+ 15234    // 状态机语义：
+ 15235    // - 展示态：当前组合键（键帽胶囊）+「修改」按钮；启动注册失败（degraded）时行尾常驻
+ 15236    //   warning 图标（title「注册失败，点击修改」，点击直接进入录制态）。
+ 15237    // - 录制态：「请按下新的快捷键…」；此时 Esc 或点击控件外取消，均不改值；
+ 15238    // - 录得组合（含至少一个修饰键 + 主键）→ 调 props.onRebind（父层 invoke rebind_hotkey + 刷新镜像）：
+ 15239    //   成功/失败均回展示态；成功键帽经镜像刷新更新（INV-8：前端不自改值），失败由父层行内 error。
+ 15240    //
+ 15241    // 组合构造（Windows/tarui global-shortcut 词法）：
+ 15242    // - e.code 为主键物理按键（KeyQ→Q、Digit1→1、F1、方向键…），规避 Shift 下 e.key 大小写漂移；
+ 15243    // - 修饰键固定序 Ctrl+Alt+Shift+Super；至少一个修饰键才提交（排除纯修饰键与裸字母）；
+ 15244    // - 录制中的按键均在冒泡前拦截（防页面其他快捷键处理）。
+ 15245  
+ 15246    let {
+ 15247      combo,
+ 15248      degraded = false,
+ 15249      onRebind,
+ 15250    } = $props<{
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 306 页（共 330 页）
+==============================================================================
+ 15251      combo: string;
+ 15252      degraded?: boolean;
+ 15253      onRebind: (newCombo: string) => Promise<void>;
+ 15254    }>();
+ 15255  
+ 15256    let phase = $state<'display' | 'recording'>('display');
+ 15257    let hint = $state('');
+ 15258    let root: HTMLDivElement;
+ 15259    let busy = $state(false);
+ 15260  
+ 15261    /** 主键名称映射（按 e.code；不支持组合键则返回 null）。 */
+ 15262    function keyName(code: string): string | null {
+ 15263      if (code.startsWith('Key')) return code.slice(3);
+ 15264      if (code.startsWith('Digit')) return code.slice(5);
+ 15265      if (/^F\d{1,2}$/.test(code)) return code;
+ 15266      const named: Record<string, string> = {
+ 15267        ArrowUp: 'Up',
+ 15268        ArrowDown: 'Down',
+ 15269        ArrowLeft: 'Left',
+ 15270        ArrowRight: 'Right',
+ 15271        Space: 'Space',
+ 15272        Enter: 'Enter',
+ 15273        Tab: 'Tab',
+ 15274        Backspace: 'Backspace',
+ 15275        Home: 'Home',
+ 15276        End: 'End',
+ 15277        PageUp: 'PageUp',
+ 15278        PageDown: 'PageDown',
+ 15279        Insert: 'Insert',
+ 15280        Delete: 'Delete',
+ 15281      };
+ 15282      return named[code] ?? null;
+ 15283    }
+ 15284  
+ 15285    /** 由键盘事件构造组合串；无修饰键/纯修饰键/不支持主键 → null（保持录制态）。 */
+ 15286    function comboFromEvent(e: KeyboardEvent): string | null {
+ 15287      const main = keyName(e.code);
+ 15288      if (!main) return null;
+ 15289      const parts: string[] = [];
+ 15290      if (e.ctrlKey) parts.push('Ctrl');
+ 15291      if (e.altKey) parts.push('Alt');
+ 15292      if (e.shiftKey) parts.push('Shift');
+ 15293      if (e.metaKey) parts.push('Super');
+ 15294      // 至少一个修饰键（FR-14.2 录音式；裸键注册全局热键风险高，后端同样拒绝）
+ 15295      if (parts.length === 0) return null;
+ 15296      parts.push(main);
+ 15297      return parts.join('+');
+ 15298    }
+ 15299  
+ 15300    function begin(): void {
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 307 页（共 330 页）
+==============================================================================
+ 15301      phase = 'recording';
+ 15302      hint = t('settings.hotkeyRecording');
+ 15303      // 点击控件外取消（design-spec 7.2）：mousedown 阶段拦截，防点击先夺焦
+ 15304      window.addEventListener('mousedown', onGlobalMouseDown, true);
+ 15305      window.addEventListener('keydown', onKeyDown, true);
+ 15306    }
+ 15307  
+ 15308    function end(): void {
+ 15309      phase = 'display';
+ 15310      hint = '';
+ 15311      window.removeEventListener('mousedown', onGlobalMouseDown, true);
+ 15312      window.removeEventListener('keydown', onKeyDown, true);
+ 15313    }
+ 15314  
+ 15315    function cancel(): void {
+ 15316      end();
+ 15317    }
+ 15318  
+ 15319    function onGlobalMouseDown(e: MouseEvent): void {
+ 15320      if (phase !== 'recording') return;
+ 15321      if (root && !root.contains(e.target as Node)) cancel();
+ 15322    }
+ 15323  
+ 15324    async function onKeyDown(e: KeyboardEvent): Promise<void> {
+ 15325      if (phase !== 'recording') return;
+ 15326      e.preventDefault();
+ 15327      e.stopPropagation();
+ 15328      if (e.key === 'Escape') {
+ 15329        cancel(); // Esc 取消不改值
+ 15330        return;
+ 15331      }
+ 15332      const comboStr = comboFromEvent(e);
+ 15333      if (!comboStr) return; // 纯修饰键/不支持键等待主键
+ 15334      if (comboStr === combo) {
+ 15335        cancel(); // 同键：无实际变更（后端 rebind Noop 语义）
+ 15336        return;
+ 15337      }
+ 15338      busy = true;
+ 15339      try {
+ 15340        await onRebind(comboStr);
+ 15341      } finally {
+ 15342        busy = false;
+ 15343        end(); // 成功/失败均回展示态（失败的行内 error 由父层呈现，键帽保持旧值——后端回退语义）
+ 15344      }
+ 15345    }
+ 15346  
+ 15347    function onDestroy(): void {
+ 15348      window.removeEventListener('mousedown', onGlobalMouseDown, true);
+ 15349      window.removeEventListener('keydown', onKeyDown, true);
+ 15350    }
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 308 页（共 330 页）
+==============================================================================
+ 15351    $effect(() => {
+ 15352      return onDestroy;
+ 15353    });
+ 15354  </script>
+ 15355  
+ 15356  <div class="recorder" bind:this={root}>
+ 15357    {#if phase === 'display'}
+ 15358      <kbd class="keycap" title="当前快捷键">{combo}</kbd>
+ 15359      {#if degraded}
+ 15360        <button
+ 15361          class="warn-icon"
+ 15362          type="button"
+ 15363          title={t('settings.hotkeyDegraded')}
+ 15364          aria-label={t('settings.hotkeyDegraded')}
+ 15365          onclick={begin}
+ 15366        >
+ 15367          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+ 15368            <path
+ 15369              d="M12 3a1.2 1.2 0 0 1 1.05.62l8.3 15.2A1.1 1.1 0 0 1 20.4 20.6H3.6a1.1 1.1 0 0 1-.95-1.78l8.3-15.2A1.2 1.2 0 0 1 12 3Zm0 5.6a1.1 1.1 0 0 0-1.1 1.1v3a1.1 1.1 0 0 0 2.2 0v-3A1.1 1.1 0 0 0 12 8.6Zm0 7.4a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z"
+ 15370              fill="none"
+ 15371              stroke="currentColor"
+ 15372              stroke-width="1.5"
+ 15373              stroke-linejoin="round"
+ 15374            />
+ 15375          </svg>
+ 15376        </button>
+ 15377      {/if}
+ 15378      <button class="btn" type="button" onclick={begin} disabled={busy}>修改</button>
+ 15379    {:else}
+ 15380      <span class="record-hint" role="status">{hint}</span>
+ 15381      <button class="btn btn-plain" type="button" onclick={cancel}>取消</button>
+ 15382    {/if}
+ 15383  </div>
+ 15384  
+ 15385  <style>
+ 15386    .recorder {
+ 15387      display: flex;
+ 15388      align-items: center;
+ 15389      gap: var(--space-2);
+ 15390      min-height: 32px;
+ 15391    }
+ 15392    .keycap {
+ 15393      display: inline-flex;
+ 15394      align-items: center;
+ 15395      padding: 2px 10px;
+ 15396      border: 1px solid var(--border-strong);
+ 15397      border-radius: var(--radius-pill);
+ 15398      background: var(--bg-subtle);
+ 15399      color: var(--fg-title);
+ 15400      font-family: var(--font-mono-stack);
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 309 页（共 330 页）
+==============================================================================
+ 15401      font-size: var(--font-size-caption);
+ 15402      line-height: var(--line-height-caption);
+ 15403      font-variant-numeric: tabular-nums;
+ 15404    }
+ 15405    .warn-icon {
+ 15406      display: inline-flex;
+ 15407      align-items: center;
+ 15408      justify-content: center;
+ 15409      width: 28px;
+ 15410      height: 28px;
+ 15411      padding: 0;
+ 15412      border: none;
+ 15413      border-radius: var(--radius-control);
+ 15414      background: transparent;
+ 15415      color: var(--warning);
+ 15416      cursor: pointer;
+ 15417    }
+ 15418    .warn-icon:hover {
+ 15419      background: var(--bg-hover);
+ 15420    }
+ 15421    .record-hint {
+ 15422      font-size: var(--font-size-secondary);
+ 15423      color: var(--fg-muted);
+ 15424    }
+ 15425    .btn {
+ 15426      height: 32px;
+ 15427      padding: 0 var(--space-3);
+ 15428      border: 1px solid var(--border-strong);
+ 15429      border-radius: var(--radius-control);
+ 15430      background: var(--bg-base);
+ 15431      color: var(--fg-body);
+ 15432      font-size: var(--font-size-secondary);
+ 15433      cursor: pointer;
+ 15434    }
+ 15435    .btn:hover {
+ 15436      background: var(--bg-hover);
+ 15437    }
+ 15438    .btn:disabled {
+ 15439      color: var(--fg-disabled);
+ 15440      border-color: var(--border-subtle);
+ 15441      cursor: default;
+ 15442    }
+ 15443    .btn-plain {
+ 15444      border: none;
+ 15445      background: transparent;
+ 15446      color: var(--fg-muted);
+ 15447    }
+ 15448  </style>
+ 15449  // ==================== src/onboarding/App.svelte ====================
+ 15450  <script lang="ts">
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 310 页（共 330 页）
+==============================================================================
+ 15451    // 首启引导页（label=onboarding，T14 实现；design-spec 6 + FR-11 全部）。
+ 15452    //
+ 15453    // 模式：`mode` prop（缺省读 URL `?mode=guide`，Rust 建窗时写入）——
+ 15454    // - `first`：四步向导（欢迎 → 隐私告知 → 配置 API Key → 完成）；
+ 15455    // - `guide`（FR-11.4 补配引导）：直达隐私要点 + Key 步骤（两步），完成/跳过即隐藏并回调
+ 15456    //   （Rust 侧 GuideFinishedHandler，T16 action_router 接线恢复挂起翻译）。
+ 15457    //
+ 15458    // 规则（design-spec 6 / FR-11.2/11.3）：
+ 15459    // - 步骤指示器：圆点 + 当前步名；向导不支持 Esc（本页忽略 Esc，不隐藏不跳步）；
+ 15460    // - 隐私告知步：完整句子 + 强调底色块平铺（无折叠、无内部滚动），「我已了解，继续」唯一前进入口，
+ 15461    //   「暂不使用」= 跳过整个引导（FR-11.3 路径）；
+ 15462    // - Key 步：输入框 + 录入期可见性切换 +「验证连接」（verify_connection 行内反馈，可重试可跳过）
+ 15463    //   +「暂时跳过，稍后在设置中配置」；未验证也可继续；
+ 15464    // - 完成/跳过 → `finish_onboarding`（写 meta.onboardingCompleted）。
+ 15465    //
+ 15466    // INV-1：录入中的 Key 仅存在于本页内存变量，保存经 set_settings 入参（后端即加密）；
+ 15467    // 任何视图不展示已存 Key（本页永不显示掩码，仅有/无状态局部处理）。
+ 15468  
+ 15469    import { onMount } from 'svelte';
+ 15470  
+ 15471    import { setSettings, verifyConnection, finishOnboarding, onOnboardingBegin } from '../lib/ipc';
+ 15472    import { t } from '../lib/i18n.svelte';
+ 15473    import {
+ 15474      settingsState,
+ 15475      initSettingsMirror,
+ 15476      watchSettingsChanged,
+ 15477      watchSystemTheme,
+ 15478      applyThemeAppearance,
+ 15479    } from '../lib/stores';
+ 15480    import type { OnboardingMode, SettingsPatch } from '../lib/types';
+ 15481  
+ 15482    let { mode: propMode } = $props<{ mode?: OnboardingMode }>();
+ 15483  
+ 15484    const urlMode: OnboardingMode =
+ 15485      new URLSearchParams(window.location.search).get('mode') === 'guide' ? 'guide' : 'first';
+ 15486    /** 事件覆盖优先（onboarding://begin 每次显示复位），其次 prop（测试注入），最后 URL（Rust 建窗写入）。 */
+ 15487    let eventMode = $state<OnboardingMode | null>(null);
+ 15488    const mode = $derived(eventMode ?? propMode ?? urlMode);
+ 15489  
+ 15490    /** 步骤序（guide 两步，first 四步）+ 当前步名（design-spec 6）。 */
+ 15491    const FIRST_STEPS = ['onb.stepWelcome', 'onb.stepPrivacy', 'onb.stepAiService', 'onb.stepDone'] as const;
+ 15492    const GUIDE_STEPS = ['onb.stepPrivacy', 'onb.stepAiService'] as const;
+ 15493    const stepNames = $derived(mode === 'guide' ? GUIDE_STEPS : FIRST_STEPS);
+ 15494  
+ 15495    let step = $state(0);
+ 15496    let baseUrlInput = $state('');
+ 15497    let modelInput = $state('');
+ 15498    let keyInput = $state('');
+ 15499    let keyReveal = $state(false);
+ 15500    let verifying = $state(false);
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 311 页（共 330 页）
+==============================================================================
+ 15501    let verifyState = $state<'idle' | 'ok' | 'error'>('idle');
+ 15502    let verifyError = $state('');
+ 15503    let busy = $state(false);
+ 15504    let inlineError = $state('');
+ 15505  
+ 15506    const isLastStep = $derived(step === stepNames.length - 1);
+ 15507    const isPrivacyStep = $derived(stepNames[step] === 'onb.stepPrivacy');
+ 15508    const isKeyStep = $derived(stepNames[step] === 'onb.stepAiService');
+ 15509  
+ 15510    // ---------------------------------------------------------------------------
+ 15511    // 挂载：主题 + 镜像 + 复位订阅（复用窗经 onboarding://begin 复位，见 windows/onboarding.rs）
+ 15512    // ---------------------------------------------------------------------------
+ 15513  
+ 15514    onMount(() => {
+ 15515      const unlisteners: Array<() => void> = [];
+ 15516      const bind = (p: Promise<() => void>) => {
+ 15517        void p.then((u) => unlisteners.push(u));
+ 15518      };
+ 15519      void initSettingsMirror();
+ 15520      bind(watchSettingsChanged());
+ 15521      watchSystemTheme();
+ 15522      applyThemeAppearance('system');
+ 15523      bind(
+ 15524        onOnboardingBegin((p) => {
+ 15525          eventMode = p.mode;
+ 15526          step = 0;
+ 15527          resetKeyStep();
+ 15528        }),
+ 15529      );
+ 15530      // 真机修复轮 13d：接口地址/模型名输入框以镜像当前值为预填（出厂默认 DeepSeek），
+ 15531      // 用户可直接改任意服务商（OpenAI 兼容协议）；镜像未达（异常）时保持空＝沿用已存值。
+ 15532      void initSettingsMirror().then(applyDefaultsToInputs);
+ 15533      window.addEventListener('keydown', onKeyDown);
+ 15534      return () => {
+ 15535        window.removeEventListener('keydown', onKeyDown);
+ 15536        for (const u of unlisteners) u();
+ 15537      };
+ 15538    });
+ 15539  
+ 15540    /** 向导不支持 Esc（design-spec 6）：拦截并吞掉，不隐藏、不跳步。 */
+ 15541    function onKeyDown(e: KeyboardEvent): void {
+ 15542      if (e.key === 'Escape') {
+ 15543        e.preventDefault();
+ 15544        e.stopPropagation();
+ 15545      }
+ 15546    }
+ 15547  
+ 15548    /** 输入框预填镜像当前值（接口地址/模型名；出厂默认自后端 get_settings，权威源在 Rust）。 */
+ 15549    function applyDefaultsToInputs(): void {
+ 15550      baseUrlInput = settingsState.current?.ai.baseUrl ?? '';
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 312 页（共 330 页）
+==============================================================================
+ 15551      modelInput = settingsState.current?.ai.model ?? '';
+ 15552    }
+ 15553  
+ 15554    function resetKeyStep(): void {
+ 15555      baseUrlInput = '';
+ 15556      modelInput = '';
+ 15557      keyInput = '';
+ 15558      keyReveal = false;
+ 15559      verifying = false;
+ 15560      verifyState = 'idle';
+ 15561      verifyError = '';
+ 15562      inlineError = '';
+ 15563      busy = false;
+ 15564      applyDefaultsToInputs();
+ 15565    }
+ 15566  
+ 15567    // ---------------------------------------------------------------------------
+ 15568    // 步骤流转（content 区 200ms 水平滑动由 step 键控动画承载，design-spec 2.5）
+ 15569    // ---------------------------------------------------------------------------
+ 15570  
+ 15571    function next(): void {
+ 15572      inlineError = '';
+ 15573      if (isKeyStep) {
+ 15574        void advanceFromKey();
+ 15575        return;
+ 15576      }
+ 15577      if (isLastStep) {
+ 15578        void finish();
+ 15579        return;
+ 15580      }
+ 15581      step += 1;
+ 15582    }
+ 15583  
+ 15584    function skip(): void {
+ 15585      inlineError = '';
+ 15586      if (isPrivacyStep && mode === 'first') {
+ 15587        // 「暂不使用」= 跳过整个引导（FR-11.3 路径）→ 完成步（应用照常驻留）
+ 15588        step = FIRST_STEPS.length - 1;
+ 15589        return;
+ 15590      }
+ 15591      if (isKeyStep && mode === 'first') {
+ 15592        // 「暂时跳过，稍后在设置中配置」→ 完成步（FR-11.3）
+ 15593        step = FIRST_STEPS.length - 1;
+ 15594        return;
+ 15595      }
+ 15596      // guide 模式：跳过即结束（隐藏 + 回调 hasKey=false；T16 丢弃挂起翻译）
+ 15597      void finish();
+ 15598    }
+ 15599  
+ 15600    /** Key 步前进：先保存录入的 AI 服务配置（接口地址/模型名有改动才写入；空 Key＝跳过保存），
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 313 页（共 330 页）
+==============================================================================
+ 15601     *  后进入完成步/结束（真机修复轮 13d：首启即可配 OpenAI 兼容服务商，不必跳过后进设置）。 */
+ 15602    async function advanceFromKey(): Promise<void> {
+ 15603      const patch: SettingsPatch = { ai: {} };
+ 15604      if (keyInput.trim().length > 0) {
+ 15605        patch.ai!.apiKey = keyInput;
+ 15606      }
+ 15607      const base = baseUrlInput.trim();
+ 15608      if (base.length > 0 && base !== (settingsState.current?.ai.baseUrl ?? '')) {
+ 15609        patch.ai!.baseUrl = base;
+ 15610      }
+ 15611      const model = modelInput.trim();
+ 15612      if (model.length > 0 && model !== (settingsState.current?.ai.model ?? '')) {
+ 15613        patch.ai!.model = model;
+ 15614      }
+ 15615      if (Object.keys(patch.ai!).length > 0) {
+ 15616        try {
+ 15617          await setSettings(patch);
+ 15618        } catch (err) {
+ 15619          inlineError = t('onb.aiSaveFailed', { msg: String(err) });
+ 15620          return;
+ 15621        }
+ 15622      }
+ 15623      if (mode === 'guide') {
+ 15624        await finish();
+ 15625        return;
+ 15626      }
+ 15627      step = FIRST_STEPS.length - 1; // 完成步
+ 15628    }
+ 15629  
+ 15630    async function finish(): Promise<void> {
+ 15631      if (busy) return;
+ 15632      busy = true;
+ 15633      try {
+ 15634        await finishOnboarding();
+ 15635        // 完成后窗体由后端隐藏（保留复用）；本页无后续动作
+ 15636      } catch (err) {
+ 15637        inlineError = t('onb.saveFailed', { msg: String(err) });
+ 15638        busy = false;
+ 15639      }
+ 15640    }
+ 15641  
+ 15642    // ---------------------------------------------------------------------------
+ 15643    // 验证连接（FR-11.1(c)/D6）：行内「验证成功」/失败原因，可重试可跳过
+ 15644    // ---------------------------------------------------------------------------
+ 15645  
+ 15646    async function verify(): Promise<void> {
+ 15647      if (verifying) return;
+ 15648      verifying = true;
+ 15649      verifyState = 'idle';
+ 15650      verifyError = '';
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 314 页（共 330 页）
+==============================================================================
+ 15651      try {
+ 15652        // 缺省字段＝沿用已存值（6.1 契约）：录入非空才传，验证的就是用户眼前这套配置。
+ 15653        const base = baseUrlInput.trim();
+ 15654        const model = modelInput.trim();
+ 15655        await verifyConnection({
+ 15656          base: base.length > 0 ? base : undefined,
+ 15657          model: model.length > 0 ? model : undefined,
+ 15658          key: keyInput,
+ 15659        });
+ 15660        verifyState = 'ok';
+ 15661      } catch (err) {
+ 15662        verifyState = 'error';
+ 15663        verifyError = String(err);
+ 15664      } finally {
+ 15665        verifying = false;
+ 15666      }
+ 15667    }
+ 15668  </script>
+ 15669  
+ 15670  <svelte:head>
+ 15671    <title>{t('onb.title')}</title>
+ 15672  </svelte:head>
+ 15673  
+ 15674  <div class="wizard">
+ 15675    <header class="top">
+ 15676      <div class="dots" aria-hidden="true">
+ 15677        {#each stepNames as name, i (i)}
+ 15678          <span class="dot {i <= step ? 'active' : ''}" data-step={name}></span>
+ 15679        {/each}
+ 15680      </div>
+ 15681      <span class="step-name" role="status">{t(stepNames[step])}</span>
+ 15682    </header>
+ 15683  
+ 15684    <div class="step-body-anchor">
+ 15685      {#key `${step}-${mode}`}
+ 15686        <div class="step-body">
+ 15687          {#if stepNames[step] === 'onb.stepWelcome'}
+ 15688            <div class="welcome">
+ 15689              <div class="logo" aria-hidden="true">A</div>
+ 15690              <h1 class="display">{t('onb.title')}</h1>
+ 15691              <p>{t('onb.welcomeLead')}</p>
+ 15692              <div class="key-tour" aria-label="快捷键速览">
+ 15693                <span>{t('onb.tourSelection')}</span>
+ 15694                <span>{t('onb.tourInput')}</span>
+ 15695                <span>{t('onb.tourCapture')}</span>
+ 15696              </div>
+ 15697            </div>
+ 15698          {:else if isPrivacyStep}
+ 15699            <div class="privacy">
+ 15700              <h2 class="title">{t('onb.stepPrivacy')}</h2>
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 315 页（共 330 页）
+==============================================================================
+ 15701              <div class="privacy-block">
+ 15702                <p>
+ 15703                  <span class="mark" aria-hidden="true">(!)</span>
+ 15704                  {t('onb.privacyP1')}
+ 15705                </p>
+ 15706                <p>
+ 15707                  <span class="mark" aria-hidden="true">(?)</span>
+ 15708                  {t('onb.privacyP2')}
+ 15709                </p>
+ 15710              </div>
+ 15711              <p class="privacy-note-line">{t('onb.privacyNote')}</p>
+ 15712            </div>
+ 15713          {:else if isKeyStep}
+ 15714            <div class="key-step">
+ 15715              <h2 class="title">{t('onb.aiTitle')}</h2>
+ 15716              <p class="lead">{t('onb.aiLead')}</p>
+ 15717              <div class="field">
+ 15718                <label class="field-label" for="onb-base-url">{t('onb.fieldBaseUrl')}</label>
+ 15719                <input
+ 15720                  id="onb-base-url"
+ 15721                  class="key-input"
+ 15722                  type="text"
+ 15723                  value={baseUrlInput}
+ 15724                  placeholder="https://api.deepseek.com"
+ 15725                  aria-label="接口地址"
+ 15726                  spellcheck="false"
+ 15727                  autocomplete="off"
+ 15728                  oninput={(e) => (baseUrlInput = (e.currentTarget as HTMLInputElement).value)}
+ 15729                />
+ 15730              </div>
+ 15731              <div class="field">
+ 15732                <label class="field-label" for="onb-model">{t('onb.fieldModel')}</label>
+ 15733                <input
+ 15734                  id="onb-model"
+ 15735                  class="key-input"
+ 15736                  type="text"
+ 15737                  value={modelInput}
+ 15738                  placeholder="deepseek-chat"
+ 15739                  aria-label="模型名"
+ 15740                  spellcheck="false"
+ 15741                  autocomplete="off"
+ 15742                  oninput={(e) => (modelInput = (e.currentTarget as HTMLInputElement).value)}
+ 15743                />
+ 15744              </div>
+ 15745              <div class="field">
+ 15746                <label class="field-label" for="onb-key">{t('onb.fieldApiKey')}</label>
+ 15747                <div class="key-row">
+ 15748                  <input
+ 15749                    id="onb-key"
+ 15750                    class="key-input"
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 316 页（共 330 页）
+==============================================================================
+ 15751                    type={keyReveal ? 'text' : 'password'}
+ 15752                    value={keyInput}
+ 15753                    placeholder="sk-••••••••••••••••"
+ 15754                    aria-label="API Key"
+ 15755                    autocomplete="off"
+ 15756                    oninput={(e) => {
+ 15757                      keyInput = (e.currentTarget as HTMLInputElement).value;
+ 15758                      verifyState = 'idle';
+ 15759                      verifyError = '';
+ 15760                    }}
+ 15761                  />
+ 15762                  <button
+ 15763                    class="ghost"
+ 15764                    type="button"
+ 15765                    aria-label={keyReveal ? '隐藏' : '显示'}
+ 15766                    onclick={() => (keyReveal = !keyReveal)}
+ 15767                  >
+ 15768                    {#if keyReveal}
+ 15769                      隐藏
+ 15770                    {:else}
+ 15771                      显示
+ 15772                    {/if}
+ 15773                  </button>
+ 15774                </div>
+ 15775              </div>
+ 15776              <div class="verify-row">
+ 15777                <button
+ 15778                  class="btn-outline"
+ 15779                  type="button"
+ 15780                  onclick={() => void verify()}
+ 15781                  disabled={verifying}
+ 15782                >
+ 15783                  {verifying ? t('onb.verifying') : t('onb.verify')}
+ 15784                </button>
+ 15785                {#if verifyState === 'ok'}
+ 15786                  <span class="verify-ok" role="status">{t('onb.verifyOk')}</span>
+ 15787                {:else if verifyState === 'error'}
+ 15788                  <span class="verify-err" role="alert">{t('onb.verifyFail', { msg: verifyError })}</span>
+ 15789                {/if}
+ 15790              </div>
+ 15791              {#if inlineError}
+ 15792                <p class="inline-error" role="alert">{inlineError}</p>
+ 15793              {/if}
+ 15794            </div>
+ 15795          {:else}
+ 15796            <div class="done">
+ 15797              <h2 class="title">{t('onb.doneTitle')}</h2>
+ 15798              <p>{t('onb.doneLead')}</p>
+ 15799              <div class="key-list">
+ 15800                <span>{t('onb.doneSelection')}</span>
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 317 页（共 330 页）
+==============================================================================
+ 15801                <span>{t('onb.doneInput')}</span>
+ 15802                <span>{t('onb.doneOcrRecognize')}</span>
+ 15803                <span>{t('onb.doneOcrTranslate')}</span>
+ 15804                <span>{t('onb.doneToggleScene')}</span>
+ 15805              </div>
+ 15806              <p class="muted">{t('onb.doneTrayHint')}</p>
+ 15807            </div>
+ 15808          {/if}
+ 15809        </div>
+ 15810      {/key}
+ 15811    </div>
+ 15812  
+ 15813    <footer class="foot">
+ 15814      <!-- 辅助链接（左侧） -->
+ 15815      {#if isPrivacyStep}
+ 15816        <button class="link-btn" type="button" onclick={skip}>{t('onb.btnNotNow')}</button>
+ 15817      {:else if isKeyStep}
+ 15818        <button class="link-btn" type="button" onclick={skip}>{t('onb.btnSkip')}</button>
+ 15819      {:else}
+ 15820        <span class="link-placeholder" aria-hidden="true"></span>
+ 15821      {/if}
+ 15822      <!-- 主按钮（右侧）：
+ 15823           welcome「开始使用」/ privacy「我已了解，继续」（唯一前进入口）/
+ 15824           key「继续」（未验证也可继续）/ done「进入 Alya」 -->
+ 15825      <button class="btn-primary" type="button" onclick={next} disabled={busy}>
+ 15826        {#if stepNames[step] === 'onb.stepWelcome'}
+ 15827          {t('onb.btnGetStarted')}
+ 15828        {:else if isPrivacyStep}
+ 15829          {t('onb.btnGotIt')}
+ 15830        {:else if isKeyStep}
+ 15831          {t('onb.btnContinue')}
+ 15832        {:else}
+ 15833          {t('onb.btnStartAlya')}
+ 15834        {/if}
+ 15835      </button>
+ 15836    </footer>
+ 15837  </div>
+ 15838  
+ 15839  <style>
+ 15840    .wizard {
+ 15841      display: flex;
+ 15842      flex-direction: column;
+ 15843      height: 100vh;
+ 15844      padding: var(--space-5) var(--space-5) var(--space-4);
+ 15845      background: var(--bg-base);
+ 15846      color: var(--fg-body);
+ 15847      font-size: var(--font-size-body);
+ 15848      border-radius: var(--radius-window);
+ 15849      box-shadow: var(--shadow-panel);
+ 15850      overflow: hidden;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 318 页（共 330 页）
+==============================================================================
+ 15851    }
+ 15852    /* 顶部步骤指示器（圆点 + 当前步名；2/4 点对应 first/guide 模式） */
+ 15853    .top {
+ 15854      flex: none;
+ 15855      display: flex;
+ 15856      align-items: center;
+ 15857      gap: var(--space-2);
+ 15858    }
+ 15859    .dots {
+ 15860      display: flex;
+ 15861      gap: var(--space-1);
+ 15862    }
+ 15863    .dot {
+ 15864      width: 8px;
+ 15865      height: 8px;
+ 15866      border-radius: 50%;
+ 15867      background: var(--border-strong);
+ 15868    }
+ 15869    .dot.active {
+ 15870      background: var(--accent-primary);
+ 15871    }
+ 15872    .step-name {
+ 15873      font-size: var(--font-size-caption);
+ 15874      color: var(--fg-muted);
+ 15875    }
+ 15876    /* 内容区：分步切换 200ms 水平滑动（减弱动效由全局 media 兜底）；外部锚点承载 flex 伸展 */
+ 15877    .step-body-anchor {
+ 15878      flex: 1;
+ 15879      min-height: 0;
+ 15880      display: flex;
+ 15881      align-items: stretch;
+ 15882      justify-content: center;
+ 15883    }
+ 15884    .step-body {
+ 15885      width: 100%;
+ 15886      min-height: 0;
+ 15887      display: flex;
+ 15888      align-items: stretch;
+ 15889      justify-content: center;
+ 15890      overflow: hidden;
+ 15891      animation: step-in 200ms var(--ease-in);
+ 15892    }
+ 15893    @keyframes step-in {
+ 15894      from {
+ 15895        opacity: 0;
+ 15896        transform: translateX(10px);
+ 15897      }
+ 15898      to {
+ 15899        opacity: 1;
+ 15900        transform: translateX(0);
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 319 页（共 330 页）
+==============================================================================
+ 15901      }
+ 15902    }
+ 15903    .display {
+ 15904      margin: var(--space-2) 0 0;
+ 15905      font-size: var(--font-size-display);
+ 15906      line-height: var(--line-height-display);
+ 15907      color: var(--fg-title);
+ 15908      text-align: center;
+ 15909    }
+ 15910    .title {
+ 15911      margin: var(--space-2) 0 var(--space-3);
+ 15912      font-size: var(--font-size-title);
+ 15913      line-height: var(--line-height-title);
+ 15914      color: var(--fg-title);
+ 15915      font-weight: var(--font-weight-medium);
+ 15916      text-align: center;
+ 15917    }
+ 15918    .welcome {
+ 15919      width: 100%;
+ 15920      display: flex;
+ 15921      flex-direction: column;
+ 15922      align-items: center;
+ 15923      justify-content: center;
+ 15924      gap: var(--space-2);
+ 15925      text-align: center;
+ 15926    }
+ 15927    .logo {
+ 15928      width: 48px;
+ 15929      height: 48px;
+ 15930      display: grid;
+ 15931      place-content: center;
+ 15932      border-radius: var(--radius-control);
+ 15933      background: var(--accent-primary);
+ 15934      color: var(--accent-on-primary);
+ 15935      font-size: 24px;
+ 15936      font-weight: var(--font-weight-medium);
+ 15937    }
+ 15938    .key-tour {
+ 15939      display: flex;
+ 15940      gap: var(--space-3);
+ 15941      margin-top: var(--space-3);
+ 15942      font-size: var(--font-size-caption);
+ 15943      color: var(--fg-muted);
+ 15944    }
+ 15945    /* 隐私告知：强调底色块完整平铺（无折叠、无内部滚动；warning 强调） */
+ 15946    .privacy {
+ 15947      width: 100%;
+ 15948      display: flex;
+ 15949      flex-direction: column;
+ 15950      justify-content: center;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 320 页（共 330 页）
+==============================================================================
+ 15951      gap: var(--space-3);
+ 15952    }
+ 15953    .privacy-block {
+ 15954      display: flex;
+ 15955      flex-direction: column;
+ 15956      gap: var(--space-3);
+ 15957      padding: var(--space-4);
+ 15958      background: var(--bg-subtle);
+ 15959      border-left: 3px solid var(--warning);
+ 15960      border-radius: var(--radius-card);
+ 15961    }
+ 15962    .privacy-block p {
+ 15963      margin: 0;
+ 15964      line-height: var(--line-height-body);
+ 15965    }
+ 15966    .mark {
+ 15967      margin-right: var(--space-1);
+ 15968      font-weight: var(--font-weight-medium);
+ 15969      color: var(--warning);
+ 15970    }
+ 15971    .privacy-note-line {
+ 15972      margin: 0;
+ 15973      font-size: var(--font-size-caption);
+ 15974      line-height: var(--line-height-caption);
+ 15975      color: var(--fg-muted);
+ 15976      text-align: center;
+ 15977    }
+ 15978    /* AI 服务配置步（真机修复轮 13d：接口地址/模型名/API Key 三字段） */
+ 15979    .key-step {
+ 15980      width: 100%;
+ 15981      display: flex;
+ 15982      flex-direction: column;
+ 15983      justify-content: center;
+ 15984      gap: var(--space-3);
+ 15985    }
+ 15986    .lead {
+ 15987      margin: 0;
+ 15988      font-size: var(--font-size-secondary);
+ 15989      line-height: var(--line-height-secondary);
+ 15990      color: var(--fg-muted);
+ 15991    }
+ 15992    .field {
+ 15993      display: flex;
+ 15994      flex-direction: column;
+ 15995      gap: 4px;
+ 15996    }
+ 15997    .field-label {
+ 15998      font-size: var(--font-size-caption);
+ 15999      color: var(--fg-muted);
+ 16000      user-select: none;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 321 页（共 330 页）
+==============================================================================
+ 16001    }
+ 16002    .key-row {
+ 16003      display: flex;
+ 16004      align-items: center;
+ 16005      gap: var(--space-2);
+ 16006    }
+ 16007    .key-input {
+ 16008      flex: 1;
+ 16009      height: 36px;
+ 16010      padding: 0 var(--space-3);
+ 16011      border: 1px solid var(--border-subtle);
+ 16012      border-radius: var(--radius-control);
+ 16013      background: var(--bg-subtle);
+ 16014      color: var(--fg-body);
+ 16015      font-size: var(--font-size-body);
+ 16016    }
+ 16017    .ghost {
+ 16018      height: 36px;
+ 16019      padding: 0 var(--space-2);
+ 16020      border: none;
+ 16021      border-radius: var(--radius-control);
+ 16022      background: transparent;
+ 16023      color: var(--fg-muted);
+ 16024      font-size: var(--font-size-secondary);
+ 16025      cursor: pointer;
+ 16026    }
+ 16027    .ghost:hover {
+ 16028      background: var(--bg-hover);
+ 16029    }
+ 16030    .verify-row {
+ 16031      display: flex;
+ 16032      align-items: center;
+ 16033      gap: var(--space-3);
+ 16034      min-height: 28px;
+ 16035    }
+ 16036    .btn-outline {
+ 16037      height: 32px;
+ 16038      padding: 0 var(--space-3);
+ 16039      border: 1px solid var(--accent-primary);
+ 16040      border-radius: var(--radius-control);
+ 16041      background: transparent;
+ 16042      color: var(--accent-primary);
+ 16043      font-size: var(--font-size-secondary);
+ 16044      cursor: pointer;
+ 16045    }
+ 16046    .btn-outline:hover:not(:disabled) {
+ 16047      background: var(--bg-hover);
+ 16048    }
+ 16049    .btn-outline:disabled {
+ 16050      color: var(--fg-disabled);
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 322 页（共 330 页）
+==============================================================================
+ 16051      border-color: var(--border-subtle);
+ 16052      cursor: default;
+ 16053    }
+ 16054    .verify-ok {
+ 16055      font-size: var(--font-size-secondary);
+ 16056      color: var(--success);
+ 16057    }
+ 16058    .verify-err {
+ 16059      font-size: var(--font-size-secondary);
+ 16060      line-height: var(--line-height-secondary);
+ 16061      color: var(--error);
+ 16062    }
+ 16063    .inline-error {
+ 16064      margin: 0;
+ 16065      font-size: var(--font-size-secondary);
+ 16066      color: var(--error);
+ 16067    }
+ 16068    /* 完成步 */
+ 16069    .done {
+ 16070      width: 100%;
+ 16071      display: flex;
+ 16072      flex-direction: column;
+ 16073      align-items: center;
+ 16074      justify-content: center;
+ 16075      gap: var(--space-2);
+ 16076      text-align: center;
+ 16077    }
+ 16078    .done p {
+ 16079      margin: 0;
+ 16080    }
+ 16081    .key-list {
+ 16082      display: flex;
+ 16083      flex-direction: column;
+ 16084      gap: var(--space-1);
+ 16085      align-items: flex-start;
+ 16086      margin: var(--space-2) 0;
+ 16087    }
+ 16088    .key-list span {
+ 16089      font-size: var(--font-size-secondary);
+ 16090    }
+ 16091    .muted {
+ 16092      font-size: var(--font-size-caption);
+ 16093      color: var(--fg-muted);
+ 16094    }
+ 16095    /* 底部：左辅助链接 + 右主按钮 */
+ 16096    .foot {
+ 16097      flex: none;
+ 16098      display: flex;
+ 16099      align-items: center;
+ 16100      justify-content: space-between;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 323 页（共 330 页）
+==============================================================================
+ 16101      gap: var(--space-3);
+ 16102      min-height: 36px;
+ 16103    }
+ 16104    .link-btn {
+ 16105      height: 32px;
+ 16106      padding: 0 var(--space-2);
+ 16107      border: none;
+ 16108      border-radius: var(--radius-control);
+ 16109      background: transparent;
+ 16110      color: var(--fg-muted);
+ 16111      font-size: var(--font-size-secondary);
+ 16112      cursor: pointer;
+ 16113    }
+ 16114    .link-btn:hover {
+ 16115      background: var(--bg-hover);
+ 16116      color: var(--fg-body);
+ 16117    }
+ 16118    .link-placeholder {
+ 16119      min-width: 0;
+ 16120    }
+ 16121    .btn-primary {
+ 16122      height: 36px;
+ 16123      padding: 0 var(--space-4);
+ 16124      border: none;
+ 16125      border-radius: var(--radius-control);
+ 16126      background: var(--accent-primary);
+ 16127      color: var(--accent-on-primary);
+ 16128      font-size: var(--font-size-body);
+ 16129      font-weight: var(--font-weight-medium);
+ 16130      cursor: pointer;
+ 16131    }
+ 16132    .btn-primary:hover:not(:disabled) {
+ 16133      background: var(--accent-primary-hover);
+ 16134    }
+ 16135    .btn-primary:disabled {
+ 16136      opacity: 0.6;
+ 16137      cursor: default;
+ 16138    }
+ 16139  </style>
+ 16140  // ==================== src/mask/App.svelte ====================
+ 16141  <script lang="ts">
+ 16142    // 截图遮罩窗页面（label=mask-{i}，T9 实现；design-spec 第 5 章 + spec 5.7.4）。
+ 16143    //
+ 16144    // 数据流（INV-3 例外经主 Agent 批准的"方案二"，见 implementation-report T9 节）：
+ 16145    //   后端会话创建后经 mask://begin 广播 `{sessionId, monitorIndex}`（无位图）；
+ 16146    //   本页按 URL 查询参数 `monitorIndex`（Rust 建窗时写入，非 IPC）invoke `get_mask_snapshot`
+ 16147    //   拿到本屏冻结帧的 data: URL（内存字符串，无磁盘/无 HTTP），`<img>` 解码后绘制到 canvas
+ 16148    //   一次即弃——页面内不持久化任何位图对象之外的数据。
+ 16149    // 交互：canvas 铺满窗；拖拽画选区（选区内透亮=快照原像素，选区外 rgba(15,18,24,0.35) 暗层）；
+ 16150    //   拖拽中显示「宽 × 高」物理 px 尺寸标签（12px 等宽、白字、黑底胶囊）；十字光标全屏；
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 324 页（共 330 页）
+==============================================================================
+ 16151    //   Esc → invoke cancel_selection（150ms 淡出后）；松开 → 无效（Q11：位移<4px 或面积<64px²）
+ 16152    //   视同取消，有效 → invoke complete_selection（100ms 淡出后）。坐标换算：
+ 16153    //   物理 = 逻辑 × (canvas 背板 / window.innerWidth)——遮罩窗物理尺寸 == 显示器物理尺寸，
+ 16154    //   canvas 背板按 devicePixelRatio 铺满，即每窗独立 DPI 上下文（混 DPI 各窗自洽）。
+ 16155  
+ 16156    import { onMount } from 'svelte';
+ 16157    import { completeSelection, cancelSelection, getMaskSnapshot, onMaskBegin } from '../lib/ipc';
+ 16158  
+ 16159    const monitorIndex = Number(new URLSearchParams(window.location.search).get('monitorIndex') ?? '0');
+ 16160  
+ 16161    // design-spec 2.1 / 第 5 章：遮罩与主题无关，恒定（同一屏遮罩页写死）
+ 16162    const MASK_DIM = 'rgba(15,18,24,0.35)';
+ 16163    const ACCENT = '#2E63DC';
+ 16164    const INNER_LINING = 'rgba(255,255,255,0.55)';
+ 16165    // Q11 无效判定（物理 px；前端判一次，后端 capture::is_valid_selection 复验兜底）
+ 16166    const MIN_DRAG_PX = 4;
+ 16167    const MIN_AREA_PX2 = 64;
+ 16168    const RETRY_LIMIT = 200; // 挂载兜底重试上限（~20s；事件驱动后即刻成功）
+ 16169  
+ 16170    let canvasEl: HTMLCanvasElement;
+ 16171    let hostEl: HTMLDivElement;
+ 16172    let ctx: CanvasRenderingContext2D | null = null;
+ 16173  
+ 16174    let snapshot: HTMLImageElement | null = null;
+ 16175    let sessionId: string | null = null;
+ 16176    let retries = 0;
+ 16177    /** 本会话已提交/已取消（防 Esc 与松开竞态双触发） */
+ 16178    let finished = false;
+ 16179  
+ 16180    type PxRect = { x: number; y: number; width: number; height: number };
+ 16181    let sel: PxRect | null = null;
+ 16182    let dragStart: { x: number; y: number } | null = null;
+ 16183    let dragging = false;
+ 16184  
+ 16185    // -------------------------------------------------------------------------
+ 16186    // 画布与绘制
+ 16187    // -------------------------------------------------------------------------
+ 16188  
+ 16189    function resizeCanvas() {
+ 16190      if (!canvasEl) return;
+ 16191      const dpr = window.devicePixelRatio || 1;
+ 16192      canvasEl.width = Math.max(1, Math.round(window.innerWidth * dpr));
+ 16193      canvasEl.height = Math.max(1, Math.round(window.innerHeight * dpr));
+ 16194      draw();
+ 16195    }
+ 16196  
+ 16197    /** CSS px → 该窗物理 px 比例（window 物理尺寸 == 显示器物理尺寸；canvas 背板即物理像素） */
+ 16198    function pxScale(): { sx: number; sy: number } {
+ 16199      return {
+ 16200        sx: canvasEl.width / Math.max(1, window.innerWidth),
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 325 页（共 330 页）
+==============================================================================
+ 16201        sy: canvasEl.height / Math.max(1, window.innerHeight),
+ 16202      };
+ 16203    }
+ 16204  
+ 16205    function draw() {
+ 16206      if (!ctx) return;
+ 16207      const w = window.innerWidth;
+ 16208      const h = window.innerHeight;
+ 16209      const { sx, sy } = pxScale();
+ 16210      ctx.setTransform(1, 0, 0, 1, 0, 0);
+ 16211      ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+ 16212      // 逻辑坐标绘制（变换到物理背板，描边/字体随 dpr 放大——与设计逻辑 px 口径一致）
+ 16213      ctx.setTransform(sx, 0, 0, sy, 0, 0);
+ 16214  
+ 16215      // 冻结快照底图（D4）
+ 16216      if (snapshot) {
+ 16217        ctx.drawImage(snapshot, 0, 0, w, h);
+ 16218      }
+ 16219      // 暗色遮罩层：选区矩形以 even-odd 挖空（选区内完全透亮=快照原像素）
+ 16220      ctx.beginPath();
+ 16221      ctx.rect(0, 0, w, h);
+ 16222      if (sel) {
+ 16223        ctx.rect(sel.x, sel.y, sel.width, sel.height);
+ 16224      }
+ 16225      ctx.fillStyle = MASK_DIM;
+ 16226      ctx.fill(sel ? 'evenodd' : 'nonzero');
+ 16227  
+ 16228      // 选区边框：2px accent 外框 + 1px 白内衬（深浅背景下都可见）
+ 16229      if (sel && (sel.width > 0 || sel.height > 0)) {
+ 16230        ctx.strokeStyle = ACCENT;
+ 16231        ctx.lineWidth = 2;
+ 16232        ctx.strokeRect(sel.x, sel.y, sel.width, sel.height);
+ 16233        ctx.strokeStyle = INNER_LINING;
+ 16234        ctx.lineWidth = 1;
+ 16235        ctx.strokeRect(sel.x + 2, sel.y + 2, Math.max(0, sel.width - 4), Math.max(0, sel.height - 4));
+ 16236        drawSizeLabel(sel);
+ 16237      }
+ 16238    }
+ 16239  
+ 16240    /** 尺寸标签：「宽 × 高」物理 px；12px 等宽、白字、rgba(0,0,0,0.72) 胶囊底；选区上方 8px 居中，
+ 16241     *  空间不足改下方（design-spec 第 5 章）。 */
+ 16242    function drawSizeLabel(rect: PxRect) {
+ 16243      if (!ctx) return;
+ 16244      const { sx, sy } = pxScale();
+ 16245      const pw = Math.round(rect.width * sx);
+ 16246      const ph = Math.round(rect.height * sy);
+ 16247      const label = `${pw} × ${ph}`;
+ 16248      ctx.font = '12px "Consolas", monospace';
+ 16249      const tw = ctx.measureText(label).width;
+ 16250      const lw = tw + 16;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 326 页（共 330 页）
+==============================================================================
+ 16251      const lh = 22;
+ 16252      let lx = rect.x + rect.width / 2 - lw / 2;
+ 16253      let ly = rect.y - lh - 8;
+ 16254      const topSpace = rect.y;
+ 16255      const bottomSpace = window.innerHeight - (rect.y + rect.height);
+ 16256      if (topSpace < lh + 8 && bottomSpace > topSpace) {
+ 16257        ly = rect.y + rect.height + 8; // 上方不足且下方有余 → 改下方
+ 16258      }
+ 16259      const lxClamped = Math.min(Math.max(4, lx), window.innerWidth - lw - 4);
+ 16260      const lyClamped = Math.min(Math.max(4, ly), window.innerHeight - lh - 4);
+ 16261      ctx.fillStyle = 'rgba(0,0,0,0.72)';
+ 16262      ctx.beginPath();
+ 16263      ctx.roundRect(lxClamped, lyClamped, lw, lh, 11);
+ 16264      ctx.fill();
+ 16265      ctx.fillStyle = '#FFFFFF';
+ 16266      ctx.textBaseline = 'middle';
+ 16267      ctx.fillText(label, lxClamped + 8, lyClamped + lh / 2 + 0.5);
+ 16268    }
+ 16269  
+ 16270    // -------------------------------------------------------------------------
+ 16271    // 帧拉取（mask://begin 驱动；首次创建页挂载时重试兜底——规避建窗→发射的时序竞态）
+ 16272    // -------------------------------------------------------------------------
+ 16273  
+ 16274    async function fetchFrame(): Promise<void> {
+ 16275      if (finished) return;
+ 16276      try {
+ 16277        const res = await getMaskSnapshot({ monitorIndex });
+ 16278        sessionId = res.sessionId;
+ 16279        const img = new Image();
+ 16280        img.onload = () => {
+ 16281          snapshot = img;
+ 16282          draw();
+ 16283          show(100); // 遮罩淡入 100ms（design-spec 第 5 章）
+ 16284        };
+ 16285        img.onerror = () => {
+ 16286          scheduleRetry();
+ 16287        };
+ 16288        img.src = res.dataUrl;
+ 16289      } catch {
+ 16290        scheduleRetry();
+ 16291      }
+ 16292    }
+ 16293  
+ 16294    function scheduleRetry() {
+ 16295      if (finished) return;
+ 16296      retries += 1;
+ 16297      if (retries > RETRY_LIMIT) return;
+ 16298      window.setTimeout(() => {
+ 16299        void fetchFrame();
+ 16300      }, 100);
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 327 页（共 330 页）
+==============================================================================
+ 16301    }
+ 16302  
+ 16303    function beginSession(nextSessionId: string) {
+ 16304      // 新会话（含池化复用）：重置交互态并重新拉帧，杜绝旧帧残留；先落位透明再淡入
+ 16305      finished = false;
+ 16306      retries = 0;
+ 16307      sel = null;
+ 16308      dragStart = null;
+ 16309      dragging = false;
+ 16310      sessionId = nextSessionId;
+ 16311      snapshot = null;
+ 16312      if (hostEl) {
+ 16313        hostEl.style.opacity = '0';
+ 16314      }
+ 16315      void fetchFrame();
+ 16316    }
+ 16317  
+ 16318    // -------------------------------------------------------------------------
+ 16319    // 交互：拖拽框选 + Esc 取消
+ 16320    // -------------------------------------------------------------------------
+ 16321  
+ 16322    function clampRect(a: { x: number; y: number }, b: { x: number; y: number }): PxRect {
+ 16323      const w = window.innerWidth;
+ 16324      const h = window.innerHeight;
+ 16325      const x1 = Math.max(0, Math.min(a.x, b.x));
+ 16326      const x2 = Math.min(w, Math.max(a.x, b.x));
+ 16327      const y1 = Math.max(0, Math.min(a.y, b.y));
+ 16328      const y2 = Math.min(h, Math.max(a.y, b.y));
+ 16329      return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+ 16330    }
+ 16331  
+ 16332    function onPointerDown(event: PointerEvent) {
+ 16333      if (finished || event.button !== 0) return;
+ 16334      dragging = true;
+ 16335      dragStart = { x: event.clientX, y: event.clientY };
+ 16336      sel = { x: event.clientX, y: event.clientY, width: 0, height: 0 };
+ 16337      canvasEl.setPointerCapture(event.pointerId);
+ 16338      draw();
+ 16339    }
+ 16340  
+ 16341    function onPointerMove(event: PointerEvent) {
+ 16342      if (!dragging || !dragStart) return;
+ 16343      // 跨屏拖拽：选区钳制在本窗（=本显示器）边界——FR-8.4 单屏内完成框选
+ 16344      sel = clampRect(dragStart, { x: event.clientX, y: event.clientY });
+ 16345      draw();
+ 16346    }
+ 16347  
+ 16348    function onPointerUp() {
+ 16349      if (!dragging) return;
+ 16350      dragging = false;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 328 页（共 330 页）
+==============================================================================
+ 16351      if (finished || !sel || !sessionId) return;
+ 16352      const { sx, sy } = pxScale();
+ 16353      const pw = Math.round(sel.width * sx);
+ 16354      const ph = Math.round(sel.height * sy);
+ 16355      const px = Math.round(sel.x * sx);
+ 16356      const py = Math.round(sel.y * sy);
+ 16357      // Q11：位移 <4 物理px 或 面积 <64 物理px² → 视同取消
+ 16358      const displacementSq = pw * pw + ph * ph;
+ 16359      const area = pw * ph;
+ 16360      if (displacementSq < MIN_DRAG_PX * MIN_DRAG_PX || area < MIN_AREA_PX2) {
+ 16361        cancelWithFade();
+ 16362        return;
+ 16363      }
+ 16364      commitWithFade({
+ 16365        sessionId,
+ 16366        monitorIndex,
+ 16367        rect: { x: px, y: py, width: pw, height: ph },
+ 16368      });
+ 16369    }
+ 16370  
+ 16371    function onKeyDown(event: KeyboardEvent) {
+ 16372      if (event.key === 'Escape') {
+ 16373        event.preventDefault();
+ 16374        cancelWithFade();
+ 16375      }
+ 16376    }
+ 16377  
+ 16378    function cancelWithFade() {
+ 16379      if (finished) return;
+ 16380      finished = true;
+ 16381      // 遮罩 150ms 淡出后屏幕完全复原（design-spec 第 5 章；FR-8.3 无任何残留）
+ 16382      show(150, () => {
+ 16383        const id = sessionId;
+ 16384        if (id) {
+ 16385          cancelSelection({ sessionId: id }).catch(() => {
+ 16386            // 取消失败/过期：后端幂等（id 不匹配即无操作），前端不再动作
+ 16387          });
+ 16388        }
+ 16389      });
+ 16390    }
+ 16391  
+ 16392    function commitWithFade(command: {
+ 16393      sessionId: string;
+ 16394      monitorIndex: number;
+ 16395      rect: { x: number; y: number; width: number; height: number };
+ 16396    }) {
+ 16397      if (finished) return;
+ 16398      finished = true;
+ 16399      // 确认后遮罩 100ms 淡出（design-spec 第 5 章；FR-8.2）
+ 16400      show(100, () => {
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 329 页（共 330 页）
+==============================================================================
+ 16401        completeSelection(command).catch(() => {
+ 16402          // 命令错误已在后端回收遮罩并保持"无残留"不变量（会话裁剪失败/过期）；这里避免重复动作
+ 16403        });
+ 16404      });
+ 16405    }
+ 16406  
+ 16407    /** 宿主透明度过渡（淡入 100ms / 淡出 150ms），完成后回调 */
+ 16408    function show(ms: number, onDone?: () => void) {
+ 16409      if (!hostEl) return;
+ 16410      hostEl.style.transition = `opacity ${ms}ms`;
+ 16411      hostEl.style.opacity = ms > 0 && onDone === undefined ? '1' : '0';
+ 16412      if (onDone) {
+ 16413        window.setTimeout(onDone, ms);
+ 16414      }
+ 16415    }
+ 16416  
+ 16417    // -------------------------------------------------------------------------
+ 16418    // 生命周期
+ 16419    // -------------------------------------------------------------------------
+ 16420  
+ 16421    onMount(() => {
+ 16422      ctx = canvasEl.getContext('2d');
+ 16423      resizeCanvas();
+ 16424      window.addEventListener('resize', resizeCanvas);
+ 16425      window.addEventListener('keydown', onKeyDown);
+ 16426      canvasEl.addEventListener('pointerdown', onPointerDown);
+ 16427      canvasEl.addEventListener('pointermove', onPointerMove);
+ 16428      canvasEl.addEventListener('pointerup', onPointerUp);
+ 16429      canvasEl.addEventListener('pointercancel', onPointerUp);
+ 16430      // 页已挂载即存在（池化窗常驻）；首建窗与事件发射的竞态由 fetchFrame 重试兜底
+ 16431      void onMaskBegin((payload) => {
+ 16432        beginSession(payload.sessionId);
+ 16433      }).then(() => {
+ 16434        void fetchFrame();
+ 16435      });
+ 16436    });
+ 16437  </script>
+ 16438  
+ 16439  <svelte:head>
+ 16440    <title>截图遮罩</title>
+ 16441  </svelte:head>
+ 16442  
+ 16443  <div class="host" bind:this={hostEl}>
+ 16444    <canvas bind:this={canvasEl}></canvas>
+ 16445  </div>
+ 16446  
+ 16447  <style>
+ 16448    :global(html),
+ 16449    :global(body) {
+ 16450      margin: 0;
+
+==============================================================================
+Alya 智能翻译助手软件 V1.0    源程序清单    第 330 页（共 330 页）
+==============================================================================
+ 16451      padding: 0;
+ 16452      overflow: hidden;
+ 16453      background: transparent;
+ 16454    }
+ 16455    .host {
+ 16456      position: fixed;
+ 16457      inset: 0;
+ 16458      opacity: 0; /* 帧到达后淡入（100ms） */
+ 16459      pointer-events: none; /* 仅透明容器：命中测试穿透到 canvas（否则遮住拖拽指针事件） */
+ 16460    }
+ 16461    canvas {
+ 16462      display: block;
+ 16463      width: 100vw;
+ 16464      height: 100vh;
+ 16465      cursor: crosshair; /* 全程十字准星（design-spec 第 5 章） */
+ 16466      touch-action: none;
+ 16467      user-select: none;
+ 16468      -webkit-user-select: none;
+ 16469      /* 真机修复轮 6：.host 的 pointer-events:none 会被子元素继承，canvas 必须显式恢复
+ 16470         auto，否则遮罩页收不到任何指针事件——框选完全失效（用户真机实测复现）。 */
+ 16471      pointer-events: auto;
+ 16472    }
+ 16473  </style>

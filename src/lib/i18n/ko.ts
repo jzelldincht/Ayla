@@ -8,7 +8,7 @@ export const ko: typeof zh = {
     sceneMutual: "상호",
     sceneDirected: "지정",
     clipboardToggle: "클립보드 모니터링",
-    clipboardToggleHint: "켜면 새로 복사한 내용을 자동 번역합니다",
+    clipboardToggleHint: "새로 복사한 내용 자동 번역",
     targetLang: "대상 언어",
     close: "패널 닫기",
     destLabel: "번역문",
@@ -103,6 +103,8 @@ export const ko: typeof zh = {
     langDe: "Deutsch",
     langEs: "Español",
     langRu: "Русский",
+    restoreDefaults: "기본 설정 복원",
+    restoreDefaultsConfirm: "모든 설정을 출고값으로 되돌릴까요?(API 키, 인터페이스 언어, 온보딩 상태는 유지)",
   },
   onb: {
     title: "Alya에 오신 것을 환영합니다",
@@ -122,6 +124,7 @@ export const ko: typeof zh = {
     fieldBaseUrl: "기본 URL",
     fieldModel: "모델명",
     fieldApiKey: "API Key",
+    keyPlaceholder: "API 키 붙여넣기",
     verify: "연결 테스트",
     verifying: "테스트 중…",
     verifyOk: "✓ 연결 성공",
@@ -163,5 +166,20 @@ export const ko: typeof zh = {
     ocrLangpackTitle: "OCR 언어 팩 없음",
     ocrLangpackNamed: "“{tag}” 언어 팩이 설치되지 않아 이 언어를 인식할 수 없습니다.",
     ocrLangpackNone: "사용 가능한 OCR 언어 팩을 찾지 못했습니다. 설치 후 다시 시도하세요.",
+  },
+
+  mask: {
+    dragHint: "드래그로 영역 선택 · Esc로 취소",
+  },
+  langs: {
+    targetZhHans: "중국어(간체)",
+    targetZhHant: "중국어(번체)",
+    targetEn: "영어",
+    targetJa: "일본어",
+    targetKo: "한국어",
+    targetFr: "프랑스어",
+    targetDe: "독일어",
+    targetEs: "스페인어",
+    targetRu: "러시아어",
   },
 };

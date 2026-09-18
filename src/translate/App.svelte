@@ -53,8 +53,9 @@
   import { computeEtaSeconds, ETA_RATE_WINDOW_MS } from './lib/estimate';
   import { computeFitViewportHeight, measureContentHeight } from './lib/panelFit';
   import { ocrLangpackTitle, ocrLangpackDescription, MICROSOFT_GUIDE_URL } from './lib/errors';
-  import { t } from '../lib/i18n.svelte';
+  import { t, targetLangDisplay } from '../lib/i18n.svelte';
   import { AutoTranslateScheduler } from './lib/autoTranslate';
+import { normalizeOcrText } from './lib/ocrText';
   import TopBar from './TopBar.svelte';
   import OriginalEditor from './OriginalEditor.svelte';
   import StreamOutput from './StreamOutput.svelte';
@@ -92,7 +93,7 @@
   );
   const translationLabel = $derived(
     currentScene() === 'directed'
-      ? t('panel.destLabelWithLang', { lang: targetLabel })
+      ? t('panel.destLabelWithLang', { lang: targetLangDisplay(targetLabel) })
       : t('panel.destLabel'),
   );
 
@@ -361,8 +362,9 @@
 
   function handleOcrResult(sid: string, text: string) {
     if (sid !== sessionId) return;
-    original = text;
-    submitted = text;
+    // 清单 P2-8：OCR 输出轻量规整（断词/断行/下划线误识；保守，保留可编辑性）
+    original = normalizeOcrText(text);
+    submitted = original;
     ocrEmpty = text.trim().length === 0;
     if (ocrEmpty) outStatus = 'idle';
   }
@@ -383,8 +385,8 @@
     ocrError = null;
     try {
       const res = await reocr({ sessionId, lang });
-      original = res.text;
-      submitted = res.text;
+      original = normalizeOcrText(res.text);
+      submitted = original;
       ocrEmpty = res.text.trim().length === 0;
     } catch (err) {
       const msg = String(err);
@@ -804,6 +806,8 @@
   }
   /* 真机修复轮 9：译文标题独立成行在 wash 外；wash 底只包内容卡，且仅有翻译内容
      时出现（用户反馈"没有要翻译的就不显示背景色"）；84px 保底防被拉高的输入框挤没。 */
+  /* 清单 P2-7 决策记录：短内容时 wash 仍铺满剩余高度——「译文区常驻底纹=可复制
+     区域」的既定语义；随内容收缩会造成点击目标跳动，维持现状（用户确认前不改）。 */
   .dest-card {
     flex: 1 1 0;
     min-height: 0;

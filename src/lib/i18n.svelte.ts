@@ -8,6 +8,7 @@
 // - 测试：vitest 全局 setup 经 setTestLocale('zh-CN') 锁定中文（jsdom navigator 为 en-US）。
 
 import { settingsState } from './stores';
+import { DIRECTED_TARGET_LANGS } from './types';
 import type { LanguageSetting, Locale } from './types';
 import { zh } from './i18n/zh-CN';
 import { en } from './i18n/en';
@@ -72,6 +73,26 @@ function lookup(dict: Catalog, path: string): string | undefined {
     node = (node as Record<string, unknown>)[segment];
   }
   return typeof node === 'string' ? node : undefined;
+}
+
+/** 目标语言存储标签（中文）→ 当前界面语言下的显示名（清单 P1-2）。
+ *  存储格式保持中文标签（向后兼容）；仅显示层经 langs.* 目录映射，未匹配原样返回。 */
+const TARGET_KEY: Record<string, string> = {
+  'zh-CN': 'langs.targetZhHans',
+  'zh-TW': 'langs.targetZhHant',
+  en: 'langs.targetEn',
+  ja: 'langs.targetJa',
+  ko: 'langs.targetKo',
+  fr: 'langs.targetFr',
+  de: 'langs.targetDe',
+  es: 'langs.targetEs',
+  ru: 'langs.targetRu',
+};
+
+export function targetLangDisplay(storedLabel: string): string {
+  const code = DIRECTED_TARGET_LANGS.find((l) => l.label === storedLabel)?.code;
+  const key = code ? TARGET_KEY[code] : undefined;
+  return key ? t(key) : storedLabel;
 }
 
 export function t(path: string, params?: Record<string, string | number>): string {

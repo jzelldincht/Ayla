@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   getSettings: vi.fn(() => Promise.resolve(null as SettingsView | null)),
   listOcrLanguages: vi.fn(() => Promise.resolve([] as OcrLanguage[])),
   hotkeyRegistrationFailures: vi.fn(() => Promise.resolve([] as HotkeyFunction[])),
+  verifyConnection: vi.fn(() => Promise.resolve()),
+  restoreDefaultSettings: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../lib/ipc', () => ({
@@ -30,6 +32,8 @@ vi.mock('../lib/ipc', () => ({
   getSettings: mocks.getSettings,
   listOcrLanguages: mocks.listOcrLanguages,
   hotkeyRegistrationFailures: mocks.hotkeyRegistrationFailures,
+  verifyConnection: mocks.verifyConnection,
+  restoreDefaultSettings: mocks.restoreDefaultSettings,
   onSettingsChanged: vi.fn(() => Promise.resolve(() => {})),
 }));
 

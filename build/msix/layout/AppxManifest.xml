@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap5 rescap">
+
+  <!--
+    Alya MSIX 清单模板（scripts/build-msix.ps1 渲染占位符后写入布局目录）。
+    上架 Partner Center 时：Publisher 必须改为商店分配的发布者标识（形如 CN=XXXXXX），
+    Identity Name 可沿用 Jzelldincht.Ayla 或按商店页定稿。
+  -->
+  <Identity
+    Name="Jzelldincht.Ayla"
+    Publisher="CN=AylaTest, OID.2.25.311729368913984317654407730594956997722=1"
+    Version="1.0.0.0"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Alya</DisplayName>
+    <PublisherDisplayName>Jzelldincht</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <!-- Desktop Bridge（完整信任 Win32）；1809 起 StartupTask uap5 可用 -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="zh-CN"/>
+    <Resource Language="zh-TW"/>
+    <Resource Language="en"/>
+    <Resource Language="ja"/>
+    <Resource Language="ko"/>
+    <Resource Language="fr"/>
+    <Resource Language="de"/>
+    <Resource Language="es"/>
+    <Resource Language="ru"/>
+  </Resources>
+
+  <Applications>
+    <Application
+      Id="Ayla"
+      Executable="Alya.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Alya"
+        Description="AI translation for selection, input, clipboard and screenshots. Works with any OpenAI-compatible API."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Square71x71Logo="Assets\Square71x71Logo.png" />
+      </uap:VisualElements>
+      <!-- 开机自启（Store 版）：StartupTask 扩展，用户可在 设置>应用>启动 控制，
+           应用内开关经 Windows.ApplicationModel.StartupTask API 驱动（autostart.rs 包身份路径）。 -->
+      <Extensions>
+        <uap5:Extension
+          Category="windows.startupTask"
+          Executable="Alya.exe"
+          EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask
+            TaskId="AylaStartupTask"
+            Enabled="false"
+            DisplayName="Alya" />
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- Desktop Bridge 必需：完整信任桌面应用 -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
+

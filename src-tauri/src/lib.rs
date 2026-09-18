@@ -88,6 +88,7 @@ pub fn run() {
             windows::settings::get_settings,          // T13：设置读取（6.1；INV-1 仅 hasKey）
             windows::settings::set_settings, // T13：通用设置即时保存（6.1；热键/监听走专通道）
             windows::settings::open_settings, // T13：设置窗单例前置（6.1；EX-2 入口）
+            windows::settings::restore_default_settings, // 清单 P3-11：恢复出厂默认（保留 Key/引导/语言）
             windows::onboarding::open_config_guide, // T14 新增：FR-11.4 配置引导（guide 模式复用窗体）
             windows::onboarding::finish_onboarding, // T14：完成/跳过写 meta.onboardingCompleted
             action_router::translate, // T16：面板提交（6.1；FR-11.4 门控+EX-13 单路径）

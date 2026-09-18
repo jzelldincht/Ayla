@@ -301,7 +301,7 @@
                   class="key-input"
                   type={keyReveal ? 'text' : 'password'}
                   value={keyInput}
-                  placeholder="sk-••••••••••••••••"
+                  placeholder={t('onb.keyPlaceholder')}
                   aria-label="API Key"
                   autocomplete="off"
                   oninput={(e) => {

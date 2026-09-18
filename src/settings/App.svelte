@@ -21,6 +21,8 @@
     rebindHotkey,
     listOcrLanguages,
     hotkeyRegistrationFailures,
+    verifyConnection,
+    restoreDefaultSettings,
   } from '../lib/ipc';
   import {
     settingsState,
@@ -31,7 +33,7 @@
     applySettingsView,
   } from '../lib/stores';
   import { DIRECTED_TARGET_LANGS } from '../lib/types';
-  import { t } from '../lib/i18n.svelte';
+  import { t, targetLangDisplay } from '../lib/i18n.svelte';
   import type {
     HotkeyFunction,
     LanguageSetting,
@@ -82,6 +84,50 @@
   const flashTimers: Record<string, number> = {};
 
   const settings = $derived(settingsState.current);
+  // 清单 P1-3：长文整段阈值仅在「分档呈现」下生效——跟随模式联动禁用（与延迟下拉一致）。
+  const isStaged = $derived((settings?.translation.presentation ?? 'stream_all') === 'staged');
+
+  // 清单 P1-1：设置页验证连接（缺省用已存值；Key 编辑中禁用——验证的是将保存的配置）。
+  let verifying = $state(false);
+  let verifyState = $state<'idle' | 'ok' | 'error'>('idle');
+  let verifyError = $state('');
+
+  async function verifyFromSettings(): Promise<void> {
+    if (verifying) return;
+    verifying = true;
+    verifyState = 'idle';
+    verifyError = '';
+    rowErrors['verifyConnection'] = '';
+    try {
+      await verifyConnection(keyDraft.editing ? { key: keyDraft.input } : {});
+      verifyState = 'ok';
+    } catch (err) {
+      verifyState = 'error';
+      verifyError = String(err);
+      rowErrors['verifyConnection'] = verifyError;
+    } finally {
+      verifying = false;
+    }
+  }
+
+  // 清单 P3-11：恢复出厂默认（后端保留 API Key/引导状态/界面语言；confirm 二次确认）。
+  let restoring = $state(false);
+
+  async function onRestoreDefaults(): Promise<void> {
+    if (restoring) return;
+    if (!window.confirm(t('settings.restoreDefaultsConfirm'))) return;
+    restoring = true;
+    rowErrors['restoreDefaults'] = '';
+    try {
+      await restoreDefaultSettings();
+      await refreshSettings();
+      flashSaved('restoreDefaults');
+    } catch (err) {
+      rowErrors['restoreDefaults'] = String(err);
+    } finally {
+      restoring = false;
+    }
+  }
 
   /** OCR 语种下拉选项：自动（恒定首项）+ 已装清单（list_ocr_languages 数据源，防 EX-6）；
    *  已存语种不在已装清单时附「（当前未安装）」提示并保留可选（运行期后端仍二次校验）。 */
@@ -423,6 +469,24 @@
         </div>
       </div>
 
+      <!-- 清单 P1-1：验证连接（与引导页同款；缺省用已存值，Key 编辑中禁用——验证的是将保存的配置） -->
+      <div class="row">
+        <div class="row-label">
+          <span class="label">{t('onb.verify')}</span>
+          <span class="desc">{t('settings.verifyRowDesc')}</span>
+        </div>
+        <div class="row-control">
+          {#if rowErrors['verifyConnection']}
+            <span class="row-error" role="alert">{t('onb.verifyFail', { msg: rowErrors['verifyConnection'] })}</span>
+          {:else if verifyState === 'ok'}
+            <span class="verify-ok" role="status">{t('onb.verifyOk')}</span>
+          {/if}
+          <button class="btn" type="button" disabled={verifying || keyDraft.editing} onclick={verifyFromSettings}>
+            {verifying ? t('onb.verifying') : t('onb.verify')}
+          </button>
+        </div>
+      </div>
+
       <!-- 常驻隐私提示块（requirements 第 7 章 / J3；design-spec 7.1） -->
       <div class="privacy-note" role="note">
         <span class="privacy-mark" aria-hidden="true">(!)</span>
@@ -452,7 +516,7 @@
             onchange={onTargetLangChange}
           >
             {#each DIRECTED_TARGET_LANGS as lang (lang.label)}
-              <option value={lang.label}>{lang.label}</option>
+              <option value={lang.label}>{targetLangDisplay(lang.label)}</option>
             {/each}
           </select>
         </div>
@@ -502,6 +566,7 @@
             type="number"
             min="0"
             step="1"
+            disabled={!isStaged}
             aria-label={t('settings.threshold')}
             value={settings?.translation.longTextThresholdChars ?? ''}
             onchange={onThresholdChange}
@@ -624,13 +689,13 @@
       </div>
     {:else if activeGroup === 'hotkeys'}
       <h2 class="group-title">{t('settings.groupHotkeys')}</h2>
+      <p class="group-note">{t('settings.hotkeyDesc')}</p>
 
       {#each HOTKEY_ROWS as row (row.fn)}
         {@const key = `hotkey-${row.fn}`}
         <div class="row">
           <div class="row-label">
             <span class="label">{t(row.label)}</span>
-            <span class="desc">{t('settings.hotkeyDesc')}</span>
           </div>
           <div class="row-control">
             {#if rowErrors[key]}
@@ -766,6 +831,26 @@
               </button>
             {/each}
           </div>
+        </div>
+      </div>
+
+      <!-- 清单 P3-11：恢复默认设置（二次确认；后端保留 Key/引导/语言） -->
+      <div class="row">
+        <div class="row-label">
+          <span class="label">{t('settings.restoreDefaults')}</span>
+        </div>
+        <div class="row-control">
+          {#if rowErrors['restoreDefaults']}
+            <span class="row-error" role="alert">{rowErrors['restoreDefaults']}</span>
+          {:else if savedState['restoreDefaults']}
+            <span
+              class="row-saved {savedState['restoreDefaults'].fading ? 'fading' : ''}"
+              role="status">{t('settings.saved')}</span
+            >
+          {/if}
+          <button class="btn" type="button" disabled={restoring} onclick={() => void onRestoreDefaults()}>
+            {t('settings.restoreDefaults')}
+          </button>
         </div>
       </div>
     {/if}
@@ -1022,6 +1107,16 @@
     color: var(--accent-on-primary);
   }
   /* 常驻隐私提示块（requirements 第 7 章 / J3；warning-mark 强调底 + radius-card） */
+  .verify-ok {
+    font-size: var(--font-size-secondary);
+    color: var(--success);
+    white-space: nowrap;
+  }
+  .group-note {
+    margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+    font-size: var(--font-size-secondary);
+    color: var(--fg-muted);
+  }
   .privacy-note {
     display: flex;
     gap: var(--space-2);

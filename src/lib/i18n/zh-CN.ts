@@ -104,6 +104,8 @@ export const zh = {
     langDe: 'Deutsch',
     langEs: 'Español',
     langRu: 'Русский',
+    restoreDefaults: "恢复默认设置",
+    restoreDefaultsConfirm: "确定恢复全部设置为出厂默认值吗？（API Key、界面语言与引导状态将保留）",
   },
   onb: {
     title: '欢迎使用 Alya',
@@ -125,6 +127,7 @@ export const zh = {
     fieldBaseUrl: '接口地址',
     fieldModel: '模型名',
     fieldApiKey: 'API Key',
+    keyPlaceholder: "粘贴 API Key",
     verify: '验证连接',
     verifying: '验证中…',
     verifyOk: '✓ 验证成功',
@@ -166,5 +169,20 @@ export const zh = {
     ocrLangpackTitle: '缺少 OCR 语言包',
     ocrLangpackNamed: '未安装“{tag}”语言包，无法识别该语种。',
     ocrLangpackNone: '未找到可用的 OCR 语言包，请安装后重试。',
+  },
+
+  mask: {
+    dragHint: "拖拽选择区域 · Esc 取消",
+  },
+  langs: {
+    targetZhHans: "中文(简体)",
+    targetZhHant: "中文(繁体)",
+    targetEn: "英文",
+    targetJa: "日文",
+    targetKo: "韩文",
+    targetFr: "法文",
+    targetDe: "德文",
+    targetEs: "西班牙文",
+    targetRu: "俄文",
   },
 };

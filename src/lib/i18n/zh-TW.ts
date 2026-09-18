@@ -8,7 +8,7 @@ export const zhTw: typeof zh = {
     sceneMutual: "互譯",
     sceneDirected: "定向",
     clipboardToggle: "剪貼簿監聽",
-    clipboardToggleHint: "開啟後，自動翻譯新複製的內容",
+    clipboardToggleHint: "自動翻譯新複製的內容",
     targetLang: "目標語言",
     close: "關閉面板",
     destLabel: "譯文",
@@ -103,6 +103,8 @@ export const zhTw: typeof zh = {
     langDe: "Deutsch",
     langEs: "Español",
     langRu: "Русский",
+    restoreDefaults: "還原預設設定",
+    restoreDefaultsConfirm: "確定還原全部設定為出廠預設值嗎？（API Key、介面語言與引導狀態將保留）",
   },
   onb: {
     title: "歡迎使用 Alya",
@@ -122,6 +124,7 @@ export const zhTw: typeof zh = {
     fieldBaseUrl: "API 位址",
     fieldModel: "模型名稱",
     fieldApiKey: "API Key",
+    keyPlaceholder: "貼上 API Key",
     verify: "驗證連線",
     verifying: "驗證中…",
     verifyOk: "✓ 驗證成功",
@@ -163,5 +166,20 @@ export const zhTw: typeof zh = {
     ocrLangpackTitle: "缺少 OCR 語言套件",
     ocrLangpackNamed: "未安裝「{tag}」語言套件，無法辨識該語言。",
     ocrLangpackNone: "未找到可用的 OCR 語言套件，請安裝後重試。",
+  },
+
+  mask: {
+    dragHint: "拖曳選取範圍 · Esc 取消",
+  },
+  langs: {
+    targetZhHans: "中文(簡體)",
+    targetZhHant: "中文(繁體)",
+    targetEn: "英文",
+    targetJa: "日文",
+    targetKo: "韓文",
+    targetFr: "法文",
+    targetDe: "德文",
+    targetEs: "西班牙文",
+    targetRu: "俄文",
   },
 };

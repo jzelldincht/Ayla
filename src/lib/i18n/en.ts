@@ -106,6 +106,8 @@ export const en: typeof zh = {
     langDe: 'Deutsch',
     langEs: 'Español',
     langRu: 'Русский',
+    restoreDefaults: "Restore defaults",
+    restoreDefaultsConfirm: "Reset all settings to factory defaults? (API key, interface language and onboarding state will be kept.)",
   },
   onb: {
     title: 'Welcome to Alya',
@@ -128,6 +130,7 @@ export const en: typeof zh = {
     fieldBaseUrl: 'Base URL',
     fieldModel: 'Model name',
     fieldApiKey: 'API Key',
+    keyPlaceholder: "Paste API key",
     verify: 'Test connection',
     verifying: 'Testing…',
     verifyOk: '✓ Connected',
@@ -170,5 +173,20 @@ export const en: typeof zh = {
     ocrLangpackNamed:
       'The “{tag}” language pack is not installed, so this language cannot be recognized.',
     ocrLangpackNone: 'No usable OCR language pack found. Install one and try again.',
+  },
+
+  mask: {
+    dragHint: "Drag to select an area · Esc to cancel",
+  },
+  langs: {
+    targetZhHans: "Chinese (Simplified)",
+    targetZhHant: "Chinese (Traditional)",
+    targetEn: "English",
+    targetJa: "Japanese",
+    targetKo: "Korean",
+    targetFr: "French",
+    targetDe: "German",
+    targetEs: "Spanish",
+    targetRu: "Russian",
   },
 };

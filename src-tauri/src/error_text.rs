@@ -264,4 +264,58 @@ impl Language {
             Self::Ru => format!("Не удалось отключить автозапуск: {err}"),
         }
     }
+
+    // 包身份（MSIX/Store）StartupTask 专用（i18n-3 扩展：autostart 双模式）
+    pub fn autostart_task_missing(self) -> String {
+        match self {
+            Self::System | Self::ZhCn => "未找到包清单声明的启动任务（安装包可能不完整）。".to_string(),
+            Self::ZhTw => "未找到套件清單宣告的啟動工作（安裝套件可能不完整）。".to_string(),
+            Self::En => "The startup task declared in the package manifest was not found (the package may be incomplete).".to_string(),
+            Self::Ja => "パッケージ マニフェストに宣言されたスタートアップ タスクが見つかりません（パッケージが不完全な可能性）。".to_string(),
+            Self::Ko => "패키지 매니페스트에 선언된 시작 작업을 찾을 수 없습니다(패키지가 불완전할 수 있음).".to_string(),
+            Self::Fr => "La tâche de démarrage déclarée dans le manifeste du package est introuvable (package peut-être incomplet).".to_string(),
+            Self::De => "Die im Paketmanifest deklarierte Startaufgabe wurde nicht gefunden (Paket ggf. unvollständig).".to_string(),
+            Self::Es => "No se encontró la tarea de inicio declarada en el manifiesto del paquete (el paquete puede estar incompleto).".to_string(),
+            Self::Ru => "Задача запуска, объявленная в манифесте пакета, не найдена (возможно, пакет неполон).".to_string(),
+        }
+    }
+    pub fn autostart_user_disabled(self) -> String {
+        match self {
+            Self::System | Self::ZhCn => "开机自启此前已在 Windows 设置中被你关闭；请到 设置 > 应用 > 启动 重新开启。".to_string(),
+            Self::ZhTw => "開機自動啟動先前已在 Windows 設定中被你關閉；請到 設定 > 應用程式 > 啟動 重新開啟。".to_string(),
+            Self::En => "Autostart was turned off by you in Windows Settings; re-enable it under Settings > Apps > Startup.".to_string(),
+            Self::Ja => "自動起動は Windows の設定でオフにされています。[設定] > [アプリ] > [スタートアップ] で再度オンにしてください。".to_string(),
+            Self::Ko => "자동 시작이 Windows 설정에서 꺼져 있습니다. 설정 > 앱 > 시작에서 다시 켜세요.".to_string(),
+            Self::Fr => "Le démarrage automatique a été désactivé dans les paramètres Windows ; réactivez-le sous Paramètres > Applications > Démarrage.".to_string(),
+            Self::De => "Der Autostart wurde in den Windows-Einstellungen deaktiviert; reaktivieren Sie ihn unter Einstellungen > Apps > Start.".to_string(),
+            Self::Es => "El inicio automático se desactivó en la configuración de Windows; reactívalo en Configuración > Aplicaciones > Inicio.".to_string(),
+            Self::Ru => "Автозапуск был отключён вами в параметрах Windows; включите его снова в Параметры > Приложения > Автозагрузка.".to_string(),
+        }
+    }
+    pub fn autostart_policy_disabled(self) -> String {
+        match self {
+            Self::System | Self::ZhCn => "开机自启已被系统策略禁用（组织管理设备）。".to_string(),
+            Self::ZhTw => "開機自動啟動已被系統原則停用（組織管理裝置）。".to_string(),
+            Self::En => "Autostart has been disabled by system policy (organization-managed device).".to_string(),
+            Self::Ja => "自動起動はシステム ポリシーにより無効化されています（組織管理デバイス）。".to_string(),
+            Self::Ko => "자동 시작이 시스템 정책에 의해 비활성화되었습니다(조직 관리 디바이스).".to_string(),
+            Self::Fr => "Le démarrage automatique a été désactivé par une stratégie système (appareil géré par une organisation).".to_string(),
+            Self::De => "Der Autostart wurde durch eine Systemrichtlinie deaktiviert (organisationsverwaltetes Gerät).".to_string(),
+            Self::Es => "El inicio automático está deshabilitado por directiva del sistema (dispositivo administrado por una organización).".to_string(),
+            Self::Ru => "Автозапуск отключён системной политикой (управляемое организацией устройство).".to_string(),
+        }
+    }
+    pub fn autostart_enable_rejected(self) -> String {
+        match self {
+            Self::System | Self::ZhCn => "开机自启启用未生效（请求未被系统接受）。".to_string(),
+            Self::ZhTw => "開機自動啟動啟用未生效（請求未被系統接受）。".to_string(),
+            Self::En => "Enabling autostart did not take effect (the request was not accepted by the system).".to_string(),
+            Self::Ja => "自動起動の有効化が反映されませんでした（システムに受け付けられませんでした）。".to_string(),
+            Self::Ko => "자동 시작 활성화가 적용되지 않았습니다(시스템이 요청을 수락하지 않음).".to_string(),
+            Self::Fr => "L'activation du démarrage automatique n'a pas pris effet (la demande n'a pas été acceptée par le système).".to_string(),
+            Self::De => "Das Aktivieren des Autostarts hatte keine Wirkung (die Anfrage wurde vom System nicht angenommen).".to_string(),
+            Self::Es => "La activación del inicio automático no surtió efecto (el sistema no aceptó la solicitud).".to_string(),
+            Self::Ru => "Включение автозапуска не вступило в силу (система не приняла запрос).".to_string(),
+        }
+    }
 }

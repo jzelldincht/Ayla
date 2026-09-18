@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "ai": {
+    "baseUrl": "https://api.deepseek.com",
+    "model": "deepseek-chat"
+  },
+  "translation": {
+    "defaultTargetLang": "中文(简体)",
+    "presentation": "stream_all",
+    "longTextThresholdChars": 1000,
+    "autoTranslate": {
+      "enabled": false,
+      "delayMs": 700
+    }
+  },
+  "panel": {
+    "hideOnBlur": true,
+    "widthLogical": 460,
+    "heightLogical": 340
+  },
+  "clipboardMonitor": false,
+  "scene": {
+    "active": "mutual"
+  },
+  "hotkeys": {
+    "selection": "Alt+Q",
+    "input": "Alt+E",
+    "ocrRecognize": "Alt+S",
+    "ocrTranslate": "Alt+D",
+    "toggleScene": "Alt+W"
+  },
+  "ocr": {
+    "language": "auto"
+  },
+  "general": {
+    "autostart": false,
+    "theme": "light",
+    "language": "en"
+  },
+  "meta": {
+    "onboardingCompleted": false
+  }
+}

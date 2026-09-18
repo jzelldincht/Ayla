@@ -15,6 +15,8 @@
 
   import { onMount } from 'svelte';
   import { completeSelection, cancelSelection, getMaskSnapshot, onMaskBegin } from '../lib/ipc';
+  import { t } from '../lib/i18n.svelte';
+  import { initSettingsMirror, watchSettingsChanged } from '../lib/stores';
 
   const monitorIndex = Number(new URLSearchParams(window.location.search).get('monitorIndex') ?? '0');
 
@@ -279,6 +281,9 @@
   // -------------------------------------------------------------------------
 
   onMount(() => {
+    // 清单 P1-4：遮罩提示语随界面语言（镜像到达/变更即刷新；失败保守 zh 回退）。
+    void initSettingsMirror();
+    void watchSettingsChanged();
     ctx = canvasEl.getContext('2d');
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -302,9 +307,25 @@
 
 <div class="host" bind:this={hostEl}>
   <canvas bind:this={canvasEl}></canvas>
+  <!-- 清单 P1-4：屏上操作提示（低透明不干扰选区；指针穿透由宿主 canvas 统一处理） -->
+  <div class="mask-hint" aria-hidden="true">{t('mask.dragHint')}</div>
 </div>
 
 <style>
+  .mask-hint {
+    position: fixed;
+    top: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    background: rgba(15, 18, 24, 0.55);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    user-select: none;
+  }
   :global(html),
   :global(body) {
     margin: 0;

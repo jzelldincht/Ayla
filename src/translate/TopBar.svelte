@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '../lib/i18n.svelte';
+  import { t, targetLangDisplay } from '../lib/i18n.svelte';
   // 顶栏骨架（design-spec 3.2，四形态共用）：监听开关（左一，图标式）→ 互译/定向分段控件 →
   // （定向时）目标语言下拉 → 幽灵关闭按钮；中间弹性空白。高 44px，兼任窗口拖拽移动区
   // （data-tauri-drag-region，Tauri 2 原生拖拽区域属性）。
@@ -127,7 +127,7 @@
         tabindex={scene === 'directed' ? 0 : -1}
       >
         {#each DIRECTED_TARGET_LANGS as lang (lang.label)}
-          <option value={lang.label}>{lang.label}</option>
+          <option value={lang.label}>{targetLangDisplay(lang.label)}</option>
         {/each}
       </select>
     </div>

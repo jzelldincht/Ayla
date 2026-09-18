@@ -220,6 +220,74 @@ pub fn set_settings(app: AppHandle, patch: SettingsPatch) -> Result<(), AppError
     Ok(())
 }
 
+/// `restore_default_settings`（清单 P3-11）：全部设置恢复出厂默认，**保留**
+/// API Key 密文（INV-1 语义——Key 是用户资产，不随重置丢失）、引导完成状态与界面语言。
+/// 恢复即广播全字段补丁（各窗镜像同步，INV-8）。
+#[tauri::command]
+pub fn restore_default_settings(app: AppHandle) -> Result<(), AppError> {
+    let dir = config::app_config_dir(&app)?;
+    {
+        let mut guard = config::write_global()?;
+        let preserved_key = guard.ai.api_key_cipher.clone();
+        let preserved_onboarding = guard.meta.onboarding_completed;
+        let preserved_language = guard.general.language;
+        *guard = config::Settings::default();
+        guard.ai.api_key_cipher = preserved_key;
+        guard.meta.onboarding_completed = preserved_onboarding;
+        guard.general.language = preserved_language;
+    }
+    let settings = config::read_global()?;
+    config::save_to(&dir, &settings)?;
+
+    // 全字段补丁（缺省字段也发：覆盖各窗可能残留的非默认值）
+    let patch = crate::events::SettingsPatch {
+        ai: Some(crate::events::AiPatch {
+            base_url: Some(settings.ai.base_url.clone()),
+            model: Some(settings.ai.model.clone()),
+            api_key: None,
+        }),
+        translation: Some(crate::events::TranslationPatch {
+            default_target_lang: Some(settings.translation.default_target_lang.clone()),
+            presentation: Some(settings.translation.presentation),
+            long_text_threshold_chars: Some(settings.translation.long_text_threshold_chars),
+            auto_translate: Some(crate::events::AutoTranslatePatch {
+                enabled: Some(settings.translation.auto_translate.enabled),
+                delay_ms: Some(settings.translation.auto_translate.delay_ms),
+            }),
+        }),
+        panel: Some(crate::events::PanelPatch {
+            hide_on_blur: Some(settings.panel.hide_on_blur),
+            width_logical: Some(settings.panel.width_logical),
+            height_logical: Some(settings.panel.height_logical),
+            editor_height: settings.panel.editor_height_logical,
+        }),
+        clipboard_monitor: Some(settings.clipboard_monitor),
+        scene: Some(crate::events::ScenePatch {
+            active: Some(settings.scene.active),
+        }),
+        hotkeys: Some(crate::events::HotkeysPatch {
+            selection: Some(settings.hotkeys.selection.clone()),
+            input: Some(settings.hotkeys.input.clone()),
+            ocr_recognize: Some(settings.hotkeys.ocr_recognize.clone()),
+            ocr_translate: Some(settings.hotkeys.ocr_translate.clone()),
+            toggle_scene: Some(settings.hotkeys.toggle_scene.clone()),
+        }),
+        ocr: Some(crate::events::OcrPatch {
+            language: Some(settings.ocr.language.clone()),
+        }),
+        general: Some(crate::events::GeneralPatch {
+            autostart: Some(settings.general.autostart),
+            theme: Some(settings.general.theme),
+            language: None, // 保留用户界面语言
+        }),
+        meta: None, // 保留引导完成状态
+    };
+    if let Err(err) = app.emit(EVENT_SETTINGS_CHANGED, broadcast_patch(&patch)) {
+        log::error!("settings: 恢复默认的 settings://changed 广播失败: {err}");
+    }
+    Ok(())
+}
+
 /// `open_settings`（6.1；EX-2 入口）：单例前置——已有窗则 show+focus，否则创建后显示。
 #[tauri::command]
 pub fn open_settings(app: AppHandle) -> Result<(), AppError> {

@@ -44,15 +44,11 @@
   } = $props();
 
   let textarea: HTMLTextAreaElement;
-  /** 当前生效高度：null＝黄金分割默认（跟随窗口），数字＝用户拖动定值。
-   *  初值由下方 $effect 自 savedHeight prop 同步（挂载即跑，含镜像到达后的回流）。 */
-  let userHeight = $state<number | null>(null);
+  /** 本会话拖动覆盖值：用户拖动后优先于 savedHeight（镜像回流同值时显示不变）。 */
+  let dragOverride = $state<number | null>(null);
   let saveTimer: number | null = null;
-
-  // 镜像回流同步（本窗保存后广播回来值一致；它窗/重开镜像时同步恢复）。
-  $effect(() => {
-    userHeight = savedHeight ?? null;
-  });
+  /** 当前生效高度：null＝黄金分割默认（跟随窗口），数字＝用户拖动定值。 */
+  const userHeight = $derived(dragOverride ?? savedHeight ?? null);
 
   /** A1：重译按钮浮现 = 内容被修改（≠ 已提交）且非纯空白（FR-4.3 拦截空提交）。
       轮 12：'never' 模式无按钮（形态 B 去"翻译 ↵"，Enter 提交）。 */
@@ -76,7 +72,7 @@
     if (!textarea) return;
     const h = Math.round(textarea.getBoundingClientRect().height);
     if (h < 40) return; // resizer 拖到极限的异常读数不采信
-    userHeight = h;
+    dragOverride = h;
     if (saveTimer !== null) window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => {
       saveTimer = null;
@@ -148,6 +144,20 @@
   textarea.boxed {
     background: var(--bg-subtle);
     min-height: 56px;
+  }
+  /* 清单 P2-6：拖拽把手可见化——右下角双斜纹（原生 resizer 几乎不可见） */
+  textarea.boxed::-webkit-resizer {
+    background-image: linear-gradient(
+      135deg,
+      transparent 0 46%,
+      var(--border-strong) 46% 54%,
+      transparent 54% 62%,
+      var(--border-strong) 62% 70%,
+      transparent 70%
+    );
+    background-size: 14px 14px;
+    background-repeat: no-repeat;
+    background-position: bottom right;
   }
   textarea.subtle {
     background: var(--bg-subtle);

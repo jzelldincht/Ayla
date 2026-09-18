@@ -8,7 +8,7 @@ export const de: typeof zh = {
     sceneMutual: "Gegenseitig",
     sceneDirected: "Gerichtet",
     clipboardToggle: "Zwischenablage-Überwachung",
-    clipboardToggleHint: "Übersetzt neu kopierte Inhalte automatisch",
+    clipboardToggleHint: "Neu kopierten Inhalt automatisch übersetzen",
     targetLang: "Zielsprache",
     close: "Panel schließen",
     destLabel: "Übersetzung",
@@ -103,6 +103,8 @@ export const de: typeof zh = {
     langDe: "Deutsch",
     langEs: "Español",
     langRu: "Русский",
+    restoreDefaults: "Standardwerte wiederherstellen",
+    restoreDefaultsConfirm: "Alle Einstellungen auf Werkseinstellungen zurücksetzen? (API-Schlüssel, Sprache und Onboarding-Status bleiben erhalten.)",
   },
   onb: {
     title: "Willkommen bei Alya",
@@ -122,6 +124,7 @@ export const de: typeof zh = {
     fieldBaseUrl: "Basis-URL",
     fieldModel: "Modellname",
     fieldApiKey: "API-Schlüssel",
+    keyPlaceholder: "API-Schlüssel einfügen",
     verify: "Verbindung testen",
     verifying: "Teste…",
     verifyOk: "✓ Verbindung erfolgreich",
@@ -163,5 +166,20 @@ export const de: typeof zh = {
     ocrLangpackTitle: "OCR-Sprachpaket fehlt",
     ocrLangpackNamed: "Das Sprachpaket „{tag}“ ist nicht installiert; diese Sprache kann nicht erkannt werden.",
     ocrLangpackNone: "Kein verwendbares OCR-Sprachpaket gefunden. Bitte installieren und erneut versuchen.",
+  },
+
+  mask: {
+    dragHint: "Ziehen, um einen Bereich auszuwählen · Esc bricht ab",
+  },
+  langs: {
+    targetZhHans: "Chinesisch (vereinfacht)",
+    targetZhHant: "Chinesisch (traditionell)",
+    targetEn: "Englisch",
+    targetJa: "Japanisch",
+    targetKo: "Koreanisch",
+    targetFr: "Französisch",
+    targetDe: "Deutsch",
+    targetEs: "Spanisch",
+    targetRu: "Russisch",
   },
 };

@@ -242,3 +242,8 @@ export function panelStartDrag(): Promise<void> {
 export function panelResizeForContent(contentHeight: number): Promise<void> {
   return invoke('panel_resize_for_content', { contentHeight });
 }
+
+/** 恢复全部设置为出厂默认值（清单 P3-11；后端保留 API Key/引导状态/界面语言）。 */
+export function restoreDefaultSettings(): Promise<void> {
+  return invoke('restore_default_settings');
+}

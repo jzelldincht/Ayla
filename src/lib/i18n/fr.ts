@@ -8,7 +8,7 @@ export const fr: typeof zh = {
     sceneMutual: "Bidirectionnelle",
     sceneDirected: "Unidirectionnelle",
     clipboardToggle: "Surveillance du presse-papiers",
-    clipboardToggleHint: "Traduit automatiquement le nouveau contenu copié",
+    clipboardToggleHint: "Traduire automatiquement le contenu copié",
     targetLang: "Langue cible",
     close: "Fermer le panneau",
     destLabel: "Traduction",
@@ -103,6 +103,8 @@ export const fr: typeof zh = {
     langDe: "Deutsch",
     langEs: "Español",
     langRu: "Русский",
+    restoreDefaults: "Rétablir les valeurs par défaut",
+    restoreDefaultsConfirm: "Réinitialiser tous les paramètres aux valeurs d'usine ? (La clé API, la langue et l'état de bienvenue seront conservés.)",
   },
   onb: {
     title: "Bienvenue dans Alya",
@@ -122,6 +124,7 @@ export const fr: typeof zh = {
     fieldBaseUrl: "URL de base",
     fieldModel: "Nom du modèle",
     fieldApiKey: "Clé API",
+    keyPlaceholder: "Collez la clé API",
     verify: "Tester la connexion",
     verifying: "Test…",
     verifyOk: "✓ Connexion réussie",
@@ -163,5 +166,20 @@ export const fr: typeof zh = {
     ocrLangpackTitle: "Pack de langue OCR manquant",
     ocrLangpackNamed: "Le pack de langue « {tag} » n'est pas installé ; cette langue ne peut pas être reconnue.",
     ocrLangpackNone: "Aucun pack de langue OCR utilisable trouvé. Installez-en un et réessayez.",
+  },
+
+  mask: {
+    dragHint: "Glissez pour sélectionner · Échap pour annuler",
+  },
+  langs: {
+    targetZhHans: "Chinois (simplifié)",
+    targetZhHant: "Chinois (traditionnel)",
+    targetEn: "Anglais",
+    targetJa: "Japonais",
+    targetKo: "Coréen",
+    targetFr: "Français",
+    targetDe: "Allemand",
+    targetEs: "Espagnol",
+    targetRu: "Russe",
   },
 };
