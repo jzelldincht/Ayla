@@ -1,9 +1,0 @@
-Alya keeps your writing flow intact.
-
-Write or paste text in the panel, press Enter, and the translation
-appears instantly. For text you cannot select - subtitles, game UI,
-images - press Alt+D and drag a box around it.
-
-The screenshot never leaves your PC: text is extracted locally with
-Windows OCR, and only the recognized characters are sent for
-translation to the API service you configured.

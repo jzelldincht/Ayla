@@ -555,8 +555,11 @@
     align-items: center;
     gap: var(--space-2);
   }
+  /* 真机修复轮 19：flex:1 原为「API Key + 显示按钮」横向行设计，但同时作用于纵向
+     .field 容器——纵向 flex 下 flex-basis:0 会覆盖 height，把地址/模型名输入框压成一
+     半高度（截图实测 35px vs 69px 物理）。此处去掉通用 flex，改由 .key-row 限定横向。 */
   .key-input {
-    flex: 1;
+    width: 100%;
     height: 36px;
     padding: 0 var(--space-3);
     border: 1px solid var(--border-subtle);
@@ -564,6 +567,11 @@
     background: var(--bg-subtle);
     color: var(--fg-body);
     font-size: var(--font-size-body);
+  }
+  /* 仅 API Key 行需要弹性宽度（与「显示」按钮并排）；高度仍由 height 决定。 */
+  .key-row .key-input {
+    flex: 1;
+    min-width: 0;
   }
   .ghost {
     height: 36px;

@@ -94,9 +94,14 @@ Alya 连接你自己配置的 OpenAI 兼容 API（默认 DeepSeek）。费用由
 
 ```
 • Selection / input / clipboard / screenshot translation in one panel
+• Localized target-language names across all nine UI languages
 • Screenshot OCR runs locally — images are never uploaded
 • Bring your own OpenAI-compatible API key (no subscription)
 • Mutual or directed translation with instant language switching
+• Connection test built into Settings — verify your API setup anytime
+• One-click restore to defaults (keeps your API key)
+• OCR results auto-cleaned (line breaks, dashes, CJK spacing)
+• On-screen hint while selecting a screen region
 • Streaming and staged output modes with ETA for long texts
 • Remembers panel position, size, and source-text height
 • Multi-monitor and per-monitor DPI aware

@@ -45,6 +45,7 @@ export const zh = {
     apiKey: 'API Key',
     apiKeyDesc: '本地加密存储，任何视图不回显明文',
     apiKeyPlaceholder: '粘贴 API Key；留空保存即清除配置',
+    verifyRowDesc: '使用当前保存的配置验证服务连通性',
     notConfigured: '未配置',
     setUp: '配置',
     edit: '修改',

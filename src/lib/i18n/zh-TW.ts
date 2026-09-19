@@ -45,6 +45,7 @@ export const zhTw: typeof zh = {
     apiKey: "API Key",
     apiKeyDesc: "本機加密儲存，任何畫面皆不顯示明文",
     apiKeyPlaceholder: "貼上 API Key；留空儲存即清除設定",
+    verifyRowDesc: "使用目前儲存的設定驗證服務連線",
     notConfigured: "未設定",
     setUp: "設定",
     edit: "修改",

@@ -45,6 +45,7 @@ export const de: typeof zh = {
     apiKey: "API-Schlüssel",
     apiKeyDesc: "Lokal verschlüsselt gespeichert; nie im Klartext sichtbar",
     apiKeyPlaceholder: "API-Schlüssel einfügen; leer speichern löscht ihn",
+    verifyRowDesc: "Prüft die Verbindung mit der gespeicherten Konfiguration",
     notConfigured: "Nicht eingerichtet",
     setUp: "Einrichten",
     edit: "Ändern",

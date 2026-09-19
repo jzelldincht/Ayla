@@ -1,1 +1,0 @@
-Windows 11 redesigned the way windows are arranged on screen. Hover over a window's maximize button to see snap layouts, or drag a window to the screen edge to dock it. These gestures make it easy to compare documents side by side.

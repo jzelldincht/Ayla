@@ -45,6 +45,7 @@ export const ko: typeof zh = {
     apiKey: "API Key",
     apiKeyDesc: "로컬에 암호화 저장되며 평문으로 표시되지 않습니다",
     apiKeyPlaceholder: "API Key 붙여넣기. 비운 채 저장하면 삭제됩니다",
+    verifyRowDesc: "현재 저장된 설정으로 연결을 확인합니다",
     notConfigured: "미설정",
     setUp: "설정",
     edit: "변경",

@@ -22,8 +22,10 @@ so you stay in control of model, cost and privacy. Your API key is encrypted loc
 text recognition for screenshots runs on your device.
 
 Features: mutual & directed translation scenes · streaming output · auto-translate on
-typing pause (configurable delay) · retranslate when you edit · OCR with editable
-results · custom hotkeys · dark & light themes · 9 interface languages.
+typing pause (configurable delay) · retranslate when you edit · OCR with editable,
+auto-cleaned results (line-break and dash normalization) · on-screen capture hint ·
+connection test from Settings · one-click restore to defaults · custom hotkeys ·
+dark & light themes · 9 interface languages.
 
 Privacy: no telemetry, no accounts, no ads. OCR runs locally.
 
@@ -44,7 +46,7 @@ Alya 让 AI 翻译离你只差一个快捷键。
 自带 API Key：兼容所有 OpenAI 协议服务（默认 DeepSeek），模型、费用与隐私都由你掌控。
 Key 本机加密存储；截图识别在本机完成。
 
-功能：互译/定向双场景 · 流式输出 · 停顿自动翻译（可调延迟）· 改后重译 · 识别结果可编辑 ·
+功能：互译/定向双场景 · 流式输出 · 停顿自动翻译（可调延迟）· 改后重译 · 识别结果可编辑（自动规整断词与换行）· 框选屏上提示 · 设置页验证连接 · 一键恢复默认 ·
 自定义快捷键 · 深浅主题 · 九种界面语言。
 
 隐私：无遥测、无账号、无广告。
@@ -66,7 +68,7 @@ Alya 讓 AI 翻譯離你只差一個快速鍵。
 自帶 API Key：相容所有 OpenAI 協定服務（預設 DeepSeek），模型、費用與隱私都由你掌控。
 Key 本機加密儲存；截圖辨識在本機完成。
 
-功能：互譯/定向雙場景 · 串流輸出 · 停頓自動翻譯（可調延遲）· 修改後重譯 · 辨識結果可編輯 ·
+功能：互譯/定向雙場景 · 串流輸出 · 停頓自動翻譯（可調延遲）· 修改後重譯 · 辨識結果可編輯（自動整理斷詞與換行）· 框選螢幕提示 · 設定頁驗證連線 · 一鍵恢復預設 ·
 自訂快速鍵 · 深淺主題 · 九種介面語言。
 
 隱私：無遙測、無帳號、無廣告。

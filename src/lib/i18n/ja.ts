@@ -45,6 +45,7 @@ export const ja: typeof zh = {
     apiKey: "API Key",
     apiKeyDesc: "ローカルで暗号化保存、平文は一切表示されません",
     apiKeyPlaceholder: "API Key を貼り付け。空欄のまま保存すると削除されます",
+    verifyRowDesc: "現在保存されている設定で接続を確認します",
     notConfigured: "未設定",
     setUp: "設定",
     edit: "変更",

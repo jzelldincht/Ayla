@@ -45,6 +45,7 @@ export const es: typeof zh = {
     apiKey: "Clave de API",
     apiKeyDesc: "Guardada cifrada localmente; nunca se muestra en claro",
     apiKeyPlaceholder: "Pega la clave de API; guardar vacío la borra",
+    verifyRowDesc: "Comprueba la conexión con la configuración guardada",
     notConfigured: "Sin configurar",
     setUp: "Configurar",
     edit: "Editar",

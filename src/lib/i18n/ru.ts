@@ -45,6 +45,7 @@ export const ru: typeof zh = {
     apiKey: "API-ключ",
     apiKeyDesc: "Хранится зашифрованным локально; никогда не показывается открыто",
     apiKeyPlaceholder: "Вставьте API-ключ; сохранение пустого поля удалит ключ",
+    verifyRowDesc: "Проверяет подключение с сохранённой конфигурацией",
     notConfigured: "Не задан",
     setUp: "Задать",
     edit: "Изменить",

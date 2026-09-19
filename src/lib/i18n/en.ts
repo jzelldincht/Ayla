@@ -45,6 +45,7 @@ export const en: typeof zh = {
     apiKey: 'API Key',
     apiKeyDesc: 'Stored encrypted locally; never shown in plain text',
     apiKeyPlaceholder: 'Paste API key; saving empty clears the stored key',
+    verifyRowDesc: 'Test the currently saved service configuration',
     notConfigured: 'Not set',
     setUp: 'Set up',
     edit: 'Edit',

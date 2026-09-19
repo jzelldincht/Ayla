@@ -1,5 +1,5 @@
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 1 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 1 页（共 335 页）
 ==============================================================================
      1  // ==================== src-tauri/src/main.rs ====================
      2  // 发布构建下隐藏控制台窗口（Tauri 桌面应用约定）。
@@ -53,7 +53,7 @@ Alya 智能翻译助手软件 V1.0    源程序清单    第 1 页（共 330 页
     50      // === 启动 0：D7 前台握手（新实例侧；须在任何 Builder 装配之前——见 instance.rs 模块头） ===
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 2 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 2 页（共 335 页）
 ==============================================================================
     51      match instance::default_pid_dir() {
     52          Some(dir) => {
@@ -103,1517 +103,1517 @@ Alya 智能翻译助手软件 V1.0    源程序清单    第 2 页（共 330 页
     96              windows::settings::get_settings,          // T13：设置读取（6.1；INV-1 仅 hasKey）
     97              windows::settings::set_settings, // T13：通用设置即时保存（6.1；热键/监听走专通道）
     98              windows::settings::open_settings, // T13：设置窗单例前置（6.1；EX-2 入口）
-    99              windows::onboarding::open_config_guide, // T14 新增：FR-11.4 配置引导（guide 模式复用窗体）
-   100              windows::onboarding::finish_onboarding, // T14：完成/跳过写 meta.onboardingCompleted
+    99              windows::settings::restore_default_settings, // 清单 P3-11：恢复出厂默认（保留 Key/引导/语言）
+   100              windows::onboarding::open_config_guide, // T14 新增：FR-11.4 配置引导（guide 模式复用窗体）
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 3 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 3 页（共 335 页）
 ==============================================================================
-   101              action_router::translate, // T16：面板提交（6.1；FR-11.4 门控+EX-13 单路径）
-   102              action_router::cancel_translation, // T16：显式取消（6.1；Esc 中止，design-spec 3.5）
-   103              action_router::reocr,     // T16：截图换语种重识别（6.1/FR-6.2）
-   104              action_router::send_ocr_to_translate, // T16：截图一键送翻（6.1/FR-6.5）
-   105              windows::translate::panel_hide, // 真机修复轮 2：关闭=隐藏（窗口插件 API 被 ACL 拒绝）
-   106              windows::translate::panel_start_drag, // 真机修复轮 2：顶栏拖拽
-   107              windows::translate::panel_resize_for_content, // 真机修复轮 13：译文内容自适应高度（不持久化）
-   108          ])
-   109          .setup(|app| {
-   110              // 启动序列 1：配置加载（T2 模块；原子写/迁移桩在 config::load_from 内完成）。
-   111              let settings = config::load_from(&config::app_config_dir(app.handle())?)?;
-   112              config::init_global(settings)?;
-   113              // 启动序列 1.5：instance.pid 写入（T15，D7——取启动序列最早可用落点；
-   114              // 失败仅记录：握手属尽力语义，双实例唤起仍可经 EX-12 回调完成，仅焦点保障降级）。
-   115              if let Err(err) =
-   116                  instance::write_pid(&config::app_config_dir(app.handle())?, std::process::id())
-   117              {
-   118                  log::error!(
-   119                      "instance: instance.pid 写入失败（二次启动 D7 握手将无 pid 可用）: {err}"
-   120                  );
-   121              }
-   122              // 启动序列 2：五项热键逐一注册 + EX-7 失败聚合通知（T4）。
-   123              hotkey::init(app.handle())?;
-   124              // 启动序列 2.5：T16 全链路汇聚接线——action_router handler 注入 +
-   125              // 热键/剪贴板/引导完成/框选延续四回调接线（依赖方向 action_router→能力模块，spec 5.4）。
-   126              // 失败阻断启动：热键回调可能于 setup 期间触发，未接线即丢事件属集成不完整。
-   127              action_router::wire(app.handle())?;
-   128              // 启动序列 3：剪贴板监听按持久化开关恢复（T5；失败不阻断启动，仅记录）。
-   129              clipboard_monitor::start_if_enabled(app.handle());
-   130              // 启动序列 4：托盘初始化（T15，spec 5.7.9——七项原生菜单 + 左键=输入翻译 FR-12.2）。
-   131              // 失败阻断启动：托盘是 FR-1.3 常驻形态与「唯一退出路径」的承载，无托盘即无法退出。
-   132              tray::init(app.handle())?;
-   133              // 启动序列 5：translate 暖窗预创建并隐藏（D5/J1；常驻复用，隐藏≠销毁——T11）。
-   134              // 失败阻断启动：无面板窗口应用不可用（spec 5.5 生命周期行）。
-   135              windows::translate::init(app.handle())?;
-   136              // 启动序列 6：首启引导检测（FR-11.1/11.5——onboardingCompleted 与 hasKey 均无效
-   137              // 才显示四步向导；已配置有效配置或已告知跳过后永不自动弹出）。
-   138              // 失败不阻断启动（应用照常常驻；用户可经设置/托盘入口补配，截图识别不受影响）。
-   139              let startup_settings = config::read_global()?;
-   140              if windows::onboarding::should_show_first_run(&startup_settings) {
-   141                  if let Err(err) = windows::onboarding::show_first_run(app.handle()) {
-   142                      log::error!("onboarding: 首启引导显示失败（不阻断启动）: {err}");
-   143                  }
-   144              }
-   145  
-   146              Ok(())
-   147          })
-   148          .build(tauri::generate_context!())
-   149      {
-   150          Ok(app) => app,
+   101              windows::onboarding::finish_onboarding, // T14：完成/跳过写 meta.onboardingCompleted
+   102              action_router::translate, // T16：面板提交（6.1；FR-11.4 门控+EX-13 单路径）
+   103              action_router::cancel_translation, // T16：显式取消（6.1；Esc 中止，design-spec 3.5）
+   104              action_router::reocr,     // T16：截图换语种重识别（6.1/FR-6.2）
+   105              action_router::send_ocr_to_translate, // T16：截图一键送翻（6.1/FR-6.5）
+   106              windows::translate::panel_hide, // 真机修复轮 2：关闭=隐藏（窗口插件 API 被 ACL 拒绝）
+   107              windows::translate::panel_start_drag, // 真机修复轮 2：顶栏拖拽
+   108              windows::translate::panel_resize_for_content, // 真机修复轮 13：译文内容自适应高度（不持久化）
+   109          ])
+   110          .setup(|app| {
+   111              // 启动序列 1：配置加载（T2 模块；原子写/迁移桩在 config::load_from 内完成）。
+   112              let settings = config::load_from(&config::app_config_dir(app.handle())?)?;
+   113              config::init_global(settings)?;
+   114              // 启动序列 1.5：instance.pid 写入（T15，D7——取启动序列最早可用落点；
+   115              // 失败仅记录：握手属尽力语义，双实例唤起仍可经 EX-12 回调完成，仅焦点保障降级）。
+   116              if let Err(err) =
+   117                  instance::write_pid(&config::app_config_dir(app.handle())?, std::process::id())
+   118              {
+   119                  log::error!(
+   120                      "instance: instance.pid 写入失败（二次启动 D7 握手将无 pid 可用）: {err}"
+   121                  );
+   122              }
+   123              // 启动序列 2：五项热键逐一注册 + EX-7 失败聚合通知（T4）。
+   124              hotkey::init(app.handle())?;
+   125              // 启动序列 2.5：T16 全链路汇聚接线——action_router handler 注入 +
+   126              // 热键/剪贴板/引导完成/框选延续四回调接线（依赖方向 action_router→能力模块，spec 5.4）。
+   127              // 失败阻断启动：热键回调可能于 setup 期间触发，未接线即丢事件属集成不完整。
+   128              action_router::wire(app.handle())?;
+   129              // 启动序列 3：剪贴板监听按持久化开关恢复（T5；失败不阻断启动，仅记录）。
+   130              clipboard_monitor::start_if_enabled(app.handle());
+   131              // 启动序列 4：托盘初始化（T15，spec 5.7.9——七项原生菜单 + 左键=输入翻译 FR-12.2）。
+   132              // 失败阻断启动：托盘是 FR-1.3 常驻形态与「唯一退出路径」的承载，无托盘即无法退出。
+   133              tray::init(app.handle())?;
+   134              // 启动序列 5：translate 暖窗预创建并隐藏（D5/J1；常驻复用，隐藏≠销毁——T11）。
+   135              // 失败阻断启动：无面板窗口应用不可用（spec 5.5 生命周期行）。
+   136              windows::translate::init(app.handle())?;
+   137              // 启动序列 6：首启引导检测（FR-11.1/11.5——onboardingCompleted 与 hasKey 均无效
+   138              // 才显示四步向导；已配置有效配置或已告知跳过后永不自动弹出）。
+   139              // 失败不阻断启动（应用照常常驻；用户可经设置/托盘入口补配，截图识别不受影响）。
+   140              let startup_settings = config::read_global()?;
+   141              if windows::onboarding::should_show_first_run(&startup_settings) {
+   142                  if let Err(err) = windows::onboarding::show_first_run(app.handle()) {
+   143                      log::error!("onboarding: 首启引导显示失败（不阻断启动）: {err}");
+   144                  }
+   145              }
+   146  
+   147              Ok(())
+   148          })
+   149          .build(tauri::generate_context!())
+   150      {
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 4 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 4 页（共 335 页）
 ==============================================================================
-   151          Err(err) => {
-   152              eprintln!("alya: 应用启动失败：{err}");
-   153              std::process::exit(1);
-   154          }
-   155      };
-   156  
-   157      app.run(|app, event| {
-   158          // 退出钩子（T15）：`RunEvent::Exit` 尽力清理 instance.pid（D7）。
-   159          // 托盘「退出」路径已在 shutdown 中显式删 pid（删后再 exit(0)，此处幂等兜底——
-   160          // 覆盖 taskkill 之外的任何正常退出/异常退出事件序列）。热键/监听清理由托盘路径执行。
-   161          if let tauri::RunEvent::Exit = event {
-   162              match config::app_config_dir(app).and_then(|dir| instance::remove_pid(&dir)) {
-   163                  Ok(()) => log::debug!("instance: 退出清理完成（instance.pid 已移除）"),
-   164                  Err(err) => log::warn!("instance: 退出清理 instance.pid 失败: {err}"),
-   165              }
-   166          }
-   167      });
-   168  }
-   169  // ==================== src-tauri/src/action_router.rs ====================
-   170  //! action_router：五动作统一入口与全链路汇聚（T16 完整实现；spec 5.4/5.6/7.2、FR-11.4、5.7.3）。
-   171  //!
-   172  //! 依赖方向：action_router → 各能力模块（selection/clipboard_monitor/ocr/capture/translate/windows）
-   173  //! → config/events；禁止反向、禁止模块间绕过本模块直接触发翻译（EX-13 顶替只有 service 一条路径）。
-   174  //!
-   175  //! 汇聚入口（全部经 `dispatch` 或本模块命令）：
-   176  //! - 热键（hotkey 回调注入）、托盘菜单/左键（tray）、单实例回调（lib.rs）→ `dispatch(Action)`；
-   177  //! - 剪贴板监听（ClipboardTranslateTrigger 注入）→ `clipboard_translate`（挂起/门控同径）；
-   178  //! - 框选确认延续（mask `SelectionCompletedHandler` 注入）→ `continue_ocr_flow`（识别/送翻分路）；
-   179  //! - 面板提交（`translate` / `send_ocr_to_translate` 命令）→ 本模块门控后进 service（EX-13 单路径）。
-   180  //!
-   181  //! 前置检查链（spec 5.6.1②a / FR-11.4）：
-   182  //! 1. onboarding 可见 → 动作入**挂起队列**（容量 1、易失——进程内 Mutex，重启即丢），流程终止；
-   183  //! 2. `hasKey==false`（翻译类入口）→ 不发起网络请求、打开引导窗 guide 模式、动作挂起（FR-3.4/4.4/7.3）；
-   184  //! 3. 框选期（截图触发）→ 面板强制隐藏（spec 5.7.3）；引导可见期间面板压制（挂起不弹）。
-   185  //!
-   186  //! 挂起恢复（FR-11.4）：`GuideFinishedHandler`（onboarding guide 完成/跳过）→ 取队列：
-   187  //! - `hasKey==true` → 自动继续执行该动作（按动作语义恢复：已取词直接弹板送翻 / 未取词重新取词 /
-   188  //!   输入直接弹板 / OCR 已识别直接展示+送翻 / 未框选重新框选）；
-   189  //! - `hasKey==false` → 丢弃并系统通知（FR-11.3 跳过路径）。
-   190  //!
-   191  //! 7.2 性能打点：三处打点（hotkey_received / selection_done / panel_visible）位于各自模块；
-   192  //! 本模块在 dispatch 首尾输出分段汇总日志（Debug 级，dev 构建开启——spec 7.4 发布默认关）。
-   193  //!
-   194  //! 锁序：本模块仅有队列/OCR 上下文本模块自锁（短临界区），不嵌套 config/sessions 锁；
-   195  //! 持有本模块锁期间不得调用任何可能重入本模块或长时间阻塞的接口（enqueue 仅变更内存态）。
-   196  
-   197  use std::collections::HashMap;
-   198  use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
-   199  use std::time::Instant;
-   200  
+   151          Ok(app) => app,
+   152          Err(err) => {
+   153              eprintln!("alya: 应用启动失败：{err}");
+   154              std::process::exit(1);
+   155          }
+   156      };
+   157  
+   158      app.run(|app, event| {
+   159          // 退出钩子（T15）：`RunEvent::Exit` 尽力清理 instance.pid（D7）。
+   160          // 托盘「退出」路径已在 shutdown 中显式删 pid（删后再 exit(0)，此处幂等兜底——
+   161          // 覆盖 taskkill 之外的任何正常退出/异常退出事件序列）。热键/监听清理由托盘路径执行。
+   162          if let tauri::RunEvent::Exit = event {
+   163              match config::app_config_dir(app).and_then(|dir| instance::remove_pid(&dir)) {
+   164                  Ok(()) => log::debug!("instance: 退出清理完成（instance.pid 已移除）"),
+   165                  Err(err) => log::warn!("instance: 退出清理 instance.pid 失败: {err}"),
+   166              }
+   167          }
+   168      });
+   169  }
+   170  // ==================== src-tauri/src/action_router.rs ====================
+   171  //! action_router：五动作统一入口与全链路汇聚（T16 完整实现；spec 5.4/5.6/7.2、FR-11.4、5.7.3）。
+   172  //!
+   173  //! 依赖方向：action_router → 各能力模块（selection/clipboard_monitor/ocr/capture/translate/windows）
+   174  //! → config/events；禁止反向、禁止模块间绕过本模块直接触发翻译（EX-13 顶替只有 service 一条路径）。
+   175  //!
+   176  //! 汇聚入口（全部经 `dispatch` 或本模块命令）：
+   177  //! - 热键（hotkey 回调注入）、托盘菜单/左键（tray）、单实例回调（lib.rs）→ `dispatch(Action)`；
+   178  //! - 剪贴板监听（ClipboardTranslateTrigger 注入）→ `clipboard_translate`（挂起/门控同径）；
+   179  //! - 框选确认延续（mask `SelectionCompletedHandler` 注入）→ `continue_ocr_flow`（识别/送翻分路）；
+   180  //! - 面板提交（`translate` / `send_ocr_to_translate` 命令）→ 本模块门控后进 service（EX-13 单路径）。
+   181  //!
+   182  //! 前置检查链（spec 5.6.1②a / FR-11.4）：
+   183  //! 1. onboarding 可见 → 动作入**挂起队列**（容量 1、易失——进程内 Mutex，重启即丢），流程终止；
+   184  //! 2. `hasKey==false`（翻译类入口）→ 不发起网络请求、打开引导窗 guide 模式、动作挂起（FR-3.4/4.4/7.3）；
+   185  //! 3. 框选期（截图触发）→ 面板强制隐藏（spec 5.7.3）；引导可见期间面板压制（挂起不弹）。
+   186  //!
+   187  //! 挂起恢复（FR-11.4）：`GuideFinishedHandler`（onboarding guide 完成/跳过）→ 取队列：
+   188  //! - `hasKey==true` → 自动继续执行该动作（按动作语义恢复：已取词直接弹板送翻 / 未取词重新取词 /
+   189  //!   输入直接弹板 / OCR 已识别直接展示+送翻 / 未框选重新框选）；
+   190  //! - `hasKey==false` → 丢弃并系统通知（FR-11.3 跳过路径）。
+   191  //!
+   192  //! 7.2 性能打点：三处打点（hotkey_received / selection_done / panel_visible）位于各自模块；
+   193  //! 本模块在 dispatch 首尾输出分段汇总日志（Debug 级，dev 构建开启——spec 7.4 发布默认关）。
+   194  //!
+   195  //! 锁序：本模块仅有队列/OCR 上下文本模块自锁（短临界区），不嵌套 config/sessions 锁；
+   196  //! 持有本模块锁期间不得调用任何可能重入本模块或长时间阻塞的接口（enqueue 仅变更内存态）。
+   197  
+   198  use std::collections::HashMap;
+   199  use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
+   200  use std::time::Instant;
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 5 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 5 页（共 335 页）
 ==============================================================================
-   201  use tauri::{AppHandle, Emitter, Manager};
-   202  use tauri_plugin_notification::NotificationExt;
-   203  
-   204  use crate::capture;
-   205  use crate::clipboard_monitor;
-   206  use crate::config;
-   207  use crate::error::AppError;
-   208  use crate::events::{
-   209      OcrResultPayload, PanelMode, PanelShowPayload, ReocrResult, SelectionClosedPayload,
-   210      TranslateResult, TranslateSource, EVENT_OCR_RESULT, EVENT_SELECTION_CLOSED,
-   211      WINDOW_TRANSLATE_LABEL,
-   212  };
-   213  use crate::hotkey::{self, HotkeyAction};
-   214  use crate::ocr::{self, OcrLang};
-   215  use crate::translate::sse::SseTranslateExecutor;
-   216  use crate::windows;
-   217  
-   218  /// 五动作（与 spec 5.4 / T4 `HotkeyAction` 一一对应；名称即入口语义）。
-   219  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-   220  pub enum Action {
-   221      SelectionTranslate,
-   222      InputTranslate,
-   223      OcrRecognize,
-   224      OcrTranslate,
-   225      ToggleScene,
-   226  }
-   227  
-   228  impl From<HotkeyAction> for Action {
-   229      fn from(value: HotkeyAction) -> Self {
-   230          match value {
-   231              HotkeyAction::SelectionTranslate => Action::SelectionTranslate,
-   232              HotkeyAction::InputTranslate => Action::InputTranslate,
-   233              HotkeyAction::OcrRecognize => Action::OcrRecognize,
-   234              HotkeyAction::OcrTranslate => Action::OcrTranslate,
-   235              HotkeyAction::ToggleScene => Action::ToggleScene,
-   236          }
-   237      }
-   238  }
-   239  
-   240  /// 截图链路类型（框选会话从属：识别 / 识别后自动送翻）。
-   241  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-   242  pub enum OcrKind {
-   243      Recognize,
-   244      Translate,
-   245  }
-   246  
-   247  /// 动作 → 链路计划（纯函数；`dispatch` 按此路由——单测覆盖五入口分发权威表）。
-   248  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-   249  pub enum Flow {
-   250      /// 取词 → 面板（划词；剪贴板文本直接走面板，不重复取词）。
+   201  
+   202  use tauri::{AppHandle, Emitter, Manager};
+   203  use tauri_plugin_notification::NotificationExt;
+   204  
+   205  use crate::capture;
+   206  use crate::clipboard_monitor;
+   207  use crate::config;
+   208  use crate::error::AppError;
+   209  use crate::events::{
+   210      OcrResultPayload, PanelMode, PanelShowPayload, ReocrResult, SelectionClosedPayload,
+   211      TranslateResult, TranslateSource, EVENT_OCR_RESULT, EVENT_SELECTION_CLOSED,
+   212      WINDOW_TRANSLATE_LABEL,
+   213  };
+   214  use crate::hotkey::{self, HotkeyAction};
+   215  use crate::ocr::{self, OcrLang};
+   216  use crate::translate::sse::SseTranslateExecutor;
+   217  use crate::windows;
+   218  
+   219  /// 五动作（与 spec 5.4 / T4 `HotkeyAction` 一一对应；名称即入口语义）。
+   220  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+   221  pub enum Action {
+   222      SelectionTranslate,
+   223      InputTranslate,
+   224      OcrRecognize,
+   225      OcrTranslate,
+   226      ToggleScene,
+   227  }
+   228  
+   229  impl From<HotkeyAction> for Action {
+   230      fn from(value: HotkeyAction) -> Self {
+   231          match value {
+   232              HotkeyAction::SelectionTranslate => Action::SelectionTranslate,
+   233              HotkeyAction::InputTranslate => Action::InputTranslate,
+   234              HotkeyAction::OcrRecognize => Action::OcrRecognize,
+   235              HotkeyAction::OcrTranslate => Action::OcrTranslate,
+   236              HotkeyAction::ToggleScene => Action::ToggleScene,
+   237          }
+   238      }
+   239  }
+   240  
+   241  /// 截图链路类型（框选会话从属：识别 / 识别后自动送翻）。
+   242  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+   243  pub enum OcrKind {
+   244      Recognize,
+   245      Translate,
+   246  }
+   247  
+   248  /// 动作 → 链路计划（纯函数；`dispatch` 按此路由——单测覆盖五入口分发权威表）。
+   249  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+   250  pub enum Flow {
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 6 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 6 页（共 335 页）
 ==============================================================================
-   251      Selection,
-   252      /// 面板输入形态。
-   253      Input,
-   254      /// 截图框选（含识别/自动送翻分路）。
-   255      Capture(OcrKind),
-   256      /// 场景切换（写 config + 广播，INV-8）。
-   257      ToggleScene,
-   258  }
-   259  
-   260  pub fn flow_of(action: Action) -> Flow {
-   261      match action {
-   262          Action::SelectionTranslate => Flow::Selection,
-   263          Action::InputTranslate => Flow::Input,
-   264          Action::OcrRecognize => Flow::Capture(OcrKind::Recognize),
-   265          Action::OcrTranslate => Flow::Capture(OcrKind::Translate),
-   266          Action::ToggleScene => Flow::ToggleScene,
-   267      }
-   268  }
-   269  
-   270  // ---------------------------------------------------------------------------
-   271  // 挂起队列（FR-11.4：容量 1、易失、重启丢弃——进程内 Mutex<Option<..>>）
-   272  // ---------------------------------------------------------------------------
-   273  
-   274  /// 挂起动作语义（恢复时的执行方式；与 `Action` 解耦——同一动作可能挂起于不同阶段）。
-   275  #[derive(Debug, Clone, PartialEq, Eq)]
-   276  pub enum PendingKind {
-   277      /// 划词翻译：`Some(text)`＝取词已完成（恢复直接弹板送翻）；`None`＝挂起于取词前（恢复重新取词）。
-   278      Selection { text: Option<String> },
-   279      /// 输入翻译：恢复直接弹出输入面板。
-   280      Input,
-   281      /// 剪贴板自动翻译：文本已捕获（恢复直接弹板自动送翻）。
-   282      Clipboard(String),
-   283      /// 截图识别：挂起于框选前（恢复重新发起框选）。
-   284      OcrRecognize,
-   285      /// 截图翻译：挂起于框选前（OcrRecognize 语义同）或 OCR 已完成后（带文本/会话：恢复直接送翻）。
-   286      OcrTranslate {
-   287          text: Option<String>,
-   288          session_id: Option<String>,
-   289      },
-   290  }
-   291  
-   292  #[derive(Debug, Clone, PartialEq)]
-   293  pub struct PendingAction {
-   294      pub kind: PendingKind,
-   295  }
-   296  
-   297  impl PendingAction {
-   298      pub fn new(kind: PendingKind) -> Self {
-   299          PendingAction { kind }
-   300      }
+   251      /// 取词 → 面板（划词；剪贴板文本直接走面板，不重复取词）。
+   252      Selection,
+   253      /// 面板输入形态。
+   254      Input,
+   255      /// 截图框选（含识别/自动送翻分路）。
+   256      Capture(OcrKind),
+   257      /// 场景切换（写 config + 广播，INV-8）。
+   258      ToggleScene,
+   259  }
+   260  
+   261  pub fn flow_of(action: Action) -> Flow {
+   262      match action {
+   263          Action::SelectionTranslate => Flow::Selection,
+   264          Action::InputTranslate => Flow::Input,
+   265          Action::OcrRecognize => Flow::Capture(OcrKind::Recognize),
+   266          Action::OcrTranslate => Flow::Capture(OcrKind::Translate),
+   267          Action::ToggleScene => Flow::ToggleScene,
+   268      }
+   269  }
+   270  
+   271  // ---------------------------------------------------------------------------
+   272  // 挂起队列（FR-11.4：容量 1、易失、重启丢弃——进程内 Mutex<Option<..>>）
+   273  // ---------------------------------------------------------------------------
+   274  
+   275  /// 挂起动作语义（恢复时的执行方式；与 `Action` 解耦——同一动作可能挂起于不同阶段）。
+   276  #[derive(Debug, Clone, PartialEq, Eq)]
+   277  pub enum PendingKind {
+   278      /// 划词翻译：`Some(text)`＝取词已完成（恢复直接弹板送翻）；`None`＝挂起于取词前（恢复重新取词）。
+   279      Selection { text: Option<String> },
+   280      /// 输入翻译：恢复直接弹出输入面板。
+   281      Input,
+   282      /// 剪贴板自动翻译：文本已捕获（恢复直接弹板自动送翻）。
+   283      Clipboard(String),
+   284      /// 截图识别：挂起于框选前（恢复重新发起框选）。
+   285      OcrRecognize,
+   286      /// 截图翻译：挂起于框选前（OcrRecognize 语义同）或 OCR 已完成后（带文本/会话：恢复直接送翻）。
+   287      OcrTranslate {
+   288          text: Option<String>,
+   289          session_id: Option<String>,
+   290      },
+   291  }
+   292  
+   293  #[derive(Debug, Clone, PartialEq)]
+   294  pub struct PendingAction {
+   295      pub kind: PendingKind,
+   296  }
+   297  
+   298  impl PendingAction {
+   299      pub fn new(kind: PendingKind) -> Self {
+   300          PendingAction { kind }
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 7 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 7 页（共 335 页）
 ==============================================================================
-   301  }
-   302  
-   303  /// 挂起队列（容量 1；last-wins——最新触发覆盖旧挂起，与 EX-13「仅呈现最新一轮」同语义）。
-   304  #[derive(Debug, Default)]
-   305  pub struct PendingQueue {
-   306      inner: Mutex<Option<PendingAction>>,
-   307  }
-   308  
-   309  impl PendingQueue {
-   310      pub fn new() -> Self {
-   311          PendingQueue::default()
-   312      }
-   313  
-   314      pub fn len(&self) -> usize {
-   315          self.lock()
-   316              .map(|guard| usize::from(guard.is_some()))
-   317              .unwrap_or(0)
-   318      }
-   319  
-   320      pub fn is_empty(&self) -> bool {
-   321          self.len() == 0
-   322      }
-   323  
-   324      /// 入队（容量 1：占用时替换——最新一次触发优先）。
-   325      pub fn enqueue(&self, action: PendingAction) {
-   326          let mut guard = self.lock_guard();
-   327          if let Some(old) = guard.as_ref() {
-   328              log::debug!(
-   329                  "action_router: 挂起队列容量 1，替换旧动作（{:?} → {:?}）",
-   330                  old.kind,
-   331                  action.kind
-   332              );
-   333          }
-   334          log::debug!("action_router: 翻译动作已挂起（{:?}）", action.kind);
-   335          *guard = Some(action);
-   336      }
-   337  
-   338      /// 取走挂起动作（恢复/丢弃后队列即空；重启＝新进程空队列，天然丢弃）。
-   339      pub fn take(&self) -> Option<PendingAction> {
-   340          self.lock_guard().take()
-   341      }
-   342  
-   343      /// 只读观察（诊断/测试）。
-   344      pub fn peek(&self) -> Option<PendingAction> {
-   345          self.lock_guard().clone()
-   346      }
-   347  
-   348      fn lock_guard(&self) -> MutexGuard<'_, Option<PendingAction>> {
-   349          self.inner
-   350              .lock()
+   301      }
+   302  }
+   303  
+   304  /// 挂起队列（容量 1；last-wins——最新触发覆盖旧挂起，与 EX-13「仅呈现最新一轮」同语义）。
+   305  #[derive(Debug, Default)]
+   306  pub struct PendingQueue {
+   307      inner: Mutex<Option<PendingAction>>,
+   308  }
+   309  
+   310  impl PendingQueue {
+   311      pub fn new() -> Self {
+   312          PendingQueue::default()
+   313      }
+   314  
+   315      pub fn len(&self) -> usize {
+   316          self.lock()
+   317              .map(|guard| usize::from(guard.is_some()))
+   318              .unwrap_or(0)
+   319      }
+   320  
+   321      pub fn is_empty(&self) -> bool {
+   322          self.len() == 0
+   323      }
+   324  
+   325      /// 入队（容量 1：占用时替换——最新一次触发优先）。
+   326      pub fn enqueue(&self, action: PendingAction) {
+   327          let mut guard = self.lock_guard();
+   328          if let Some(old) = guard.as_ref() {
+   329              log::debug!(
+   330                  "action_router: 挂起队列容量 1，替换旧动作（{:?} → {:?}）",
+   331                  old.kind,
+   332                  action.kind
+   333              );
+   334          }
+   335          log::debug!("action_router: 翻译动作已挂起（{:?}）", action.kind);
+   336          *guard = Some(action);
+   337      }
+   338  
+   339      /// 取走挂起动作（恢复/丢弃后队列即空；重启＝新进程空队列，天然丢弃）。
+   340      pub fn take(&self) -> Option<PendingAction> {
+   341          self.lock_guard().take()
+   342      }
+   343  
+   344      /// 只读观察（诊断/测试）。
+   345      pub fn peek(&self) -> Option<PendingAction> {
+   346          self.lock_guard().clone()
+   347      }
+   348  
+   349      fn lock_guard(&self) -> MutexGuard<'_, Option<PendingAction>> {
+   350          self.inner
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 8 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 8 页（共 335 页）
 ==============================================================================
-   351              .unwrap_or_else(|poisoned| poisoned.into_inner())
-   352      }
-   353  
-   354      fn lock(&self) -> Option<MutexGuard<'_, Option<PendingAction>>> {
-   355          self.inner.lock().ok()
-   356      }
-   357  }
-   358  
-   359  static PENDING: OnceLock<PendingQueue> = OnceLock::new();
-   360  
-   361  /// 全局挂起队列（进程内单份，易失态——spec 6.3 分离表）。
-   362  pub fn pending_queue() -> &'static PendingQueue {
-   363      PENDING.get_or_init(PendingQueue::new)
-   364  }
-   365  
-   366  fn enqueue(kind: PendingKind) {
-   367      pending_queue().enqueue(PendingAction::new(kind));
-   368  }
-   369  
-   370  // ---------------------------------------------------------------------------
-   371  // OCR 上下文（框选会话 → 类型/语种/文本；会话属易失态，随新会话替换）
-   372  // ---------------------------------------------------------------------------
-   373  
-   374  #[derive(Debug, Clone, PartialEq)]
-   375  struct OcrContext {
-   376      kind: OcrKind,
-   377      lang: String,
-   378      text: Option<String>,
-   379  }
-   380  
-   381  static OCR_CONTEXTS: OnceLock<Mutex<HashMap<String, OcrContext>>> = OnceLock::new();
-   382  
-   383  fn ocr_contexts() -> &'static Mutex<HashMap<String, OcrContext>> {
-   384      OCR_CONTEXTS.get_or_init(|| Mutex::new(HashMap::new()))
-   385  }
-   386  
-   387  fn register_ocr_context(session_id: &str, context: OcrContext) {
-   388      let mut map = ocr_contexts()
-   389          .lock()
-   390          .unwrap_or_else(|poisoned| poisoned.into_inner());
-   391      log::debug!(
-   392          "action_router: 框选会话 {session_id} 上下文已登记（kind={:?}, lang={}）",
-   393          context.kind,
-   394          context.lang
-   395      );
-   396      map.insert(session_id.to_string(), context);
-   397  }
-   398  
-   399  /// 清理会话上下文（新框选替换 / 会话关闭时调用）。
-   400  pub fn clear_ocr_context(session_id: &str) {
+   351              .lock()
+   352              .unwrap_or_else(|poisoned| poisoned.into_inner())
+   353      }
+   354  
+   355      fn lock(&self) -> Option<MutexGuard<'_, Option<PendingAction>>> {
+   356          self.inner.lock().ok()
+   357      }
+   358  }
+   359  
+   360  static PENDING: OnceLock<PendingQueue> = OnceLock::new();
+   361  
+   362  /// 全局挂起队列（进程内单份，易失态——spec 6.3 分离表）。
+   363  pub fn pending_queue() -> &'static PendingQueue {
+   364      PENDING.get_or_init(PendingQueue::new)
+   365  }
+   366  
+   367  fn enqueue(kind: PendingKind) {
+   368      pending_queue().enqueue(PendingAction::new(kind));
+   369  }
+   370  
+   371  // ---------------------------------------------------------------------------
+   372  // OCR 上下文（框选会话 → 类型/语种/文本；会话属易失态，随新会话替换）
+   373  // ---------------------------------------------------------------------------
+   374  
+   375  #[derive(Debug, Clone, PartialEq)]
+   376  struct OcrContext {
+   377      kind: OcrKind,
+   378      lang: String,
+   379      text: Option<String>,
+   380  }
+   381  
+   382  static OCR_CONTEXTS: OnceLock<Mutex<HashMap<String, OcrContext>>> = OnceLock::new();
+   383  
+   384  fn ocr_contexts() -> &'static Mutex<HashMap<String, OcrContext>> {
+   385      OCR_CONTEXTS.get_or_init(|| Mutex::new(HashMap::new()))
+   386  }
+   387  
+   388  fn register_ocr_context(session_id: &str, context: OcrContext) {
+   389      let mut map = ocr_contexts()
+   390          .lock()
+   391          .unwrap_or_else(|poisoned| poisoned.into_inner());
+   392      log::debug!(
+   393          "action_router: 框选会话 {session_id} 上下文已登记（kind={:?}, lang={}）",
+   394          context.kind,
+   395          context.lang
+   396      );
+   397      map.insert(session_id.to_string(), context);
+   398  }
+   399  
+   400  /// 清理会话上下文（新框选替换 / 会话关闭时调用）。
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 9 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 9 页（共 335 页）
 ==============================================================================
-   401      let mut map = ocr_contexts()
-   402          .lock()
-   403          .unwrap_or_else(|poisoned| poisoned.into_inner());
-   404      if map.remove(session_id).is_some() {
-   405          log::debug!("action_router: 框选会话 {session_id} 上下文已释放");
-   406      }
-   407  }
-   408  
-   409  fn ocr_context_of(session_id: &str) -> Option<OcrContext> {
-   410      let map = ocr_contexts()
-   411          .lock()
-   412          .unwrap_or_else(|poisoned| poisoned.into_inner());
-   413      map.get(session_id).cloned()
-   414  }
-   415  
-   416  fn ocr_text_of(session_id: &str) -> Option<String> {
-   417      ocr_context_of(session_id).and_then(|ctx| ctx.text)
-   418  }
-   419  
-   420  /// 更新会话语种/文本（reocr 与识别完成后调用）。
-   421  fn update_ocr_text_and_lang(session_id: &str, lang: String, text: String) {
-   422      let mut map = ocr_contexts()
-   423          .lock()
-   424          .unwrap_or_else(|poisoned| poisoned.into_inner());
-   425      if let Some(ctx) = map.get_mut(session_id) {
-   426          ctx.lang = lang;
-   427          ctx.text = Some(text);
-   428      }
-   429  }
-   430  
-   431  // ---------------------------------------------------------------------------
-   432  // 门控与恢复决策（纯函数，随任务单测）
-   433  // ---------------------------------------------------------------------------
-   434  
-   435  /// 前置检查链决策（spec 5.6.1②a / FR-11.4）：
-   436  /// onboarding 可见 → 挂起（去引导）；否则翻译类且无 Key → 挂起 + 弹配置引导；否则放行。
-   437  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-   438  pub enum GateDecision {
-   439      Proceed,
-   440      SuspendForOnboarding,
-   441      SuspendForGuide,
-   442  }
-   443  
-   444  pub fn decide_entry(onboarding_visible: bool, needs_key: bool, has_key: bool) -> GateDecision {
-   445      if onboarding_visible {
-   446          GateDecision::SuspendForOnboarding
-   447      } else if needs_key && !has_key {
-   448          GateDecision::SuspendForGuide
-   449      } else {
-   450          GateDecision::Proceed
+   401  pub fn clear_ocr_context(session_id: &str) {
+   402      let mut map = ocr_contexts()
+   403          .lock()
+   404          .unwrap_or_else(|poisoned| poisoned.into_inner());
+   405      if map.remove(session_id).is_some() {
+   406          log::debug!("action_router: 框选会话 {session_id} 上下文已释放");
+   407      }
+   408  }
+   409  
+   410  fn ocr_context_of(session_id: &str) -> Option<OcrContext> {
+   411      let map = ocr_contexts()
+   412          .lock()
+   413          .unwrap_or_else(|poisoned| poisoned.into_inner());
+   414      map.get(session_id).cloned()
+   415  }
+   416  
+   417  fn ocr_text_of(session_id: &str) -> Option<String> {
+   418      ocr_context_of(session_id).and_then(|ctx| ctx.text)
+   419  }
+   420  
+   421  /// 更新会话语种/文本（reocr 与识别完成后调用）。
+   422  fn update_ocr_text_and_lang(session_id: &str, lang: String, text: String) {
+   423      let mut map = ocr_contexts()
+   424          .lock()
+   425          .unwrap_or_else(|poisoned| poisoned.into_inner());
+   426      if let Some(ctx) = map.get_mut(session_id) {
+   427          ctx.lang = lang;
+   428          ctx.text = Some(text);
+   429      }
+   430  }
+   431  
+   432  // ---------------------------------------------------------------------------
+   433  // 门控与恢复决策（纯函数，随任务单测）
+   434  // ---------------------------------------------------------------------------
+   435  
+   436  /// 前置检查链决策（spec 5.6.1②a / FR-11.4）：
+   437  /// onboarding 可见 → 挂起（去引导）；否则翻译类且无 Key → 挂起 + 弹配置引导；否则放行。
+   438  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+   439  pub enum GateDecision {
+   440      Proceed,
+   441      SuspendForOnboarding,
+   442      SuspendForGuide,
+   443  }
+   444  
+   445  pub fn decide_entry(onboarding_visible: bool, needs_key: bool, has_key: bool) -> GateDecision {
+   446      if onboarding_visible {
+   447          GateDecision::SuspendForOnboarding
+   448      } else if needs_key && !has_key {
+   449          GateDecision::SuspendForGuide
+   450      } else {
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 10 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 10 页（共 335 页）
 ==============================================================================
-   451      }
-   452  }
-   453  
-   454  /// 补配恢复决策（FR-11.4）：无挂起无事；有挂起且已有 Key → 继续执行；无 Key（跳过/清空）→ 丢弃。
-   455  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-   456  pub enum ResumeDecision {
-   457      Nothing,
-   458      Discard,
-   459      Continue,
-   460  }
-   461  
-   462  pub fn decide_resume(pending_exists: bool, has_key: bool) -> ResumeDecision {
-   463      if !pending_exists {
-   464          ResumeDecision::Nothing
-   465      } else if has_key {
-   466          ResumeDecision::Continue
-   467      } else {
-   468          ResumeDecision::Discard
-   469      }
-   470  }
-   471  
-   472  // ---------------------------------------------------------------------------
-   473  // 动作分发（唯一入口；T16 完整 handler 由 wire() 注入）
-   474  // ---------------------------------------------------------------------------
-   475  
-   476  /// 动作分发回调注入接口（T16 用完整 action_router 实现并 `set_action_handler` 注入；
-   477  /// 未注入时经 minimal 直通——见最小直通段注释，生产路径无此形态）。
-   478  pub trait ActionHandler: Send + Sync + 'static {
-   479      fn dispatch(&self, app: &AppHandle, action: Action);
-   480  }
-   481  
-   482  static HANDLER: std::sync::OnceLock<Box<dyn ActionHandler>> = std::sync::OnceLock::new();
-   483  
-   484  /// 注入完整 handler（仅一次；重复注入拒绝，防多源接线）。
-   485  pub fn set_action_handler(handler: Box<dyn ActionHandler>) -> Result<(), AppError> {
-   486      HANDLER
-   487          .set(handler)
-   488          .map_err(|_| AppError::Config("action_router: handler 重复注入".to_string()))
-   489  }
-   490  
-   491  /// 五动作唯一入口（热键/托盘/单实例回调均经此）。
-   492  pub fn dispatch(app: &AppHandle, action: Action) {
-   493      let started = Instant::now();
-   494      log::debug!("action_router: dispatch 起始（{action:?}）");
-   495      match HANDLER.get() {
-   496          Some(handler) => handler.dispatch(app, action),
-   497          None => {
-   498              log::error!("action_router: handler 未注入（T16 wire 未执行），走 minimal 直通");
-   499              minimal_dispatch(app, action);
-   500          }
+   451          GateDecision::Proceed
+   452      }
+   453  }
+   454  
+   455  /// 补配恢复决策（FR-11.4）：无挂起无事；有挂起且已有 Key → 继续执行；无 Key（跳过/清空）→ 丢弃。
+   456  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+   457  pub enum ResumeDecision {
+   458      Nothing,
+   459      Discard,
+   460      Continue,
+   461  }
+   462  
+   463  pub fn decide_resume(pending_exists: bool, has_key: bool) -> ResumeDecision {
+   464      if !pending_exists {
+   465          ResumeDecision::Nothing
+   466      } else if has_key {
+   467          ResumeDecision::Continue
+   468      } else {
+   469          ResumeDecision::Discard
+   470      }
+   471  }
+   472  
+   473  // ---------------------------------------------------------------------------
+   474  // 动作分发（唯一入口；T16 完整 handler 由 wire() 注入）
+   475  // ---------------------------------------------------------------------------
+   476  
+   477  /// 动作分发回调注入接口（T16 用完整 action_router 实现并 `set_action_handler` 注入；
+   478  /// 未注入时经 minimal 直通——见最小直通段注释，生产路径无此形态）。
+   479  pub trait ActionHandler: Send + Sync + 'static {
+   480      fn dispatch(&self, app: &AppHandle, action: Action);
+   481  }
+   482  
+   483  static HANDLER: std::sync::OnceLock<Box<dyn ActionHandler>> = std::sync::OnceLock::new();
+   484  
+   485  /// 注入完整 handler（仅一次；重复注入拒绝，防多源接线）。
+   486  pub fn set_action_handler(handler: Box<dyn ActionHandler>) -> Result<(), AppError> {
+   487      HANDLER
+   488          .set(handler)
+   489          .map_err(|_| AppError::Config("action_router: handler 重复注入".to_string()))
+   490  }
+   491  
+   492  /// 五动作唯一入口（热键/托盘/单实例回调均经此）。
+   493  pub fn dispatch(app: &AppHandle, action: Action) {
+   494      let started = Instant::now();
+   495      log::debug!("action_router: dispatch 起始（{action:?}）");
+   496      match HANDLER.get() {
+   497          Some(handler) => handler.dispatch(app, action),
+   498          None => {
+   499              log::error!("action_router: handler 未注入（T16 wire 未执行），走 minimal 直通");
+   500              minimal_dispatch(app, action);
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 11 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 11 页（共 335 页）
 ==============================================================================
-   501      }
-   502      log::debug!(
-   503          "action_router: dispatch 完毕（{action:?}，{} ms）",
-   504          started.elapsed().as_millis()
-   505      );
-   506  }
-   507  
-   508  // ---------------------------------------------------------------------------
-   509  // T16 完整实现：Router（ActionHandler）
-   510  // ---------------------------------------------------------------------------
-   511  
-   512  /// 完整路由器：按 flow_of 路由五动作并执行前置检查链（AppHandle 随回调传参，无自有状态）。
-   513  struct Router;
-   514  
-   515  impl ActionHandler for Router {
-   516      fn dispatch(&self, app: &AppHandle, action: Action) {
-   517          match flow_of(action) {
-   518              Flow::Selection => self.selection_translate(app),
-   519              Flow::Input => self.input_translate(app),
-   520              Flow::Capture(kind) => self.ocr_start(app, kind),
-   521              Flow::ToggleScene => self.toggle_scene(app),
-   522          }
-   523      }
-   524  }
-   525  
-   526  impl Router {
-   527      /// 划词翻译（spec 5.6.1）：onboarding 挂起 → 取词 → hasKey 门控 → 面板（前端自动送翻）。
-   528      fn selection_translate(&self, app: &AppHandle) {
-   529          if onboarding_visible(app) {
-   530              enqueue(PendingKind::Selection { text: None });
-   531              return;
-   532          }
-   533          // 取词（INV-5：全程不显示/聚焦 Alya 窗口；EX-9/EX-10 通知在模块内完成）。
-   534          let text = match crate::selection::run_selection(app) {
-   535              Ok(text) => text,
-   536              Err(_) => return,
-   537          };
-   538          if !has_key_now() {
-   539              enqueue(PendingKind::Selection {
-   540                  text: Some(text.clone()),
-   541              });
-   542              if let Err(err) = open_guide_for(app) {
-   543                  log::error!("action_router: 划词翻译弹配置引导失败: {err}");
-   544              }
-   545              return;
-   546          }
-   547          fail_log(
-   548              "划词翻译",
-   549              show_panel(app, PanelMode::Selection, Some(text), None),
-   550          );
+   501          }
+   502      }
+   503      log::debug!(
+   504          "action_router: dispatch 完毕（{action:?}，{} ms）",
+   505          started.elapsed().as_millis()
+   506      );
+   507  }
+   508  
+   509  // ---------------------------------------------------------------------------
+   510  // T16 完整实现：Router（ActionHandler）
+   511  // ---------------------------------------------------------------------------
+   512  
+   513  /// 完整路由器：按 flow_of 路由五动作并执行前置检查链（AppHandle 随回调传参，无自有状态）。
+   514  struct Router;
+   515  
+   516  impl ActionHandler for Router {
+   517      fn dispatch(&self, app: &AppHandle, action: Action) {
+   518          match flow_of(action) {
+   519              Flow::Selection => self.selection_translate(app),
+   520              Flow::Input => self.input_translate(app),
+   521              Flow::Capture(kind) => self.ocr_start(app, kind),
+   522              Flow::ToggleScene => self.toggle_scene(app),
+   523          }
+   524      }
+   525  }
+   526  
+   527  impl Router {
+   528      /// 划词翻译（spec 5.6.1）：onboarding 挂起 → 取词 → hasKey 门控 → 面板（前端自动送翻）。
+   529      fn selection_translate(&self, app: &AppHandle) {
+   530          if onboarding_visible(app) {
+   531              enqueue(PendingKind::Selection { text: None });
+   532              return;
+   533          }
+   534          // 取词（INV-5：全程不显示/聚焦 Alya 窗口；EX-9/EX-10 通知在模块内完成）。
+   535          let text = match crate::selection::run_selection(app) {
+   536              Ok(text) => text,
+   537              Err(_) => return,
+   538          };
+   539          if !has_key_now() {
+   540              enqueue(PendingKind::Selection {
+   541                  text: Some(text.clone()),
+   542              });
+   543              if let Err(err) = open_guide_for(app) {
+   544                  log::error!("action_router: 划词翻译弹配置引导失败: {err}");
+   545              }
+   546              return;
+   547          }
+   548          fail_log(
+   549              "划词翻译",
+   550              show_panel(app, PanelMode::Selection, Some(text), None),
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 12 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 12 页（共 335 页）
 ==============================================================================
-   551      }
-   552  
-   553      /// 输入翻译（spec 5.6.4 / Q8 / EX-12）：onboarding 挂起 → hasKey 门控 → 输入面板。
-   554      fn input_translate(&self, app: &AppHandle) {
-   555          if onboarding_visible(app) {
-   556              enqueue(PendingKind::Input);
-   557              return;
-   558          }
-   559          if !has_key_now() {
-   560              enqueue(PendingKind::Input);
-   561              if let Err(err) = open_guide_for(app) {
-   562                  log::error!("action_router: 输入翻译弹配置引导失败: {err}");
-   563              }
-   564              return;
-   565          }
-   566          fail_log("输入翻译", show_panel(app, PanelMode::Input, None, None));
-   567      }
-   568  
-   569      /// 截图识别/翻译（spec 5.6.2）：onboarding 挂起 → 面板强制隐藏 → 框选会话（识别/送翻分路经
-   570      /// `SelectionCompletedHandler` 回调延续，见 `continue_ocr_flow`）。
-   571      fn ocr_start(&self, app: &AppHandle, kind: OcrKind) {
-   572          if onboarding_visible(app) {
-   573              enqueue(match kind {
-   574                  OcrKind::Recognize => PendingKind::OcrRecognize,
-   575                  OcrKind::Translate => PendingKind::OcrTranslate {
-   576                      text: None,
-   577                      session_id: None,
-   578                  },
-   579              });
-   580              return;
-   581          }
-   582          // 框选进行中面板强制隐藏（spec 5.7.3 交汇矩阵；隐藏幂等，不取消进行中翻译 D10）。
-   583          if let Err(err) = windows::translate::hide_panel(app) {
-   584              log::warn!("action_router: 截图触发表前板隐藏失败: {err}");
-   585          }
-   586          let old_session = capture::active_session_id();
-   587          match windows::mask::start_capture_session(app) {
-   588              Ok(session_id) => {
-   589                  // 旧会话被替换：通知面板释放会话态（selection://closed）并清理路由器上下文。
-   590                  if let Some(old) = old_session {
-   591                      let _ = app.emit_to(
-   592                          WINDOW_TRANSLATE_LABEL,
-   593                          EVENT_SELECTION_CLOSED,
-   594                          SelectionClosedPayload {
-   595                              session_id: old.clone(),
-   596                          },
-   597                      );
-   598                      clear_ocr_context(&old);
-   599                  }
-   600                  let lang = config::read_global()
+   551          );
+   552      }
+   553  
+   554      /// 输入翻译（spec 5.6.4 / Q8 / EX-12）：onboarding 挂起 → hasKey 门控 → 输入面板。
+   555      fn input_translate(&self, app: &AppHandle) {
+   556          if onboarding_visible(app) {
+   557              enqueue(PendingKind::Input);
+   558              return;
+   559          }
+   560          if !has_key_now() {
+   561              enqueue(PendingKind::Input);
+   562              if let Err(err) = open_guide_for(app) {
+   563                  log::error!("action_router: 输入翻译弹配置引导失败: {err}");
+   564              }
+   565              return;
+   566          }
+   567          fail_log("输入翻译", show_panel(app, PanelMode::Input, None, None));
+   568      }
+   569  
+   570      /// 截图识别/翻译（spec 5.6.2）：onboarding 挂起 → 面板强制隐藏 → 框选会话（识别/送翻分路经
+   571      /// `SelectionCompletedHandler` 回调延续，见 `continue_ocr_flow`）。
+   572      fn ocr_start(&self, app: &AppHandle, kind: OcrKind) {
+   573          if onboarding_visible(app) {
+   574              enqueue(match kind {
+   575                  OcrKind::Recognize => PendingKind::OcrRecognize,
+   576                  OcrKind::Translate => PendingKind::OcrTranslate {
+   577                      text: None,
+   578                      session_id: None,
+   579                  },
+   580              });
+   581              return;
+   582          }
+   583          // 框选进行中面板强制隐藏（spec 5.7.3 交汇矩阵；隐藏幂等，不取消进行中翻译 D10）。
+   584          if let Err(err) = windows::translate::hide_panel(app) {
+   585              log::warn!("action_router: 截图触发表前板隐藏失败: {err}");
+   586          }
+   587          let old_session = capture::active_session_id();
+   588          match windows::mask::start_capture_session(app) {
+   589              Ok(session_id) => {
+   590                  // 旧会话被替换：通知面板释放会话态（selection://closed）并清理路由器上下文。
+   591                  if let Some(old) = old_session {
+   592                      let _ = app.emit_to(
+   593                          WINDOW_TRANSLATE_LABEL,
+   594                          EVENT_SELECTION_CLOSED,
+   595                          SelectionClosedPayload {
+   596                              session_id: old.clone(),
+   597                          },
+   598                      );
+   599                      clear_ocr_context(&old);
+   600                  }
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 13 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 13 页（共 335 页）
 ==============================================================================
-   601                      .map(|guard| guard.ocr.language.clone())
-   602                      .unwrap_or_else(|err| {
-   603                          log::error!("action_router: 读取 OCR 语种配置失败（回落 auto）: {err}");
-   604                          "auto".to_string()
-   605                      });
-   606                  register_ocr_context(
-   607                      &session_id,
-   608                      OcrContext {
-   609                          kind,
-   610                          lang,
-   611                          text: None,
-   612                      },
-   613                  );
-   614              }
-   615              Err(err) => log::error!("action_router: 截图框选触发失败: {err}"),
-   616          }
-   617      }
-   618  
-   619      /// 剪贴板自动翻译（spec 5.6.3 触发出口；文本已捕获，与划词同径但不再取词）。
-   620      fn clipboard_translate(&self, app: &AppHandle, text: String) {
-   621          match decide_entry(onboarding_visible(app), true, has_key_now()) {
-   622              GateDecision::Proceed => {
-   623                  fail_log(
-   624                      "剪贴板翻译",
-   625                      show_panel(app, PanelMode::Clipboard, Some(text), None),
-   626                  );
-   627              }
-   628              GateDecision::SuspendForOnboarding => enqueue(PendingKind::Clipboard(text)),
-   629              GateDecision::SuspendForGuide => {
-   630                  enqueue(PendingKind::Clipboard(text));
-   631                  if let Err(err) = open_guide_for(app) {
-   632                      log::error!("action_router: 剪贴板翻译弹配置引导失败: {err}");
-   633                  }
-   634              }
-   635          }
-   636      }
-   637  
-   638      /// 场景切换（Alt+W）：写 config → 原子落盘 → `settings://changed` 广播（INV-8，与托盘子菜单同径）。
-   639      fn toggle_scene(&self, app: &AppHandle) {
-   640          let next = match config::read_global().map(|guard| guard.scene.active) {
-   641              Ok(config::SceneMode::Mutual) => config::SceneMode::Directed,
-   642              Ok(config::SceneMode::Directed) => config::SceneMode::Mutual,
-   643              Err(err) => {
-   644                  log::error!("action_router: 场景翻转读取配置失败: {err}");
-   645                  return;
-   646              }
-   647          };
-   648          fail_log("场景切换", set_scene(app, next));
-   649      }
-   650  }
+   601                  let lang = config::read_global()
+   602                      .map(|guard| guard.ocr.language.clone())
+   603                      .unwrap_or_else(|err| {
+   604                          log::error!("action_router: 读取 OCR 语种配置失败（回落 auto）: {err}");
+   605                          "auto".to_string()
+   606                      });
+   607                  register_ocr_context(
+   608                      &session_id,
+   609                      OcrContext {
+   610                          kind,
+   611                          lang,
+   612                          text: None,
+   613                      },
+   614                  );
+   615              }
+   616              Err(err) => log::error!("action_router: 截图框选触发失败: {err}"),
+   617          }
+   618      }
+   619  
+   620      /// 剪贴板自动翻译（spec 5.6.3 触发出口；文本已捕获，与划词同径但不再取词）。
+   621      fn clipboard_translate(&self, app: &AppHandle, text: String) {
+   622          match decide_entry(onboarding_visible(app), true, has_key_now()) {
+   623              GateDecision::Proceed => {
+   624                  fail_log(
+   625                      "剪贴板翻译",
+   626                      show_panel(app, PanelMode::Clipboard, Some(text), None),
+   627                  );
+   628              }
+   629              GateDecision::SuspendForOnboarding => enqueue(PendingKind::Clipboard(text)),
+   630              GateDecision::SuspendForGuide => {
+   631                  enqueue(PendingKind::Clipboard(text));
+   632                  if let Err(err) = open_guide_for(app) {
+   633                      log::error!("action_router: 剪贴板翻译弹配置引导失败: {err}");
+   634                  }
+   635              }
+   636          }
+   637      }
+   638  
+   639      /// 场景切换（Alt+W）：写 config → 原子落盘 → `settings://changed` 广播（INV-8，与托盘子菜单同径）。
+   640      fn toggle_scene(&self, app: &AppHandle) {
+   641          let next = match config::read_global().map(|guard| guard.scene.active) {
+   642              Ok(config::SceneMode::Mutual) => config::SceneMode::Directed,
+   643              Ok(config::SceneMode::Directed) => config::SceneMode::Mutual,
+   644              Err(err) => {
+   645                  log::error!("action_router: 场景翻转读取配置失败: {err}");
+   646                  return;
+   647              }
+   648          };
+   649          fail_log("场景切换", set_scene(app, next));
+   650      }
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 14 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 14 页（共 335 页）
 ==============================================================================
-   651  
-   652  // ---------------------------------------------------------------------------
-   653  // 回调注入实现（热键 / 剪贴板 / 引导完成 / 框选延续）
-   654  // ---------------------------------------------------------------------------
-   655  
-   656  /// 热键回调：HotkeyAction → Action → dispatch（EX-13 单路径的入口收敛）。
-   657  struct RouterHotkeyCallback {
-   658      app: AppHandle,
-   659  }
-   660  
-   661  impl crate::hotkey::HotkeyCallback for RouterHotkeyCallback {
-   662      fn dispatch(&self, action: HotkeyAction) {
-   663          dispatch(&self.app, Action::from(action));
-   664      }
-   665  }
-   666  
-   667  /// 剪贴板触发回调：文本已由状态机捕获（仅 On 态 tick 才触发——Off 态不会到达本回调）。
-   668  struct RouterClipboardTrigger {
-   669      app: AppHandle,
-   670  }
-   671  
-   672  impl clipboard_monitor::ClipboardTranslateTrigger for RouterClipboardTrigger {
-   673      fn on_clipboard_text(&self, text: String) {
-   674          Router.clipboard_translate(&self.app, text);
-   675      }
-   676  }
-   677  
-   678  /// 引导完成回调（FR-11.4 恢复入口：取挂起队列 → 有 Key 继续 / 无 Key 丢弃通知）。
-   679  struct RouterGuideFinished {
-   680      app: AppHandle,
-   681  }
-   682  
-   683  impl windows::onboarding::GuideFinishedHandler for RouterGuideFinished {
-   684      fn guide_finished(&self, has_key: bool) {
-   685          resume_pending(&self.app, has_key);
-   686      }
-   687  }
-   688  
-   689  /// 框选延续回调（mask 命令裁剪成功后调用；识别/送翻分路在 `continue_ocr_flow`）。
-   690  struct RouterSelectionCompleted;
-   691  
-   692  // ---------------------------------------------------------------------------
-   693  // 装配：wire（lib.rs setup 调用；重复调用直接报错——OnceLock 语义）
-   694  // ---------------------------------------------------------------------------
-   695  
-   696  /// T16 装配：注入完整 handler 并接线全部回调（hotkey / clipboard / onboarding / mask）。
-   697  /// 依赖方向全部为 action_router → 各能力模块（spec 5.4，无反向）。
-   698  pub fn wire(app: &AppHandle) -> Result<(), AppError> {
-   699      set_action_handler(Box::new(Router))?;
-   700      hotkey::set_callback(Box::new(RouterHotkeyCallback { app: app.clone() }))?;
+   651  }
+   652  
+   653  // ---------------------------------------------------------------------------
+   654  // 回调注入实现（热键 / 剪贴板 / 引导完成 / 框选延续）
+   655  // ---------------------------------------------------------------------------
+   656  
+   657  /// 热键回调：HotkeyAction → Action → dispatch（EX-13 单路径的入口收敛）。
+   658  struct RouterHotkeyCallback {
+   659      app: AppHandle,
+   660  }
+   661  
+   662  impl crate::hotkey::HotkeyCallback for RouterHotkeyCallback {
+   663      fn dispatch(&self, action: HotkeyAction) {
+   664          dispatch(&self.app, Action::from(action));
+   665      }
+   666  }
+   667  
+   668  /// 剪贴板触发回调：文本已由状态机捕获（仅 On 态 tick 才触发——Off 态不会到达本回调）。
+   669  struct RouterClipboardTrigger {
+   670      app: AppHandle,
+   671  }
+   672  
+   673  impl clipboard_monitor::ClipboardTranslateTrigger for RouterClipboardTrigger {
+   674      fn on_clipboard_text(&self, text: String) {
+   675          Router.clipboard_translate(&self.app, text);
+   676      }
+   677  }
+   678  
+   679  /// 引导完成回调（FR-11.4 恢复入口：取挂起队列 → 有 Key 继续 / 无 Key 丢弃通知）。
+   680  struct RouterGuideFinished {
+   681      app: AppHandle,
+   682  }
+   683  
+   684  impl windows::onboarding::GuideFinishedHandler for RouterGuideFinished {
+   685      fn guide_finished(&self, has_key: bool) {
+   686          resume_pending(&self.app, has_key);
+   687      }
+   688  }
+   689  
+   690  /// 框选延续回调（mask 命令裁剪成功后调用；识别/送翻分路在 `continue_ocr_flow`）。
+   691  struct RouterSelectionCompleted;
+   692  
+   693  // ---------------------------------------------------------------------------
+   694  // 装配：wire（lib.rs setup 调用；重复调用直接报错——OnceLock 语义）
+   695  // ---------------------------------------------------------------------------
+   696  
+   697  /// T16 装配：注入完整 handler 并接线全部回调（hotkey / clipboard / onboarding / mask）。
+   698  /// 依赖方向全部为 action_router → 各能力模块（spec 5.4，无反向）。
+   699  pub fn wire(app: &AppHandle) -> Result<(), AppError> {
+   700      set_action_handler(Box::new(Router))?;
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 15 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 15 页（共 335 页）
 ==============================================================================
-   701      clipboard_monitor::set_translate_trigger(Box::new(RouterClipboardTrigger {
-   702          app: app.clone(),
-   703      }))?;
-   704      windows::onboarding::set_guide_finished_handler(Box::new(RouterGuideFinished {
-   705          app: app.clone(),
-   706      }))?;
-   707      windows::mask::set_selection_completed_handler(Box::new(RouterSelectionCompleted))?;
-   708      log::info!("action_router: 全链路汇聚已接线（热键/剪贴板/引导完成/框选延续 + 四命令）");
-   709      Ok(())
-   710  }
-   711  
-   712  // ---------------------------------------------------------------------------
-   713  // 门控与恢复执行
-   714  // ---------------------------------------------------------------------------
-   715  
-   716  /// 引导可见判定（与 windows/translate 的压制投影同口径：onboarding 窗存在且可见）。
-   717  fn onboarding_visible(app: &AppHandle) -> bool {
-   718      match app.get_webview_window(windows::onboarding::WINDOW_ONBOARDING_LABEL) {
-   719          Some(window) => window.is_visible().unwrap_or(false),
-   720          None => false,
-   721      }
-   722  }
-   723  
-   724  /// hasKey（DPAPI 解密口径，config::has_key 降级语义；读配置失败按无 Key 处理）。
-   725  fn has_key_now() -> bool {
-   726      match config::read_global() {
-   727          Ok(guard) => config::has_key(&guard),
-   728          Err(err) => {
-   729              log::error!("action_router: hasKey 判定读取配置失败（视同未配置）: {err}");
-   730              false
-   731          }
-   732      }
-   733  }
-   734  
-   735  /// 打开 FR-11.4 配置引导（guide 模式）：先隐藏面板（引导期面板压制——否则 topmost 面板会盖住引导窗），
-   736  /// 再复用引导窗直达隐私要点 + Key 步骤。
-   737  fn open_guide_for(app: &AppHandle) -> Result<(), AppError> {
-   738      if let Err(err) = windows::translate::hide_panel(app) {
-   739          log::warn!("action_router: 打开配置引导前面板隐藏失败（压制语义）: {err}");
-   740      }
-   741      let result = windows::onboarding::open_config_guide(app.clone());
-   742      match &result {
-   743          Ok(()) => log::info!("action_router: FR-11.4 配置引导已打开（guide 模式），翻译动作已挂起"),
-   744          Err(err) => log::error!("action_router: 配置引导打开失败: {err}"),
-   745      }
-   746      result
-   747  }
-   748  
-   749  /// FR-11.4 恢复入口（guide 完成/跳过回调）：取挂起队列 → 有 Key 继续 / 无 Key 丢弃并通知。
-   750  fn resume_pending(app: &AppHandle, has_key: bool) {
+   701      hotkey::set_callback(Box::new(RouterHotkeyCallback { app: app.clone() }))?;
+   702      clipboard_monitor::set_translate_trigger(Box::new(RouterClipboardTrigger {
+   703          app: app.clone(),
+   704      }))?;
+   705      windows::onboarding::set_guide_finished_handler(Box::new(RouterGuideFinished {
+   706          app: app.clone(),
+   707      }))?;
+   708      windows::mask::set_selection_completed_handler(Box::new(RouterSelectionCompleted))?;
+   709      log::info!("action_router: 全链路汇聚已接线（热键/剪贴板/引导完成/框选延续 + 四命令）");
+   710      Ok(())
+   711  }
+   712  
+   713  // ---------------------------------------------------------------------------
+   714  // 门控与恢复执行
+   715  // ---------------------------------------------------------------------------
+   716  
+   717  /// 引导可见判定（与 windows/translate 的压制投影同口径：onboarding 窗存在且可见）。
+   718  fn onboarding_visible(app: &AppHandle) -> bool {
+   719      match app.get_webview_window(windows::onboarding::WINDOW_ONBOARDING_LABEL) {
+   720          Some(window) => window.is_visible().unwrap_or(false),
+   721          None => false,
+   722      }
+   723  }
+   724  
+   725  /// hasKey（DPAPI 解密口径，config::has_key 降级语义；读配置失败按无 Key 处理）。
+   726  fn has_key_now() -> bool {
+   727      match config::read_global() {
+   728          Ok(guard) => config::has_key(&guard),
+   729          Err(err) => {
+   730              log::error!("action_router: hasKey 判定读取配置失败（视同未配置）: {err}");
+   731              false
+   732          }
+   733      }
+   734  }
+   735  
+   736  /// 打开 FR-11.4 配置引导（guide 模式）：先隐藏面板（引导期面板压制——否则 topmost 面板会盖住引导窗），
+   737  /// 再复用引导窗直达隐私要点 + Key 步骤。
+   738  fn open_guide_for(app: &AppHandle) -> Result<(), AppError> {
+   739      if let Err(err) = windows::translate::hide_panel(app) {
+   740          log::warn!("action_router: 打开配置引导前面板隐藏失败（压制语义）: {err}");
+   741      }
+   742      let result = windows::onboarding::open_config_guide(app.clone());
+   743      match &result {
+   744          Ok(()) => log::info!("action_router: FR-11.4 配置引导已打开（guide 模式），翻译动作已挂起"),
+   745          Err(err) => log::error!("action_router: 配置引导打开失败: {err}"),
+   746      }
+   747      result
+   748  }
+   749  
+   750  /// FR-11.4 恢复入口（guide 完成/跳过回调）：取挂起队列 → 有 Key 继续 / 无 Key 丢弃并通知。
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 16 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 16 页（共 335 页）
 ==============================================================================
-   751      let pending = pending_queue().take();
-   752      match decide_resume(pending.is_some(), has_key) {
-   753          ResumeDecision::Nothing => {
-   754              log::debug!("action_router: 引导完成，挂起队列为空（无待恢复动作）");
-   755          }
-   756          ResumeDecision::Discard => {
-   757              log::info!("action_router: 补配完成但仍未配置 Key（跳过/清空），挂起翻译已丢弃");
-   758              if let Err(err) = app
-   759                  .notification()
-   760                  .builder()
-   761                  .title("Alya")
-   762                  .body("已跳过 API Key 配置，本次触发的翻译未执行。")
-   763                  .show()
-   764              {
-   765                  log::error!("action_router: 挂起丢弃通知发送失败: {err}");
-   766              }
-   767          }
-   768          ResumeDecision::Continue => {
-   769              if let Some(action) = pending {
-   770                  log::info!(
-   771                      "action_router: 补配成功，恢复挂起翻译动作（{:?}）",
-   772                      action.kind
-   773                  );
-   774                  execute_resume(app, action);
-   775              }
-   776          }
-   777      }
-   778  }
-   779  
-   780  /// 执行挂起动作恢复（按挂起阶段的语义；应仅经 resume_pending 调用）。
-   781  fn execute_resume(app: &AppHandle, pending: PendingAction) {
-   782      match pending.kind {
-   783          PendingKind::Selection { text: Some(text) } => {
-   784              // 取词已完成：直接弹板（前端形态 A 自动送翻），不再重取词。
-   785              fail_log(
-   786                  "挂起恢复（划词）",
-   787                  show_panel(app, PanelMode::Selection, Some(text), None),
-   788              );
-   789          }
-   790          PendingKind::Selection { text: None } => {
-   791              // 挂起于取词前（onboarding 期触发）：恢复重新走完整划词链（门控此刻应已放行）。
-   792              Router.selection_translate(app);
-   793          }
-   794          PendingKind::Input => {
-   795              fail_log(
-   796                  "挂起恢复（输入）",
-   797                  show_panel(app, PanelMode::Input, None, None),
-   798              );
-   799          }
-   800          PendingKind::Clipboard(text) => {
+   751  fn resume_pending(app: &AppHandle, has_key: bool) {
+   752      let pending = pending_queue().take();
+   753      match decide_resume(pending.is_some(), has_key) {
+   754          ResumeDecision::Nothing => {
+   755              log::debug!("action_router: 引导完成，挂起队列为空（无待恢复动作）");
+   756          }
+   757          ResumeDecision::Discard => {
+   758              log::info!("action_router: 补配完成但仍未配置 Key（跳过/清空），挂起翻译已丢弃");
+   759              if let Err(err) = app
+   760                  .notification()
+   761                  .builder()
+   762                  .title("Alya")
+   763                  .body("已跳过 API Key 配置，本次触发的翻译未执行。")
+   764                  .show()
+   765              {
+   766                  log::error!("action_router: 挂起丢弃通知发送失败: {err}");
+   767              }
+   768          }
+   769          ResumeDecision::Continue => {
+   770              if let Some(action) = pending {
+   771                  log::info!(
+   772                      "action_router: 补配成功，恢复挂起翻译动作（{:?}）",
+   773                      action.kind
+   774                  );
+   775                  execute_resume(app, action);
+   776              }
+   777          }
+   778      }
+   779  }
+   780  
+   781  /// 执行挂起动作恢复（按挂起阶段的语义；应仅经 resume_pending 调用）。
+   782  fn execute_resume(app: &AppHandle, pending: PendingAction) {
+   783      match pending.kind {
+   784          PendingKind::Selection { text: Some(text) } => {
+   785              // 取词已完成：直接弹板（前端形态 A 自动送翻），不再重取词。
+   786              fail_log(
+   787                  "挂起恢复（划词）",
+   788                  show_panel(app, PanelMode::Selection, Some(text), None),
+   789              );
+   790          }
+   791          PendingKind::Selection { text: None } => {
+   792              // 挂起于取词前（onboarding 期触发）：恢复重新走完整划词链（门控此刻应已放行）。
+   793              Router.selection_translate(app);
+   794          }
+   795          PendingKind::Input => {
+   796              fail_log(
+   797                  "挂起恢复（输入）",
+   798                  show_panel(app, PanelMode::Input, None, None),
+   799              );
+   800          }
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 17 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 17 页（共 335 页）
 ==============================================================================
-   801              fail_log(
-   802                  "挂起恢复（剪贴板）",
-   803                  show_panel(app, PanelMode::Clipboard, Some(text), None),
-   804              );
-   805          }
-   806          PendingKind::OcrRecognize => {
-   807              Router.ocr_start(app, OcrKind::Recognize);
-   808          }
-   809          PendingKind::OcrTranslate {
-   810              text: Some(text),
-   811              session_id,
-   812          } => {
-   813              // OCR 已完成（Alt+D 送翻前/送翻时挂起）：不再重新识别，直接展示 + 送翻。
-   814              let session_id = session_id.filter(|sid| capture::session_is_current(sid));
-   815              fail_log(
-   816                  "挂起恢复（截图翻译）",
-   817                  show_panel(app, PanelMode::Ocr, Some(text.clone()), session_id.clone()),
-   818              );
-   819              let app = app.clone();
-   820              tauri::async_runtime::spawn(async move {
-   821                  if let Err(err) = start_round(&app, TranslateSource::Ocr, text).await {
-   822                      log::error!("action_router: 挂起恢复送翻发起失败: {err}");
-   823                  }
-   824              });
-   825          }
-   826          PendingKind::OcrTranslate {
-   827              text: None,
-   828              session_id: _,
-   829          } => {
-   830              // 挂起于框选前：恢复重新发起框选（原动作语义不变）。
-   831              Router.ocr_start(app, OcrKind::Translate);
-   832          }
-   833      }
-   834  }
-   835  
-   836  // ---------------------------------------------------------------------------
-   837  // 命令（6.1：translate / cancel_translation / reocr / send_ocr_to_translate）
-   838  // ---------------------------------------------------------------------------
-   839  
-   840  /// `translate {text, source} → {roundId}`（6.1）：面板提交入口（形态 A/B 自动送翻/手动提交）。
-   841  /// 门控（FR-11.4）：onboarding 可见 / 无 Key → 挂起（队列容量 1）并返回错误（面板已被压制隐藏），
-   842  /// 补配后自动继续；否则经 service 发起（EX-13 单路径）。
-   843  #[tauri::command]
-   844  pub async fn translate(
-   845      app: AppHandle,
-   846      text: String,
-   847      source: TranslateSource,
-   848  ) -> Result<TranslateResult, AppError> {
-   849      submit_translation(&app, text, source).await
-   850  }
+   801          PendingKind::Clipboard(text) => {
+   802              fail_log(
+   803                  "挂起恢复（剪贴板）",
+   804                  show_panel(app, PanelMode::Clipboard, Some(text), None),
+   805              );
+   806          }
+   807          PendingKind::OcrRecognize => {
+   808              Router.ocr_start(app, OcrKind::Recognize);
+   809          }
+   810          PendingKind::OcrTranslate {
+   811              text: Some(text),
+   812              session_id,
+   813          } => {
+   814              // OCR 已完成（Alt+D 送翻前/送翻时挂起）：不再重新识别，直接展示 + 送翻。
+   815              let session_id = session_id.filter(|sid| capture::session_is_current(sid));
+   816              fail_log(
+   817                  "挂起恢复（截图翻译）",
+   818                  show_panel(app, PanelMode::Ocr, Some(text.clone()), session_id.clone()),
+   819              );
+   820              let app = app.clone();
+   821              tauri::async_runtime::spawn(async move {
+   822                  if let Err(err) = start_round(&app, TranslateSource::Ocr, text).await {
+   823                      log::error!("action_router: 挂起恢复送翻发起失败: {err}");
+   824                  }
+   825              });
+   826          }
+   827          PendingKind::OcrTranslate {
+   828              text: None,
+   829              session_id: _,
+   830          } => {
+   831              // 挂起于框选前：恢复重新发起框选（原动作语义不变）。
+   832              Router.ocr_start(app, OcrKind::Translate);
+   833          }
+   834      }
+   835  }
+   836  
+   837  // ---------------------------------------------------------------------------
+   838  // 命令（6.1：translate / cancel_translation / reocr / send_ocr_to_translate）
+   839  // ---------------------------------------------------------------------------
+   840  
+   841  /// `translate {text, source} → {roundId}`（6.1）：面板提交入口（形态 A/B 自动送翻/手动提交）。
+   842  /// 门控（FR-11.4）：onboarding 可见 / 无 Key → 挂起（队列容量 1）并返回错误（面板已被压制隐藏），
+   843  /// 补配后自动继续；否则经 service 发起（EX-13 单路径）。
+   844  #[tauri::command]
+   845  pub async fn translate(
+   846      app: AppHandle,
+   847      text: String,
+   848      source: TranslateSource,
+   849  ) -> Result<TranslateResult, AppError> {
+   850      submit_translation(&app, text, source).await
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 18 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 18 页（共 335 页）
 ==============================================================================
-   851  
-   852  /// `cancel_translation {roundId} → Result`（6.1）：显式取消（Esc 中止进行中翻译，design-spec 3.5）。
-   853  #[tauri::command]
-   854  pub async fn cancel_translation(_app: AppHandle, round_id: String) -> Result<(), AppError> {
-   855      let service = crate::translate::service::global();
-   856      service.cancel_translation(&round_id).await
-   857  }
-   858  
-   859  /// `reocr {sessionId, lang} → {text}`（6.1/FR-6.2）：对保留裁剪块换语种重识别；
-   860  /// 结果经 `ocr://result` 事件推送（面板镜像）+ 返回值（调用方契约）。
-   861  #[tauri::command]
-   862  pub async fn reocr(
-   863      app: AppHandle,
-   864      session_id: String,
-   865      lang: String,
-   866  ) -> Result<ReocrResult, AppError> {
-   867      let crop = capture::get_crop(&session_id)?;
-   868      let text = ocr::recognize(crop.png_bytes, OcrLang::from_config(&lang)).await?;
-   869      update_ocr_text_and_lang(&session_id, lang, text.clone());
-   870      let payload = OcrResultPayload {
-   871          session_id: session_id.clone(),
-   872          text: text.clone(),
-   873      };
-   874      if let Err(err) = app.emit_to(WINDOW_TRANSLATE_LABEL, EVENT_OCR_RESULT, payload) {
-   875          log::warn!("action_router: ocr://result 推送失败（返回值已保证契约）: {err}");
-   876      }
-   877      Ok(ReocrResult { text })
-   878  }
-   879  
-   880  /// `send_ocr_to_translate {sessionId} → {roundId}`（6.1/FR-6.5）：截图识别结果一键送翻。
-   881  /// 门控（FR-7.3/FR-11.4）：无 Key → 挂起文本并弹配置引导（OCR 已照常完成，仅翻译环节转引导）。
-   882  #[tauri::command]
-   883  pub async fn send_ocr_to_translate(
-   884      app: AppHandle,
-   885      session_id: String,
-   886  ) -> Result<TranslateResult, AppError> {
-   887      let text = ocr_text_of(&session_id)
-   888          .ok_or_else(|| AppError::Capture("截图会话无识别文本（尚未完成识别）".to_string()))?;
-   889      match decide_entry(onboarding_visible(&app), true, has_key_now()) {
-   890          GateDecision::Proceed => start_round(&app, TranslateSource::Ocr, text).await,
-   891          GateDecision::SuspendForOnboarding => {
-   892              enqueue(PendingKind::OcrTranslate {
-   893                  text: Some(text.clone()),
-   894                  session_id: Some(session_id.clone()),
-   895              });
-   896              Err(AppError::Config(
-   897                  "配置引导进行中，本次截图翻译已挂起，配置完成后自动继续".to_string(),
-   898              ))
-   899          }
-   900          GateDecision::SuspendForGuide => {
+   851  }
+   852  
+   853  /// `cancel_translation {roundId} → Result`（6.1）：显式取消（Esc 中止进行中翻译，design-spec 3.5）。
+   854  #[tauri::command]
+   855  pub async fn cancel_translation(_app: AppHandle, round_id: String) -> Result<(), AppError> {
+   856      let service = crate::translate::service::global();
+   857      service.cancel_translation(&round_id).await
+   858  }
+   859  
+   860  /// `reocr {sessionId, lang} → {text}`（6.1/FR-6.2）：对保留裁剪块换语种重识别；
+   861  /// 结果经 `ocr://result` 事件推送（面板镜像）+ 返回值（调用方契约）。
+   862  #[tauri::command]
+   863  pub async fn reocr(
+   864      app: AppHandle,
+   865      session_id: String,
+   866      lang: String,
+   867  ) -> Result<ReocrResult, AppError> {
+   868      let crop = capture::get_crop(&session_id)?;
+   869      let text = ocr::recognize(crop.png_bytes, OcrLang::from_config(&lang)).await?;
+   870      update_ocr_text_and_lang(&session_id, lang, text.clone());
+   871      let payload = OcrResultPayload {
+   872          session_id: session_id.clone(),
+   873          text: text.clone(),
+   874      };
+   875      if let Err(err) = app.emit_to(WINDOW_TRANSLATE_LABEL, EVENT_OCR_RESULT, payload) {
+   876          log::warn!("action_router: ocr://result 推送失败（返回值已保证契约）: {err}");
+   877      }
+   878      Ok(ReocrResult { text })
+   879  }
+   880  
+   881  /// `send_ocr_to_translate {sessionId} → {roundId}`（6.1/FR-6.5）：截图识别结果一键送翻。
+   882  /// 门控（FR-7.3/FR-11.4）：无 Key → 挂起文本并弹配置引导（OCR 已照常完成，仅翻译环节转引导）。
+   883  #[tauri::command]
+   884  pub async fn send_ocr_to_translate(
+   885      app: AppHandle,
+   886      session_id: String,
+   887  ) -> Result<TranslateResult, AppError> {
+   888      let text = ocr_text_of(&session_id)
+   889          .ok_or_else(|| AppError::Capture("截图会话无识别文本（尚未完成识别）".to_string()))?;
+   890      match decide_entry(onboarding_visible(&app), true, has_key_now()) {
+   891          GateDecision::Proceed => start_round(&app, TranslateSource::Ocr, text).await,
+   892          GateDecision::SuspendForOnboarding => {
+   893              enqueue(PendingKind::OcrTranslate {
+   894                  text: Some(text.clone()),
+   895                  session_id: Some(session_id.clone()),
+   896              });
+   897              Err(AppError::Config(
+   898                  "配置引导进行中，本次截图翻译已挂起，配置完成后自动继续".to_string(),
+   899              ))
+   900          }
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 19 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 19 页（共 335 页）
 ==============================================================================
-   901              enqueue(PendingKind::OcrTranslate {
-   902                  text: Some(text.clone()),
-   903                  session_id: Some(session_id.clone()),
-   904              });
-   905              open_guide_for(&app)?;
-   906              Err(AppError::Config(
-   907                  "尚未配置 API Key，已打开配置引导；配置完成后自动继续翻译".to_string(),
-   908              ))
-   909          }
-   910      }
-   911  }
-   912  
-   913  /// 面板/命令侧翻译提交（FR-11.4 门 + EX-13 单路径；sse 执行器为生产实现）。
-   914  pub async fn submit_translation(
-   915      app: &AppHandle,
-   916      text: String,
-   917      source: TranslateSource,
-   918  ) -> Result<TranslateResult, AppError> {
-   919      if text.trim().is_empty() {
-   920          return Err(AppError::EmptyText("输入为空，未发起翻译".to_string()));
-   921      }
-   922      match decide_entry(onboarding_visible(app), true, has_key_now()) {
-   923          GateDecision::Proceed => start_round(app, source, text).await,
-   924          GateDecision::SuspendForOnboarding => {
-   925              enqueue(pending_of_submit(source, &text));
-   926              Err(AppError::Config(
-   927                  "配置引导进行中，本次翻译已挂起，配置完成后自动继续".to_string(),
-   928              ))
-   929          }
-   930          GateDecision::SuspendForGuide => {
-   931              enqueue(pending_of_submit(source, &text));
-   932              open_guide_for(app)?;
-   933              Err(AppError::Config(
-   934                  "尚未配置 API Key，已打开配置引导；配置完成后自动继续翻译".to_string(),
-   935              ))
-   936          }
-   937      }
-   938  }
-   939  
-   940  fn pending_of_submit(source: TranslateSource, text: &str) -> PendingKind {
-   941      match source {
-   942          TranslateSource::Selection => PendingKind::Selection {
-   943              text: Some(text.to_string()),
-   944          },
-   945          TranslateSource::Input => PendingKind::Input,
-   946          TranslateSource::Clipboard => PendingKind::Clipboard(text.to_string()),
-   947          TranslateSource::Ocr => PendingKind::OcrTranslate {
-   948              text: Some(text.to_string()),
-   949              session_id: None,
-   950          },
+   901          GateDecision::SuspendForGuide => {
+   902              enqueue(PendingKind::OcrTranslate {
+   903                  text: Some(text.clone()),
+   904                  session_id: Some(session_id.clone()),
+   905              });
+   906              open_guide_for(&app)?;
+   907              Err(AppError::Config(
+   908                  "尚未配置 API Key，已打开配置引导；配置完成后自动继续翻译".to_string(),
+   909              ))
+   910          }
+   911      }
+   912  }
+   913  
+   914  /// 面板/命令侧翻译提交（FR-11.4 门 + EX-13 单路径；sse 执行器为生产实现）。
+   915  pub async fn submit_translation(
+   916      app: &AppHandle,
+   917      text: String,
+   918      source: TranslateSource,
+   919  ) -> Result<TranslateResult, AppError> {
+   920      if text.trim().is_empty() {
+   921          return Err(AppError::EmptyText("输入为空，未发起翻译".to_string()));
+   922      }
+   923      match decide_entry(onboarding_visible(app), true, has_key_now()) {
+   924          GateDecision::Proceed => start_round(app, source, text).await,
+   925          GateDecision::SuspendForOnboarding => {
+   926              enqueue(pending_of_submit(source, &text));
+   927              Err(AppError::Config(
+   928                  "配置引导进行中，本次翻译已挂起，配置完成后自动继续".to_string(),
+   929              ))
+   930          }
+   931          GateDecision::SuspendForGuide => {
+   932              enqueue(pending_of_submit(source, &text));
+   933              open_guide_for(app)?;
+   934              Err(AppError::Config(
+   935                  "尚未配置 API Key，已打开配置引导；配置完成后自动继续翻译".to_string(),
+   936              ))
+   937          }
+   938      }
+   939  }
+   940  
+   941  fn pending_of_submit(source: TranslateSource, text: &str) -> PendingKind {
+   942      match source {
+   943          TranslateSource::Selection => PendingKind::Selection {
+   944              text: Some(text.to_string()),
+   945          },
+   946          TranslateSource::Input => PendingKind::Input,
+   947          TranslateSource::Clipboard => PendingKind::Clipboard(text.to_string()),
+   948          TranslateSource::Ocr => PendingKind::OcrTranslate {
+   949              text: Some(text.to_string()),
+   950              session_id: None,
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 20 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 20 页（共 335 页）
 ==============================================================================
-   951      }
-   952  }
-   953  
-   954  /// 发起一轮（service 顶替语义 EX-13 单路径；执行器构造仅持 AppHandle，无状态）。
-   955  async fn start_round(
-   956      app: &AppHandle,
-   957      source: TranslateSource,
-   958      text: String,
-   959  ) -> Result<TranslateResult, AppError> {
-   960      let executor: Arc<SseTranslateExecutor> = Arc::new(SseTranslateExecutor::new(app.clone()));
-   961      crate::translate::service::global()
-   962          .start_translate(source, text, &executor)
-   963          .await
-   964  }
-   965  
-   966  // ---------------------------------------------------------------------------
-   967  // 框选延续（mask 注入回调的 handler；识别/送翻分路）
-   968  // ---------------------------------------------------------------------------
-   969  
-   970  impl windows::mask::SelectionCompletedHandler for RouterSelectionCompleted {
-   971      fn on_completed(&self, app: &AppHandle, session_id: String, monitor_index: u32) {
-   972          let app = app.clone();
-   973          tauri::async_runtime::spawn(async move {
-   974              if let Err(err) = continue_ocr_flow(&app, &session_id, monitor_index).await {
-   975                  log::error!("action_router: 框选延续流程失败 sessionId={session_id}: {err}");
-   976              }
-   977          });
-   978      }
-   979  }
-   980  
-   981  /// 框选完成的延续流程（spec 5.6.2 ④~⑧；裁剪与遮罩隐藏已完成）：
-   982  /// 识别 → 分路（识别形态 / 送翻门控+面板+流式翻译；EX-6 系统通知；FR-7.2 空文本提示）。
-   983  async fn continue_ocr_flow(
-   984      app: &AppHandle,
-   985      session_id: &str,
-   986      monitor_index: u32,
-   987  ) -> Result<(), AppError> {
-   988      let context = match ocr_context_of(session_id) {
-   989          Some(context) => context,
-   990          None => {
-   991              // 会话非本模块发起（防御路径）：仅记日志，不产生任何动作。
-   992              log::debug!(
-   993                  "action_router: 框选延续忽略（无会话上下文，可能为直接命令触发）sessionId={session_id}"
-   994              );
-   995              return Ok(());
-   996          }
-   997      };
-   998      let crop = capture::get_crop(session_id)?;
-   999      let text = match ocr::recognize(crop.png_bytes, OcrLang::from_config(&context.lang)).await {
-  1000          Ok(text) => text,
+   951          },
+   952      }
+   953  }
+   954  
+   955  /// 发起一轮（service 顶替语义 EX-13 单路径；执行器构造仅持 AppHandle，无状态）。
+   956  async fn start_round(
+   957      app: &AppHandle,
+   958      source: TranslateSource,
+   959      text: String,
+   960  ) -> Result<TranslateResult, AppError> {
+   961      let executor: Arc<SseTranslateExecutor> = Arc::new(SseTranslateExecutor::new(app.clone()));
+   962      crate::translate::service::global()
+   963          .start_translate(source, text, &executor)
+   964          .await
+   965  }
+   966  
+   967  // ---------------------------------------------------------------------------
+   968  // 框选延续（mask 注入回调的 handler；识别/送翻分路）
+   969  // ---------------------------------------------------------------------------
+   970  
+   971  impl windows::mask::SelectionCompletedHandler for RouterSelectionCompleted {
+   972      fn on_completed(&self, app: &AppHandle, session_id: String, monitor_index: u32) {
+   973          let app = app.clone();
+   974          tauri::async_runtime::spawn(async move {
+   975              if let Err(err) = continue_ocr_flow(&app, &session_id, monitor_index).await {
+   976                  log::error!("action_router: 框选延续流程失败 sessionId={session_id}: {err}");
+   977              }
+   978          });
+   979      }
+   980  }
+   981  
+   982  /// 框选完成的延续流程（spec 5.6.2 ④~⑧；裁剪与遮罩隐藏已完成）：
+   983  /// 识别 → 分路（识别形态 / 送翻门控+面板+流式翻译；EX-6 系统通知；FR-7.2 空文本提示）。
+   984  async fn continue_ocr_flow(
+   985      app: &AppHandle,
+   986      session_id: &str,
+   987      monitor_index: u32,
+   988  ) -> Result<(), AppError> {
+   989      let context = match ocr_context_of(session_id) {
+   990          Some(context) => context,
+   991          None => {
+   992              // 会话非本模块发起（防御路径）：仅记日志，不产生任何动作。
+   993              log::debug!(
+   994                  "action_router: 框选延续忽略（无会话上下文，可能为直接命令触发）sessionId={session_id}"
+   995              );
+   996              return Ok(());
+   997          }
+   998      };
+   999      let crop = capture::get_crop(session_id)?;
+  1000      let text = match ocr::recognize(crop.png_bytes, OcrLang::from_config(&context.lang)).await {
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 21 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 21 页（共 335 页）
 ==============================================================================
-  1001          Err(err) => {
-  1002              notify_ocr_error(app, &err);
-  1003              return Ok(());
-  1004          }
-  1005      };
-  1006      log::debug!(
-  1007          "action_router: OCR 完成 sessionId={session_id} 屏 {monitor_index}（{} 字符）",
-  1008          text.chars().count()
-  1009      );
-  1010      update_ocr_text_and_lang(session_id, context.lang.clone(), text.clone());
-  1011  
-  1012      match context.kind {
-  1013          OcrKind::Recognize => {
-  1014              // 识别模式：面板识别形态（空文本 = FR-7.2 面板提示，不送翻）。
-  1015              fail_log(
-  1016                  "截图识别面板",
-  1017                  show_panel(
-  1018                      app,
-  1019                      PanelMode::Ocr,
-  1020                      Some(text),
-  1021                      Some(session_id.to_string()),
-  1022                  ),
-  1023              );
-  1024          }
-  1025          OcrKind::Translate => {
-  1026              if text.trim().is_empty() {
-  1027                  // FR-7.2：识别空文本 → 面板提示"未识别到文字"，不发起翻译请求。
-  1028                  fail_log(
-  1029                      "截图翻译空文本提示",
-  1030                      show_panel(
-  1031                          app,
-  1032                          PanelMode::Ocr,
-  1033                          Some(String::new()),
-  1034                          Some(session_id.to_string()),
-  1035                      ),
-  1036                  );
-  1037                  return Ok(());
-  1038              }
-  1039              match decide_entry(onboarding_visible(app), true, has_key_now()) {
-  1040                  GateDecision::Proceed => {}
-  1041                  _ => {
-  1042                      // FR-7.3：OCR 已照常完成，翻译环节转配置引导（挂起文本）。
-  1043                      enqueue(PendingKind::OcrTranslate {
-  1044                          text: Some(text.clone()),
-  1045                          session_id: Some(session_id.to_string()),
-  1046                      });
-  1047                      open_guide_for(app)?;
-  1048                      return Ok(());
-  1049                  }
-  1050              }
+  1001          Ok(text) => text,
+  1002          Err(err) => {
+  1003              notify_ocr_error(app, &err);
+  1004              return Ok(());
+  1005          }
+  1006      };
+  1007      log::debug!(
+  1008          "action_router: OCR 完成 sessionId={session_id} 屏 {monitor_index}（{} 字符）",
+  1009          text.chars().count()
+  1010      );
+  1011      update_ocr_text_and_lang(session_id, context.lang.clone(), text.clone());
+  1012  
+  1013      match context.kind {
+  1014          OcrKind::Recognize => {
+  1015              // 识别模式：面板识别形态（空文本 = FR-7.2 面板提示，不送翻）。
+  1016              fail_log(
+  1017                  "截图识别面板",
+  1018                  show_panel(
+  1019                      app,
+  1020                      PanelMode::Ocr,
+  1021                      Some(text),
+  1022                      Some(session_id.to_string()),
+  1023                  ),
+  1024              );
+  1025          }
+  1026          OcrKind::Translate => {
+  1027              if text.trim().is_empty() {
+  1028                  // FR-7.2：识别空文本 → 面板提示"未识别到文字"，不发起翻译请求。
+  1029                  fail_log(
+  1030                      "截图翻译空文本提示",
+  1031                      show_panel(
+  1032                          app,
+  1033                          PanelMode::Ocr,
+  1034                          Some(String::new()),
+  1035                          Some(session_id.to_string()),
+  1036                      ),
+  1037                  );
+  1038                  return Ok(());
+  1039              }
+  1040              match decide_entry(onboarding_visible(app), true, has_key_now()) {
+  1041                  GateDecision::Proceed => {}
+  1042                  _ => {
+  1043                      // FR-7.3：OCR 已照常完成，翻译环节转配置引导（挂起文本）。
+  1044                      enqueue(PendingKind::OcrTranslate {
+  1045                          text: Some(text.clone()),
+  1046                          session_id: Some(session_id.to_string()),
+  1047                      });
+  1048                      open_guide_for(app)?;
+  1049                      return Ok(());
+  1050                  }
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 22 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 22 页（共 335 页）
 ==============================================================================
-  1051              fail_log(
-  1052                  "截图翻译面板",
-  1053                  show_panel(
-  1054                      app,
-  1055                      PanelMode::Ocr,
-  1056                      Some(text.clone()),
-  1057                      Some(session_id.to_string()),
-  1058                  ),
-  1059              );
-  1060              start_round(app, TranslateSource::Ocr, text).await?;
-  1061          }
-  1062      }
-  1063      Ok(())
-  1064  }
-  1065  
-  1066  /// OCR 错误呈现（EX-6 → 系统通知附官方指引；内部错误 → 通用通知，不静默失败）。
-  1067  fn notify_ocr_error(app: &AppHandle, err: &AppError) {
-  1068      let body = if err.ex_code() == "EX-6" {
-  1069          err.to_string()
-  1070      } else {
-  1071          log::warn!("action_router: OCR 运行期失败（内部编码）: {err}");
-  1072          "截图识别失败，请重试。".to_string()
-  1073      };
-  1074      if let Err(notify_err) = app.notification().builder().title("Alya").body(body).show() {
-  1075          log::error!("action_router: OCR 错误通知发送失败: {notify_err}");
-  1076      }
-  1077  }
-  1078  
-  1079  // ---------------------------------------------------------------------------
-  1080  // 既有接口：minimal 直通（异常装配路径；T16 完整路径经 wire()+dispatch）
-  1081  // ---------------------------------------------------------------------------
-  1082  
-  1083  fn minimal_dispatch(app: &AppHandle, action: Action) {
-  1084      match action {
-  1085          Action::InputTranslate => {
-  1086              fail_log("输入翻译", show_panel(app, PanelMode::Input, None, None));
-  1087          }
-  1088          Action::SelectionTranslate => match crate::selection::run_selection(app) {
-  1089              Ok(text) => fail_log(
-  1090                  "划词翻译",
-  1091                  show_panel(app, PanelMode::Selection, Some(text), None),
-  1092              ),
-  1093              Err(err) => log::debug!(
-  1094                  "action_router: 划词翻译取消（{}，通知已由 selection 模块发出）",
-  1095                  err.ex_code()
-  1096              ),
-  1097          },
-  1098          Action::OcrRecognize | Action::OcrTranslate => {
-  1099              if let Err(err) = windows::mask::start_capture_session(app) {
-  1100                  log::error!("action_router: 截图框选触发失败: {err}");
+  1051              }
+  1052              fail_log(
+  1053                  "截图翻译面板",
+  1054                  show_panel(
+  1055                      app,
+  1056                      PanelMode::Ocr,
+  1057                      Some(text.clone()),
+  1058                      Some(session_id.to_string()),
+  1059                  ),
+  1060              );
+  1061              start_round(app, TranslateSource::Ocr, text).await?;
+  1062          }
+  1063      }
+  1064      Ok(())
+  1065  }
+  1066  
+  1067  /// OCR 错误呈现（EX-6 → 系统通知附官方指引；内部错误 → 通用通知，不静默失败）。
+  1068  fn notify_ocr_error(app: &AppHandle, err: &AppError) {
+  1069      let body = if err.ex_code() == "EX-6" {
+  1070          err.to_string()
+  1071      } else {
+  1072          log::warn!("action_router: OCR 运行期失败（内部编码）: {err}");
+  1073          "截图识别失败，请重试。".to_string()
+  1074      };
+  1075      if let Err(notify_err) = app.notification().builder().title("Alya").body(body).show() {
+  1076          log::error!("action_router: OCR 错误通知发送失败: {notify_err}");
+  1077      }
+  1078  }
+  1079  
+  1080  // ---------------------------------------------------------------------------
+  1081  // 既有接口：minimal 直通（异常装配路径；T16 完整路径经 wire()+dispatch）
+  1082  // ---------------------------------------------------------------------------
+  1083  
+  1084  fn minimal_dispatch(app: &AppHandle, action: Action) {
+  1085      match action {
+  1086          Action::InputTranslate => {
+  1087              fail_log("输入翻译", show_panel(app, PanelMode::Input, None, None));
+  1088          }
+  1089          Action::SelectionTranslate => match crate::selection::run_selection(app) {
+  1090              Ok(text) => fail_log(
+  1091                  "划词翻译",
+  1092                  show_panel(app, PanelMode::Selection, Some(text), None),
+  1093              ),
+  1094              Err(err) => log::debug!(
+  1095                  "action_router: 划词翻译取消（{}，通知已由 selection 模块发出）",
+  1096                  err.ex_code()
+  1097              ),
+  1098          },
+  1099          Action::OcrRecognize | Action::OcrTranslate => {
+  1100              if let Err(err) = windows::mask::start_capture_session(app) {
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 23 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 23 页（共 335 页）
 ==============================================================================
-  1101              }
-  1102          }
-  1103          Action::ToggleScene => {
-  1104              let next = match config::read_global().map(|guard| guard.scene.active) {
-  1105                  Ok(config::SceneMode::Mutual) => config::SceneMode::Directed,
-  1106                  Ok(config::SceneMode::Directed) => config::SceneMode::Mutual,
-  1107                  Err(err) => {
-  1108                      log::error!("action_router: 场景翻转读取配置失败: {err}");
-  1109                      return;
-  1110                  }
-  1111              };
-  1112              fail_log("场景切换", set_scene(app, next));
-  1113          }
-  1114      }
-  1115  }
-  1116  
-  1117  fn fail_log(action_name: &str, result: Result<(), AppError>) {
-  1118      if let Err(err) = result {
-  1119          log::error!("action_router: {action_name} 执行失败: {err}");
-  1120      }
-  1121  }
-  1122  
-  1123  fn show_panel(
-  1124      app: &AppHandle,
-  1125      mode: PanelMode,
-  1126      text: Option<String>,
-  1127      session_id: Option<String>,
-  1128  ) -> Result<(), AppError> {
-  1129      windows::translate::show_panel(
-  1130          app,
-  1131          PanelShowPayload {
-  1132              mode,
-  1133              text,
-  1134              session_id,
-  1135          },
-  1136      )
-  1137  }
-  1138  
-  1139  /// 场景变更（托盘子菜单单选 / ToggleScene 共用）：写 config → 原子落盘 → `settings://changed`
-  1140  /// 广播（INV-8 三方镜像：面板分段控件/托盘勾选/设置页；托盘经监听重建菜单——无递归，重建不带事件）。
-  1141  /// 面板分段控件经 `set_settings.scene` 补丁走同一 config 字段与广播形状（单一事实源，无分歧路径）。
-  1142  pub fn set_scene(app: &AppHandle, scene: config::SceneMode) -> Result<(), AppError> {
-  1143      let dir = config::app_config_dir(app)?;
-  1144      {
-  1145          let mut guard = config::write_global()?;
-  1146          guard.scene.active = scene;
-  1147      }
-  1148      let settings = config::read_global()?;
-  1149      config::save_to(&dir, &settings)?;
-  1150      let patch = crate::events::SettingsPatch {
+  1101                  log::error!("action_router: 截图框选触发失败: {err}");
+  1102              }
+  1103          }
+  1104          Action::ToggleScene => {
+  1105              let next = match config::read_global().map(|guard| guard.scene.active) {
+  1106                  Ok(config::SceneMode::Mutual) => config::SceneMode::Directed,
+  1107                  Ok(config::SceneMode::Directed) => config::SceneMode::Mutual,
+  1108                  Err(err) => {
+  1109                      log::error!("action_router: 场景翻转读取配置失败: {err}");
+  1110                      return;
+  1111                  }
+  1112              };
+  1113              fail_log("场景切换", set_scene(app, next));
+  1114          }
+  1115      }
+  1116  }
+  1117  
+  1118  fn fail_log(action_name: &str, result: Result<(), AppError>) {
+  1119      if let Err(err) = result {
+  1120          log::error!("action_router: {action_name} 执行失败: {err}");
+  1121      }
+  1122  }
+  1123  
+  1124  fn show_panel(
+  1125      app: &AppHandle,
+  1126      mode: PanelMode,
+  1127      text: Option<String>,
+  1128      session_id: Option<String>,
+  1129  ) -> Result<(), AppError> {
+  1130      windows::translate::show_panel(
+  1131          app,
+  1132          PanelShowPayload {
+  1133              mode,
+  1134              text,
+  1135              session_id,
+  1136          },
+  1137      )
+  1138  }
+  1139  
+  1140  /// 场景变更（托盘子菜单单选 / ToggleScene 共用）：写 config → 原子落盘 → `settings://changed`
+  1141  /// 广播（INV-8 三方镜像：面板分段控件/托盘勾选/设置页；托盘经监听重建菜单——无递归，重建不带事件）。
+  1142  /// 面板分段控件经 `set_settings.scene` 补丁走同一 config 字段与广播形状（单一事实源，无分歧路径）。
+  1143  pub fn set_scene(app: &AppHandle, scene: config::SceneMode) -> Result<(), AppError> {
+  1144      let dir = config::app_config_dir(app)?;
+  1145      {
+  1146          let mut guard = config::write_global()?;
+  1147          guard.scene.active = scene;
+  1148      }
+  1149      let settings = config::read_global()?;
+  1150      config::save_to(&dir, &settings)?;
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 24 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 24 页（共 335 页）
 ==============================================================================
-  1151          scene: Some(crate::events::ScenePatch {
-  1152              active: Some(scene),
-  1153          }),
-  1154          ..Default::default()
-  1155      };
-  1156      app.emit(crate::events::EVENT_SETTINGS_CHANGED, patch)
-  1157          .map_err(|err| AppError::Config(format!("settings://changed 广播失败: {err}")))?;
-  1158      log::info!("action_router: 活动场景已切换为 {scene:?}");
-  1159      Ok(())
-  1160  }
-  1161  
-  1162  // ---------------------------------------------------------------------------
-  1163  // 单元测试：路由分发 / 挂起队列（入队/容量 1/取走/重启丢弃）/ 补配继续 / 压制门控判定
-  1164  // ---------------------------------------------------------------------------
-  1165  
-  1166  #[cfg(test)]
-  1167  mod tests {
-  1168      use super::*;
-  1169  
-  1170      #[test]
-  1171      fn flow_of_routes_five_actions_exactly() {
-  1172          assert_eq!(flow_of(Action::SelectionTranslate), Flow::Selection);
-  1173          assert_eq!(flow_of(Action::InputTranslate), Flow::Input);
-  1174          assert_eq!(
-  1175              flow_of(Action::OcrRecognize),
-  1176              Flow::Capture(OcrKind::Recognize)
-  1177          );
-  1178          assert_eq!(
-  1179              flow_of(Action::OcrTranslate),
-  1180              Flow::Capture(OcrKind::Translate)
-  1181          );
-  1182          assert_eq!(flow_of(Action::ToggleScene), Flow::ToggleScene);
-  1183      }
-  1184  
-  1185      #[test]
-  1186      fn hotkey_action_converts_to_action_preserving_semantics() {
-  1187          for (hotkey, expected) in [
-  1188              (HotkeyAction::SelectionTranslate, Action::SelectionTranslate),
-  1189              (HotkeyAction::InputTranslate, Action::InputTranslate),
-  1190              (HotkeyAction::OcrRecognize, Action::OcrRecognize),
-  1191              (HotkeyAction::OcrTranslate, Action::OcrTranslate),
-  1192              (HotkeyAction::ToggleScene, Action::ToggleScene),
-  1193          ] {
-  1194              assert_eq!(Action::from(hotkey), expected);
-  1195          }
-  1196      }
-  1197  
-  1198      #[test]
-  1199      fn pending_queue_capacity_one_last_wins_and_fully_volatile() {
-  1200          let queue = PendingQueue::new();
+  1151      let patch = crate::events::SettingsPatch {
+  1152          scene: Some(crate::events::ScenePatch {
+  1153              active: Some(scene),
+  1154          }),
+  1155          ..Default::default()
+  1156      };
+  1157      app.emit(crate::events::EVENT_SETTINGS_CHANGED, patch)
+  1158          .map_err(|err| AppError::Config(format!("settings://changed 广播失败: {err}")))?;
+  1159      log::info!("action_router: 活动场景已切换为 {scene:?}");
+  1160      Ok(())
+  1161  }
+  1162  
+  1163  // ---------------------------------------------------------------------------
+  1164  // 单元测试：路由分发 / 挂起队列（入队/容量 1/取走/重启丢弃）/ 补配继续 / 压制门控判定
+  1165  // ---------------------------------------------------------------------------
+  1166  
+  1167  #[cfg(test)]
+  1168  mod tests {
+  1169      use super::*;
+  1170  
+  1171      #[test]
+  1172      fn flow_of_routes_five_actions_exactly() {
+  1173          assert_eq!(flow_of(Action::SelectionTranslate), Flow::Selection);
+  1174          assert_eq!(flow_of(Action::InputTranslate), Flow::Input);
+  1175          assert_eq!(
+  1176              flow_of(Action::OcrRecognize),
+  1177              Flow::Capture(OcrKind::Recognize)
+  1178          );
+  1179          assert_eq!(
+  1180              flow_of(Action::OcrTranslate),
+  1181              Flow::Capture(OcrKind::Translate)
+  1182          );
+  1183          assert_eq!(flow_of(Action::ToggleScene), Flow::ToggleScene);
+  1184      }
+  1185  
+  1186      #[test]
+  1187      fn hotkey_action_converts_to_action_preserving_semantics() {
+  1188          for (hotkey, expected) in [
+  1189              (HotkeyAction::SelectionTranslate, Action::SelectionTranslate),
+  1190              (HotkeyAction::InputTranslate, Action::InputTranslate),
+  1191              (HotkeyAction::OcrRecognize, Action::OcrRecognize),
+  1192              (HotkeyAction::OcrTranslate, Action::OcrTranslate),
+  1193              (HotkeyAction::ToggleScene, Action::ToggleScene),
+  1194          ] {
+  1195              assert_eq!(Action::from(hotkey), expected);
+  1196          }
+  1197      }
+  1198  
+  1199      #[test]
+  1200      fn pending_queue_capacity_one_last_wins_and_fully_volatile() {
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 25 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 25 页（共 335 页）
 ==============================================================================
-  1201          assert!(queue.is_empty());
-  1202          queue.enqueue(PendingAction::new(PendingKind::Input));
-  1203          assert_eq!(queue.len(), 1);
-  1204          queue.enqueue(PendingAction::new(PendingKind::Selection { text: None }));
-  1205          // 容量 1：新挂起替换旧挂起（last-wins，EX-13 仅最新语义）
-  1206          assert_eq!(queue.len(), 1);
-  1207          assert_eq!(
-  1208              queue.peek(),
-  1209              Some(PendingAction::new(PendingKind::Selection { text: None }))
-  1210          );
-  1211          let taken = queue.take();
-  1212          assert_eq!(
-  1213              taken,
-  1214              Some(PendingAction::new(PendingKind::Selection { text: None }))
-  1215          );
-  1216          assert!(queue.is_empty(), "取走后队列为空（恢复/丢弃一次性消费）");
-  1217      }
-  1218  
-  1219      #[test]
-  1220      fn pending_queue_restart_discards_old_pending() {
-  1221          // 「重启丢弃」＝新进程新队列：fresh 实例天然为空（挂起队列为进程内存态，无持久化）。
-  1222          let fresh = PendingQueue::new();
-  1223          assert!(fresh.is_empty());
-  1224          assert_eq!(fresh.take(), None);
-  1225          // 旧队列即使有挂起，也与新进程无关。
-  1226          let old = PendingQueue::new();
-  1227          old.enqueue(PendingAction::new(PendingKind::Input));
-  1228          assert_eq!(old.len(), 1);
-  1229          let fresh_after_restart = PendingQueue::new();
-  1230          assert!(fresh_after_restart.is_empty());
-  1231      }
-  1232  
-  1233      #[test]
-  1234      fn decide_entry_covers_onboarding_guide_and_proceed() {
-  1235          // onboarding 可见：翻译类与截图类均挂起（引导期压制统一，5.7.3）
-  1236          assert_eq!(
-  1237              decide_entry(true, true, false),
-  1238              GateDecision::SuspendForOnboarding
-  1239          );
-  1240          assert_eq!(
-  1241              decide_entry(true, false, true),
-  1242              GateDecision::SuspendForOnboarding
-  1243          );
-  1244          // 无 Key：翻译类入口 → 引导；截图识别（needs_key=false）→ 放行（FR-6/7.3 OCR 照常完成）
-  1245          assert_eq!(
-  1246              decide_entry(false, true, false),
-  1247              GateDecision::SuspendForGuide
-  1248          );
-  1249          assert_eq!(decide_entry(false, false, false), GateDecision::Proceed);
-  1250          // 有 Key → 放行
+  1201          let queue = PendingQueue::new();
+  1202          assert!(queue.is_empty());
+  1203          queue.enqueue(PendingAction::new(PendingKind::Input));
+  1204          assert_eq!(queue.len(), 1);
+  1205          queue.enqueue(PendingAction::new(PendingKind::Selection { text: None }));
+  1206          // 容量 1：新挂起替换旧挂起（last-wins，EX-13 仅最新语义）
+  1207          assert_eq!(queue.len(), 1);
+  1208          assert_eq!(
+  1209              queue.peek(),
+  1210              Some(PendingAction::new(PendingKind::Selection { text: None }))
+  1211          );
+  1212          let taken = queue.take();
+  1213          assert_eq!(
+  1214              taken,
+  1215              Some(PendingAction::new(PendingKind::Selection { text: None }))
+  1216          );
+  1217          assert!(queue.is_empty(), "取走后队列为空（恢复/丢弃一次性消费）");
+  1218      }
+  1219  
+  1220      #[test]
+  1221      fn pending_queue_restart_discards_old_pending() {
+  1222          // 「重启丢弃」＝新进程新队列：fresh 实例天然为空（挂起队列为进程内存态，无持久化）。
+  1223          let fresh = PendingQueue::new();
+  1224          assert!(fresh.is_empty());
+  1225          assert_eq!(fresh.take(), None);
+  1226          // 旧队列即使有挂起，也与新进程无关。
+  1227          let old = PendingQueue::new();
+  1228          old.enqueue(PendingAction::new(PendingKind::Input));
+  1229          assert_eq!(old.len(), 1);
+  1230          let fresh_after_restart = PendingQueue::new();
+  1231          assert!(fresh_after_restart.is_empty());
+  1232      }
+  1233  
+  1234      #[test]
+  1235      fn decide_entry_covers_onboarding_guide_and_proceed() {
+  1236          // onboarding 可见：翻译类与截图类均挂起（引导期压制统一，5.7.3）
+  1237          assert_eq!(
+  1238              decide_entry(true, true, false),
+  1239              GateDecision::SuspendForOnboarding
+  1240          );
+  1241          assert_eq!(
+  1242              decide_entry(true, false, true),
+  1243              GateDecision::SuspendForOnboarding
+  1244          );
+  1245          // 无 Key：翻译类入口 → 引导；截图识别（needs_key=false）→ 放行（FR-6/7.3 OCR 照常完成）
+  1246          assert_eq!(
+  1247              decide_entry(false, true, false),
+  1248              GateDecision::SuspendForGuide
+  1249          );
+  1250          assert_eq!(decide_entry(false, false, false), GateDecision::Proceed);
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 26 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 26 页（共 335 页）
 ==============================================================================
-  1251          assert_eq!(decide_entry(false, true, true), GateDecision::Proceed);
-  1252      }
-  1253  
-  1254      #[test]
-  1255      fn decide_resume_continues_only_with_key() {
-  1256          assert_eq!(decide_resume(false, true), ResumeDecision::Nothing);
-  1257          assert_eq!(decide_resume(false, false), ResumeDecision::Nothing);
-  1258          assert_eq!(decide_resume(true, true), ResumeDecision::Continue);
-  1259          assert_eq!(decide_resume(true, false), ResumeDecision::Discard);
-  1260      }
-  1261  
-  1262      #[test]
-  1263      fn pending_of_submit_maps_sources_to_resumable_kinds() {
-  1264          assert_eq!(
-  1265              pending_of_submit(TranslateSource::Selection, "选文"),
-  1266              PendingKind::Selection {
-  1267                  text: Some("选文".to_string())
-  1268              }
-  1269          );
-  1270          assert_eq!(
-  1271              pending_of_submit(TranslateSource::Input, "输入"),
-  1272              PendingKind::Input
-  1273          );
-  1274          assert_eq!(
-  1275              pending_of_submit(TranslateSource::Clipboard, "剪贴"),
-  1276              PendingKind::Clipboard("剪贴".to_string())
-  1277          );
-  1278          assert_eq!(
-  1279              pending_of_submit(TranslateSource::Ocr, "OCR"),
-  1280              PendingKind::OcrTranslate {
-  1281                  text: Some("OCR".to_string()),
-  1282                  session_id: None
-  1283              }
-  1284          );
-  1285      }
-  1286  
-  1287      #[test]
-  1288      fn ocr_context_register_read_unset_roundtrip() {
-  1289          // 独立复制注册逻辑（对全局 map 的写入经访问器；此处验证纯函数语义等价性）。
-  1290          let session = "s-t16-test";
-  1291          register_ocr_context(
-  1292              session,
-  1293              OcrContext {
-  1294                  kind: OcrKind::Translate,
-  1295                  lang: "auto".to_string(),
-  1296                  text: None,
-  1297              },
-  1298          );
-  1299          let ctx = ocr_context_of(session).unwrap_or_else(|| panic!("应有上下文"));
-  1300          assert_eq!(ctx.kind, OcrKind::Translate);
+  1251          // 有 Key → 放行
+  1252          assert_eq!(decide_entry(false, true, true), GateDecision::Proceed);
+  1253      }
+  1254  
+  1255      #[test]
+  1256      fn decide_resume_continues_only_with_key() {
+  1257          assert_eq!(decide_resume(false, true), ResumeDecision::Nothing);
+  1258          assert_eq!(decide_resume(false, false), ResumeDecision::Nothing);
+  1259          assert_eq!(decide_resume(true, true), ResumeDecision::Continue);
+  1260          assert_eq!(decide_resume(true, false), ResumeDecision::Discard);
+  1261      }
+  1262  
+  1263      #[test]
+  1264      fn pending_of_submit_maps_sources_to_resumable_kinds() {
+  1265          assert_eq!(
+  1266              pending_of_submit(TranslateSource::Selection, "选文"),
+  1267              PendingKind::Selection {
+  1268                  text: Some("选文".to_string())
+  1269              }
+  1270          );
+  1271          assert_eq!(
+  1272              pending_of_submit(TranslateSource::Input, "输入"),
+  1273              PendingKind::Input
+  1274          );
+  1275          assert_eq!(
+  1276              pending_of_submit(TranslateSource::Clipboard, "剪贴"),
+  1277              PendingKind::Clipboard("剪贴".to_string())
+  1278          );
+  1279          assert_eq!(
+  1280              pending_of_submit(TranslateSource::Ocr, "OCR"),
+  1281              PendingKind::OcrTranslate {
+  1282                  text: Some("OCR".to_string()),
+  1283                  session_id: None
+  1284              }
+  1285          );
+  1286      }
+  1287  
+  1288      #[test]
+  1289      fn ocr_context_register_read_unset_roundtrip() {
+  1290          // 独立复制注册逻辑（对全局 map 的写入经访问器；此处验证纯函数语义等价性）。
+  1291          let session = "s-t16-test";
+  1292          register_ocr_context(
+  1293              session,
+  1294              OcrContext {
+  1295                  kind: OcrKind::Translate,
+  1296                  lang: "auto".to_string(),
+  1297                  text: None,
+  1298              },
+  1299          );
+  1300          let ctx = ocr_context_of(session).unwrap_or_else(|| panic!("应有上下文"));
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 27 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 27 页（共 335 页）
 ==============================================================================
-  1301          assert_eq!(ctx.lang, "auto");
-  1302          assert_eq!(ctx.text, None);
-  1303          update_ocr_text_and_lang(session, "zh-CN".to_string(), "识别文本".to_string());
-  1304          let ctx = ocr_context_of(session).unwrap_or_else(|| panic!("应有上下文"));
-  1305          assert_eq!(ctx.lang, "zh-CN");
-  1306          assert_eq!(ctx.text.as_deref(), Some("识别文本"));
-  1307          assert_eq!(ocr_text_of(session).as_deref(), Some("识别文本"));
-  1308          clear_ocr_context(session);
-  1309          assert_eq!(ocr_context_of(session), None, "会话替换/关闭后上下文释放");
-  1310          // 防御：从未登记过的会话 → None（非本模块发起的会话不产生延续动作）
-  1311          assert_eq!(ocr_context_of("s-unknown"), None);
-  1312      }
-  1313  }
-  1314  // ==================== src-tauri/src/autostart.rs ====================
-  1315  //! autostart：开机自启真实接线（T15 实现，spec 5.7.9 + FR-1.5；轮 17 起双模式支持 MSIX/Store）。
-  1316  //!
-  1317  //! 双模式（真机修复轮 17，MS Store 准备）：
-  1318  //! - **非包身份**（便携版/NSIS 安装版，现状）：tauri-plugin-autostart 2.5 经
-  1319  //!   `ManagerExt::autolaunch()` 写/删 **HKCU `SOFTWARE\Microsoft\Windows\CurrentVersion\Run`**
-  1320  //!   （值名＝"alya"；应用路径由插件以 `current_exe()` 注入）。
-  1321  //! - **包身份**（MSIX/Store 版）：MSIX 注册表虚拟化使 HKCU Run 写入落到包容器、真实 Run 键
-  1322  //!   不会被写——改走 **WinRT StartupTask**（manifest `uap5:windows.startupTask` 扩展声明的
-  1323  //!   `AylaStartupTask`）：`GetForCurrentPackageAsync` 取任务 → 状态判定 →
-  1324  //!   `RequestEnableAsync`/`Disable`。用户在系统设置 > 应用 > 启动 中的开关即
-  1325  //!   `DisabledByUser` 态（此时应用内重开会被拒，报错提示去系统设置）。
-  1326  //!
-  1327  //! 共享语义（FR-1.5「开关开启才写启动项、关闭即移除」，经纯决策 `decide_action`）：
-  1328  //! - 目标开启 → 启用（幂等）；
-  1329  //! - 目标关闭且当前已启用 → 禁用；
-  1330  //! - 目标关闭且当前已禁用 → 空闲（幂等，不误报）。
-  1331  //!
-  1332  //! 任一步失败返回 `AppError`（设置页行内 error；config 值不经失败路径写入——调用方 windows/settings.rs 先自启后 config、失败即中止）。
-  1333  //!
-  1334  //! 已知限制：非包便携版移动目录后旧 Run 项指向旧路径，重开关一次即修复（A10，不变）。
-  1335  //! 日志纪律（INV-7 精神）：只记状态与错误类别，不记 exe 路径。
-  1336  
-  1337  use tauri::AppHandle;
-  1338  use tauri_plugin_autostart::ManagerExt;
-  1339  
-  1340  use crate::error::AppError;
-  1341  
-  1342  /// MSIX manifest 中声明的 StartupTask TaskId（scripts/build-msix.ps1 生成的清单同值）。
-  1343  const STARTUP_TASK_ID: &str = "AylaStartupTask";
-  1344  
-  1345  /// 应用自启目标状态（纯决策单测覆盖：is_enabled=已启用/已禁用 × 开关方向）。
-  1346  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-  1347  pub enum AutostartAction {
-  1348      /// 需启用（目标开启）。
-  1349      Enable,
-  1350      /// 需禁用（目标关闭且当前已启用）。
+  1301          assert_eq!(ctx.kind, OcrKind::Translate);
+  1302          assert_eq!(ctx.lang, "auto");
+  1303          assert_eq!(ctx.text, None);
+  1304          update_ocr_text_and_lang(session, "zh-CN".to_string(), "识别文本".to_string());
+  1305          let ctx = ocr_context_of(session).unwrap_or_else(|| panic!("应有上下文"));
+  1306          assert_eq!(ctx.lang, "zh-CN");
+  1307          assert_eq!(ctx.text.as_deref(), Some("识别文本"));
+  1308          assert_eq!(ocr_text_of(session).as_deref(), Some("识别文本"));
+  1309          clear_ocr_context(session);
+  1310          assert_eq!(ocr_context_of(session), None, "会话替换/关闭后上下文释放");
+  1311          // 防御：从未登记过的会话 → None（非本模块发起的会话不产生延续动作）
+  1312          assert_eq!(ocr_context_of("s-unknown"), None);
+  1313      }
+  1314  }
+  1315  // ==================== src-tauri/src/autostart.rs ====================
+  1316  //! autostart：开机自启真实接线（T15 实现，spec 5.7.9 + FR-1.5；轮 17 起双模式支持 MSIX/Store）。
+  1317  //!
+  1318  //! 双模式（真机修复轮 17，MS Store 准备）：
+  1319  //! - **非包身份**（便携版/NSIS 安装版，现状）：tauri-plugin-autostart 2.5 经
+  1320  //!   `ManagerExt::autolaunch()` 写/删 **HKCU `SOFTWARE\Microsoft\Windows\CurrentVersion\Run`**
+  1321  //!   （值名＝"alya"；应用路径由插件以 `current_exe()` 注入）。
+  1322  //! - **包身份**（MSIX/Store 版）：MSIX 注册表虚拟化使 HKCU Run 写入落到包容器、真实 Run 键
+  1323  //!   不会被写——改走 **WinRT StartupTask**（manifest `uap5:windows.startupTask` 扩展声明的
+  1324  //!   `AylaStartupTask`）：`GetForCurrentPackageAsync` 取任务 → 状态判定 →
+  1325  //!   `RequestEnableAsync`/`Disable`。用户在系统设置 > 应用 > 启动 中的开关即
+  1326  //!   `DisabledByUser` 态（此时应用内重开会被拒，报错提示去系统设置）。
+  1327  //!
+  1328  //! 共享语义（FR-1.5「开关开启才写启动项、关闭即移除」，经纯决策 `decide_action`）：
+  1329  //! - 目标开启 → 启用（幂等）；
+  1330  //! - 目标关闭且当前已启用 → 禁用；
+  1331  //! - 目标关闭且当前已禁用 → 空闲（幂等，不误报）。
+  1332  //!
+  1333  //! 任一步失败返回 `AppError`（设置页行内 error；config 值不经失败路径写入——调用方 windows/settings.rs 先自启后 config、失败即中止）。
+  1334  //!
+  1335  //! 已知限制：非包便携版移动目录后旧 Run 项指向旧路径，重开关一次即修复（A10，不变）。
+  1336  //! 日志纪律（INV-7 精神）：只记状态与错误类别，不记 exe 路径。
+  1337  
+  1338  use tauri::AppHandle;
+  1339  use tauri_plugin_autostart::ManagerExt;
+  1340  
+  1341  use crate::error::AppError;
+  1342  
+  1343  /// MSIX manifest 中声明的 StartupTask TaskId（scripts/build-msix.ps1 生成的清单同值）。
+  1344  const STARTUP_TASK_ID: &str = "AylaStartupTask";
+  1345  
+  1346  /// 应用自启目标状态（纯决策单测覆盖：is_enabled=已启用/已禁用 × 开关方向）。
+  1347  #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+  1348  pub enum AutostartAction {
+  1349      /// 需启用（目标开启）。
+  1350      Enable,
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 28 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 28 页（共 335 页）
 ==============================================================================
-  1351      Disable,
-  1352      /// 无操作（目标关闭且当前已禁用——幂等）。
-  1353      Idle,
-  1354  }
-  1355  
-  1356  /// 纯决策：开关目标 × 当前注册表/任务状态 → 应执行的动作。
-  1357  pub fn decide_action(target_on: bool, currently_enabled: bool) -> AutostartAction {
-  1358      match (target_on, currently_enabled) {
-  1359          (true, _) => AutostartAction::Enable,
-  1360          (false, true) => AutostartAction::Disable,
-  1361          (false, false) => AutostartAction::Idle,
-  1362      }
-  1363  }
-  1364  
-  1365  /// 是否运行于 MSIX 包身份下（Store 版）。非包进程 `Package::Current()` 返回 Err。
-  1366  pub fn is_packaged() -> bool {
-  1367      use windows::ApplicationModel::Package;
-  1368      Package::Current().is_ok()
-  1369  }
-  1370  
-  1371  /// FR-1.5 接线：按开关目标使能/禁用开机自启（双模式分派；失败上抛不落 config）。
-  1372  pub fn apply(app: &AppHandle, target_on: bool) -> Result<(), AppError> {
-  1373      if is_packaged() {
-  1374          apply_packaged(target_on)
-  1375      } else {
-  1376          apply_registry(app, target_on)
-  1377      }
-  1378  }
-  1379  
-  1380  // ---------------------------------------------------------------------------
-  1381  // 非包身份：HKCU Run（tauri-plugin-autostart，便携版/安装版现状）
-  1382  // ---------------------------------------------------------------------------
-  1383  
-  1384  fn apply_registry(app: &AppHandle, target_on: bool) -> Result<(), AppError> {
-  1385      let manager = app.autolaunch();
-  1386      let currently_enabled = manager
-  1387          .is_enabled()
-  1388          .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_query_failed(&err.to_string())))?;
-  1389      match decide_action(target_on, currently_enabled) {
-  1390          AutostartAction::Enable => manager
-  1391              .enable()
-  1392              .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_write_failed(&err.to_string())))?,
-  1393          AutostartAction::Disable => manager
-  1394              .disable()
-  1395              .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_remove_failed(&err.to_string())))?,
-  1396          AutostartAction::Idle => {
-  1397              log::debug!("autostart: 目标关闭且当前未启用（HKCU Run 无此项，无需移除）");
-  1398              return Ok(());
-  1399          }
-  1400      }
+  1351      /// 需禁用（目标关闭且当前已启用）。
+  1352      Disable,
+  1353      /// 无操作（目标关闭且当前已禁用——幂等）。
+  1354      Idle,
+  1355  }
+  1356  
+  1357  /// 纯决策：开关目标 × 当前注册表/任务状态 → 应执行的动作。
+  1358  pub fn decide_action(target_on: bool, currently_enabled: bool) -> AutostartAction {
+  1359      match (target_on, currently_enabled) {
+  1360          (true, _) => AutostartAction::Enable,
+  1361          (false, true) => AutostartAction::Disable,
+  1362          (false, false) => AutostartAction::Idle,
+  1363      }
+  1364  }
+  1365  
+  1366  /// 是否运行于 MSIX 包身份下（Store 版）。非包进程 `Package::Current()` 返回 Err。
+  1367  pub fn is_packaged() -> bool {
+  1368      use windows::ApplicationModel::Package;
+  1369      Package::Current().is_ok()
+  1370  }
+  1371  
+  1372  /// FR-1.5 接线：按开关目标使能/禁用开机自启（双模式分派；失败上抛不落 config）。
+  1373  pub fn apply(app: &AppHandle, target_on: bool) -> Result<(), AppError> {
+  1374      if is_packaged() {
+  1375          apply_packaged(target_on)
+  1376      } else {
+  1377          apply_registry(app, target_on)
+  1378      }
+  1379  }
+  1380  
+  1381  // ---------------------------------------------------------------------------
+  1382  // 非包身份：HKCU Run（tauri-plugin-autostart，便携版/安装版现状）
+  1383  // ---------------------------------------------------------------------------
+  1384  
+  1385  fn apply_registry(app: &AppHandle, target_on: bool) -> Result<(), AppError> {
+  1386      let manager = app.autolaunch();
+  1387      let currently_enabled = manager
+  1388          .is_enabled()
+  1389          .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_query_failed(&err.to_string())))?;
+  1390      match decide_action(target_on, currently_enabled) {
+  1391          AutostartAction::Enable => manager
+  1392              .enable()
+  1393              .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_write_failed(&err.to_string())))?,
+  1394          AutostartAction::Disable => manager
+  1395              .disable()
+  1396              .map_err(|err| AppError::Config(crate::ui_text::resolve_global().autostart_remove_failed(&err.to_string())))?,
+  1397          AutostartAction::Idle => {
+  1398              log::debug!("autostart: 目标关闭且当前未启用（HKCU Run 无此项，无需移除）");
+  1399              return Ok(());
+  1400          }
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 29 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 29 页（共 335 页）
 ==============================================================================
-  1401      log::info!(
-  1402          "autostart: {}（HKCU Run，普通用户权限，无提权）",
-  1403          if target_on {
-  1404              "开机自启已启用"
-  1405          } else {
-  1406              "开机自启已关闭"
-  1407          }
-  1408      );
-  1409      Ok(())
-  1410  }
-  1411  
-  1412  // ---------------------------------------------------------------------------
-  1413  // 包身份：WinRT StartupTask（MSIX/Store 版；manifest uap5 扩展）
-  1414  // ---------------------------------------------------------------------------
-  1415  
-  1416  /// 阻塞等待 IAsyncOperation（与 ocr::wait_async 同构；本模块私有精简版）。
-  1417  fn wait_async<T>(operation: windows_future::IAsyncOperation<T>) -> Result<T, windows::core::Error>
-  1418  where
-  1419      T: windows::core::RuntimeType + Send + 'static,
-  1420  {
-  1421      use windows_future::{AsyncOperationCompletedHandler, AsyncStatus};
-  1422      use std::sync::mpsc;
-  1423      match operation.Status()? {
-  1424          AsyncStatus::Completed => return operation.GetResults(),
-  1425          AsyncStatus::Error => {
-  1426              return Err(windows::core::Error::from_hresult(operation.ErrorCode()?))
-  1427          }
-  1428          _ => {}
-  1429      }
-  1430      let (tx, rx) = mpsc::channel::<Result<T, windows::core::Error>>();
-  1431      operation.SetCompleted(&AsyncOperationCompletedHandler::new(move |sender, status| {
-  1432          let op = sender.ok()?;
-  1433          let result = match status {
-  1434              AsyncStatus::Completed => op.GetResults(),
-  1435              AsyncStatus::Error => match op.ErrorCode() {
-  1436                  Ok(code) => Err(windows::core::Error::from_hresult(code)),
-  1437                  Err(e) => Err(e),
-  1438              },
-  1439              _ => Err(windows::core::Error::from_hresult(
-  1440                  windows::core::HRESULT::from_win32(1223), // ERROR_CANCELLED
-  1441              )),
-  1442          };
-  1443          let _ = tx.send(result);
-  1444          Ok(())
-  1445      }))?;
-  1446      rx.recv().map_err(|_| {
-  1447          windows::core::Error::from_hresult(windows::core::HRESULT::from_win32(1223))
-  1448      })?
-  1449  }
-  1450  
+  1401      }
+  1402      log::info!(
+  1403          "autostart: {}（HKCU Run，普通用户权限，无提权）",
+  1404          if target_on {
+  1405              "开机自启已启用"
+  1406          } else {
+  1407              "开机自启已关闭"
+  1408          }
+  1409      );
+  1410      Ok(())
+  1411  }
+  1412  
+  1413  // ---------------------------------------------------------------------------
+  1414  // 包身份：WinRT StartupTask（MSIX/Store 版；manifest uap5 扩展）
+  1415  // ---------------------------------------------------------------------------
+  1416  
+  1417  /// 阻塞等待 IAsyncOperation（与 ocr::wait_async 同构；本模块私有精简版）。
+  1418  fn wait_async<T>(operation: windows_future::IAsyncOperation<T>) -> Result<T, windows::core::Error>
+  1419  where
+  1420      T: windows::core::RuntimeType + Send + 'static,
+  1421  {
+  1422      use windows_future::{AsyncOperationCompletedHandler, AsyncStatus};
+  1423      use std::sync::mpsc;
+  1424      match operation.Status()? {
+  1425          AsyncStatus::Completed => return operation.GetResults(),
+  1426          AsyncStatus::Error => {
+  1427              return Err(windows::core::Error::from_hresult(operation.ErrorCode()?))
+  1428          }
+  1429          _ => {}
+  1430      }
+  1431      let (tx, rx) = mpsc::channel::<Result<T, windows::core::Error>>();
+  1432      operation.SetCompleted(&AsyncOperationCompletedHandler::new(move |sender, status| {
+  1433          let op = sender.ok()?;
+  1434          let result = match status {
+  1435              AsyncStatus::Completed => op.GetResults(),
+  1436              AsyncStatus::Error => match op.ErrorCode() {
+  1437                  Ok(code) => Err(windows::core::Error::from_hresult(code)),
+  1438                  Err(e) => Err(e),
+  1439              },
+  1440              _ => Err(windows::core::Error::from_hresult(
+  1441                  windows::core::HRESULT::from_win32(1223), // ERROR_CANCELLED
+  1442              )),
+  1443          };
+  1444          let _ = tx.send(result);
+  1445          Ok(())
+  1446      }))?;
+  1447      rx.recv().map_err(|_| {
+  1448          windows::core::Error::from_hresult(windows::core::HRESULT::from_win32(1223))
+  1449      })?
+  1450  }
 
 ==============================================================================
-Alya 智能翻译助手软件 V1.0    源程序清单    第 30 页（共 330 页）
+Alya 智能翻译助手软件 V1.0    源程序清单    第 30 页（共 335 页）
 ==============================================================================
-  1451  /// 取 manifest 声明的本包 StartupTask（TaskId=STARTUP_TASK_ID）。
-  1452  fn packaged_startup_task() -> Result<windows::ApplicationModel::StartupTask, AppError> {
-  1453      let lang = crate::ui_text::resolve_global();
-  1454      let op = windows::ApplicationModel::StartupTask::GetAsync(&windows::core::HSTRING::from(
-  1455          STARTUP_TASK_ID,
-  1456      ))
-  1457      .map_err(|err| AppError::Config(lang.autostart_query_failed(&err.to_string())))?;
-  1458      let task = wait_async(op)
-  1459          .map_err(|err| AppError::Config(lang.autostart_query_failed(&err.to_string())))?;
-  1460      // GetAsync 对不存在的 TaskId 会失败；成功即视为清单声明与请求一致。
-  1461      let _ = task.TaskId().unwrap_or_default();
-  1462      Ok(task)
-  1463  }
-  1464  
-  1465  fn apply_packaged(target_on: bool) -> Result<(), AppError> {
-  1466      use windows::ApplicationModel::StartupTaskState;
-  1467      let lang = crate::ui_text::resolve_global();
-  1468      let task = packaged_startup_task()?;
-  1469      let state = task
-  1470          .State()
-  1471          .map_err(|err| AppError::Config(lang.autostart_query_failed(&err.to_string())))?;
-  1472      let currently_enabled =
-  1473          matches!(state, StartupTaskState::Enabled | StartupTaskState::EnabledByPolicy);
-  1474      match decide_action(target_on, currently_enabled) {
-  1475          AutostartAction::Enable => {
-  1476              if currently_enabled {
-  1477                  log::debug!("autostart: 包身份目标开启且已启用（幂等）");
-  1478                  return Ok(());
-  1479              }
-  1480              match state {
-  1481                  StartupTaskState::Disabled => {
-  1482                      let enable_op = task
-  1483                          .RequestEnableAsync()
-  1484                          .map_err(|err| {
-  1485                              AppError::Config(lang.autostart_write_failed(&err.to_string()))
-  1486                          })?;
-  1487                      let new_state = wait_async(enable_op).map_err(|err| {
-  1488                          AppError::Config(lang.autostart_write_failed(&err.to_string()))
-  1489                      })?;
-  1490                      if !matches!(
-  1491                          new_state,
-  1492                          StartupTaskState::Enabled | StartupTaskState::EnabledByPolicy
-  1493                      ) {
-  1494                          return Err(AppError::Config(lang.autostart_enable_rejected()));
-  1495                      }
-  1496                  }
-  1497                  StartupTaskState::DisabledByUser => {
-  1498                      // 用户在系统设置里关过：应用内 API 不可再启用，指引用户去系统设置。
-  1499                      return Err(AppError::Config(lang.autostart_user_disabled()));
-  1500                  }
+  1451  
+  1452  /// 取 manifest 声明的本包 StartupTask（TaskId=STARTUP_TASK_ID）。
+  1453  fn packaged_startup_task() -> Result<windows::ApplicationModel::StartupTask, AppError> {
+  1454      let lang = crate::ui_text::resolve_global();
+  1455      let op = windows::ApplicationModel::StartupTask::GetAsync(&windows::core::HSTRING::from(
+  1456          STARTUP_TASK_ID,
+  1457      ))
+  1458      .map_err(|err| AppError::Config(lang.autostart_query_failed(&err.to_string())))?;
+  1459      let task = wait_async(op)
+  1460          .map_err(|err| AppError::Config(lang.autostart_query_failed(&err.to_string())))?;
+  1461      // GetAsync 对不存在的 TaskId 会失败；成功即视为清单声明与请求一致。
+  1462      let _ = task.TaskId().unwrap_or_default();
+  1463      Ok(task)
+  1464  }
+  1465  
+  1466  fn apply_packaged(target_on: bool) -> Result<(), AppError> {
+  1467      use windows::ApplicationModel::StartupTaskState;
+  1468      let lang = crate::ui_text::resolve_global();
+  1469      let task = packaged_startup_task()?;
+  1470      let state = task
+  1471          .State()
+  1472          .map_err(|err| AppError::Config(lang.autostart_query_failed(&err.to_string())))?;
+  1473      let currently_enabled =
+  1474          matches!(state, StartupTaskState::Enabled | StartupTaskState::EnabledByPolicy);
+  1475      match decide_action(target_on, currently_enabled) {
+  1476          AutostartAction::Enable => {
+  1477              if currently_enabled {
+  1478                  log::debug!("autostart: 包身份目标开启且已启用（幂等）");
+  1479                  return Ok(());
+  1480              }
+  1481              match state {
+  1482                  StartupTaskState::Disabled => {
+  1483                      let enable_op = task
+  1484                          .RequestEnableAsync()
+  1485                          .map_err(|err| {
+  1486                              AppError::Config(lang.autostart_write_failed(&err.to_string()))
+  1487                          })?;
+  1488                      let new_state = wait_async(enable_op).map_err(|err| {
+  1489                          AppError::Config(lang.autostart_write_failed(&err.to_string()))
+  1490                      })?;
+  1491                      if !matches!(
+  1492                          new_state,
+  1493                          StartupTaskState::Enabled | StartupTaskState::EnabledByPolicy
+  1494                      ) {
+  1495                          return Err(AppError::Config(lang.autostart_enable_rejected()));
+  1496                      }
+  1497                  }
+  1498                  StartupTaskState::DisabledByUser => {
+  1499                      // 用户在系统设置里关过：应用内 API 不可再启用，指引用户去系统设置。
+  1500                      return Err(AppError::Config(lang.autostart_user_disabled()));

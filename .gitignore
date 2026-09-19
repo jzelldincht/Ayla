@@ -20,8 +20,9 @@ Thumbs.db
 !dev-logs/*.log
 
 # 轮17 增补：本地工作/构建/凭据工件不入库
-.tools/media/config.*.json
-.tools/media/__pycache__/
+# 轮18：.tools 为本地采集/排版脚本与中间截图（含桌面截图与配置副本），整体不入库
+# 注意：.gitignore 不支持行尾注释——注释必须独占一行，否则整行会被当作模式
+.tools/
 build/
 *.msix
 scripts/msix/layout/
