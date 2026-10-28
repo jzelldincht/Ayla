@@ -1,8 +1,8 @@
 ---
 name: Bug 报告
 about: 报告一个缺陷（行为与预期不符）
-title: "[bug] "
-labels: ["bug"]
+title: '[bug] '
+labels: ['bug']
 assignees: []
 ---
 

@@ -1,8 +1,8 @@
 ---
 name: AI 自动报告
 about: 由 AI 维护流程自动创建（安全扫描 / 巡检 / 周报），人工一般不需要用这个模板
-title: "[ai] "
-labels: ["ai"]
+title: '[ai] '
+labels: ['ai']
 assignees: []
 ---
 

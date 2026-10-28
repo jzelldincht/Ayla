@@ -1,8 +1,8 @@
 ---
 name: 功能建议
 about: 提一个想加的能力或改进
-title: "[feat] "
-labels: ["enhancement"]
+title: '[feat] '
+labels: ['enhancement']
 assignees: []
 ---
 
